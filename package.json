@@ -8,7 +8,9 @@
   "scripts": {
     "dev": "quasar dev -m electron",
     "build": "quasar build -m electron",
-    "lint": "eslint --ext .js,.ts,.vue src src-electron"
+    "lint": "eslint --ext .js,.ts,.vue src src-electron",
+    "package:win": "quasar build -m electron && electron-packager dist/electron/UnPackaged \"AdoptMe Trader\" --platform=win32 --arch=x64 --out=dist/electron/Packaged --icon=public/icons/icon.ico --overwrite --app-version=0.1.0 --electron-version=28.2.3",
+    "shortcut:win": "powershell -Command \"$s=New-Object -ComObject WScript.Shell;$sc=$s.CreateShortcut([System.IO.Path]::Combine([System.Environment]::GetFolderPath('Desktop'),'AdoptMe Trader.lnk'));$sc.TargetPath=(Resolve-Path 'dist/electron/Packaged/AdoptMe Trader-win32-x64/AdoptMe Trader.exe').Path;$sc.Save()\""
   },
   "dependencies": {
     "pinia": "^2.1.7",
@@ -17,6 +19,7 @@
     "vue-router": "^4.3.0"
   },
   "devDependencies": {
+    "@electron/packager": "^19.1.0",
     "@quasar/app-vite": "^2.0.0",
     "@quasar/extras": "^1.16.12",
     "@types/node": "^20.11.5",
