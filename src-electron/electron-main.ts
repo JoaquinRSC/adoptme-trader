@@ -1,4 +1,4 @@
-import { app, BrowserWindow, ipcMain, net, session } from 'electron'
+import { app, BrowserWindow, ipcMain, Menu, net, session } from 'electron'
 import path from 'path'
 import fs from 'fs'
 import os from 'os'
@@ -163,7 +163,7 @@ function createWindow () {
       responseHeaders: {
         ...responseHeaders,
         'Content-Security-Policy': [
-          "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' https://amvgg.com https://elvebredd.com data:; connect-src 'none'",
+          "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' data: https://fonts.gstatic.com; img-src 'self' https://amvgg.com https://elvebredd.com data:; connect-src 'none'",
         ],
       },
     })
@@ -179,6 +179,7 @@ function createWindow () {
 }
 
 app.whenReady().then(() => {
+  Menu.setApplicationMenu(null)
   registerIpcHandlers()
   createWindow()
 })

@@ -25,6 +25,24 @@ export interface InventoryPet {
   quantity: number
 }
 
+export const FORM_GRADIENT: Record<PetForm, string> = {
+  normal: 'linear-gradient(145deg, #374151, #6b7280)',
+  fly:    'linear-gradient(145deg, #075985, #38bdf8)',
+  ride:   'linear-gradient(145deg, #064e3b, #34d399)',
+  fr:     'linear-gradient(145deg, #312e81, #818cf8)',
+  nfr:    'linear-gradient(145deg, #581c87, #c084fc)',
+  mfr:    'linear-gradient(145deg, #7c2d12, #fb923c)',
+}
+
+export const FORM_COLOR_HEX: Record<PetForm, string> = {
+  normal: '#6b7280',
+  fly:    '#38bdf8',
+  ride:   '#34d399',
+  fr:     '#818cf8',
+  nfr:    '#c084fc',
+  mfr:    '#fb923c',
+}
+
 export interface PetSuggestion {
   name: string
   form: PetForm

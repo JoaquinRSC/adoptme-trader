@@ -17,7 +17,7 @@ export default configure(function (/* ctx */) {
     devServer: { open: false },
 
     framework: {
-      config: { dark: 'auto' },
+      config: { dark: true },
       plugins: ['Notify', 'Dialog', 'Loading'],
     },
 
