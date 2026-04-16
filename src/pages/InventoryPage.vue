@@ -10,7 +10,7 @@
         </div>
       </div>
       <button class="btn-primary" @click="openAdd">
-        <q-icon name="add" size="16px" />
+        <q-icon :name="matAdd" size="16px" />
         Add Pet
       </button>
     </div>
@@ -67,7 +67,7 @@
 
         <!-- Hover actions -->
         <div class="pet-actions">
-          <q-btn-dropdown flat dense size="xs" icon="tune" class="action-btn" no-icon-animation>
+          <q-btn-dropdown flat dense size="xs" :icon="matTune" class="action-btn" no-icon-animation>
             <q-list dense style="min-width: 100px">
               <q-item
                 v-for="(label, form) in FORM_LABELS"
@@ -83,7 +83,7 @@
           </q-btn-dropdown>
 
           <button class="action-btn action-del" @click="confirmRemove(pet.id, pet.name)">
-            <q-icon name="delete_outline" size="15px" />
+            <q-icon :name="matDeleteOutline" size="15px" />
           </button>
         </div>
 
@@ -137,6 +137,7 @@
 <script setup lang="ts">
 import { ref, reactive } from 'vue'
 import { useQuasar } from 'quasar'
+import { matAdd, matDeleteOutline, matTune, matMonetizationOn } from '@quasar/extras/material-icons'
 import { useInventoryStore } from 'src/stores/inventory'
 import { useValuesStore } from 'src/stores/values'
 import {
