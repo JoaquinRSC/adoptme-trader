@@ -6,7 +6,7 @@ export default configure(function (/* ctx */) {
 
     css: ['app.scss'],
 
-    extras: ['material-icons', 'roboto-font'],
+    extras: ['roboto-font'],
 
     build: {
       target: { browser: ['es2019', 'edge88', 'firefox78', 'chrome87', 'safari13.1'] },
@@ -18,6 +18,7 @@ export default configure(function (/* ctx */) {
 
     framework: {
       config: { dark: true },
+      iconSet: 'svg-material-icons',
       plugins: ['Notify', 'Dialog', 'Loading'],
     },
 
