@@ -1,0 +1,58 @@
+import { defineStore } from 'pinia'
+import { ref } from 'vue'
+import type { PetForm } from 'src/types'
+
+declare global {
+  interface Window {
+    electronAPI: {
+      getPetValue: (name: string, form: string) => Promise<number | null>
+      getAllPets: () => Promise<Array<{ name: string; value: number }>>
+      getBatchValues: (requests: Array<{ name: string; form: string }>) => Promise<Record<string, number | null>>
+    }
+  }
+}
+
+export const useValuesStore = defineStore('values', () => {
+  // In-memory value cache: key = "PetName__form"
+  const cache = ref<Record<string, number | null>>({})
+  const allPets = ref<Array<{ name: string; value: number }>>([])
+  const loadingAllPets = ref(false)
+
+  function cacheKey (name: string, form: PetForm) {
+    return `${name}__${form}`
+  }
+
+  async function getValue (name: string, form: PetForm): Promise<number | null> {
+    const key = cacheKey(name, form)
+    if (key in cache.value) return cache.value[key]
+
+    const value = await window.electronAPI.getPetValue(name, form)
+    cache.value[key] = value
+    return value
+  }
+
+  async function getBatch (requests: Array<{ name: string; form: PetForm }>) {
+    const missing = requests.filter(r => !(cacheKey(r.name, r.form) in cache.value))
+    if (missing.length > 0) {
+      const result = await window.electronAPI.getBatchValues(missing)
+      for (const [k, v] of Object.entries(result)) cache.value[k] = v
+    }
+    return requests.map(r => ({
+      ...r,
+      value: cache.value[cacheKey(r.name, r.form)] ?? null,
+    }))
+  }
+
+  async function loadAllPets () {
+    if (allPets.value.length > 0 || loadingAllPets.value) return
+    loadingAllPets.value = true
+    allPets.value = await window.electronAPI.getAllPets()
+    loadingAllPets.value = false
+  }
+
+  function getCached (name: string, form: PetForm) {
+    return cache.value[cacheKey(name, form)] ?? null
+  }
+
+  return { cache, allPets, loadingAllPets, getValue, getBatch, loadAllPets, getCached }
+})

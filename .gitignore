@@ -1,0 +1,49 @@
+# Dependencies
+node_modules/
+
+# Quasar build output
+dist/
+.quasar/
+
+# Electron build artifacts
+dist-electron/
+
+# Sensitive: cached values & user data (fetched at runtime, never committed)
+*.json.bak
+value-cache.json
+
+# Sensitive: session cookies / auth tokens (future phases)
+*.cookie
+*.session
+auth-tokens.json
+sessions/
+
+# Sensitive: environment / secrets
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+secrets/
+
+# OS files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Editor
+.vscode/*
+!.vscode/extensions.json
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+
+# Logs
+*.log
+npm-debug.log*
+logs/
+
+# TypeScript cache
+*.tsbuildinfo
