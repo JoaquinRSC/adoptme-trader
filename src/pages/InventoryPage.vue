@@ -1,74 +1,78 @@
 <template>
-  <q-page padding>
-    <div class="row items-center q-mb-md">
-      <div class="text-h5 col">Mis Pets</div>
-      <q-btn color="primary" icon="add" label="Agregar pet" @click="openAdd" />
+  <q-page class="inv-page">
+
+    <!-- Page header -->
+    <div class="page-head">
+      <div>
+        <div class="page-title">My Pets</div>
+        <div class="page-sub" v-if="inventory.pets.length">
+          {{ inventory.pets.length }} {{ inventory.pets.length === 1 ? 'pet' : 'pets' }} in inventory
+        </div>
+      </div>
+      <button class="btn-primary" @click="openAdd">
+        <q-icon name="add" size="16px" />
+        Add Pet
+      </button>
     </div>
 
-    <q-banner v-if="!inventory.pets.length" rounded class="bg-grey-2 text-grey-7">
-      No tenés pets en tu inventario. Agregá uno con el botón de arriba.
-    </q-banner>
+    <!-- Empty state -->
+    <div class="empty-state" v-if="!inventory.pets.length">
+      <div class="empty-paw">🐾</div>
+      <div class="empty-title">No pets yet</div>
+      <div class="empty-sub">Add your first pet to start building trades</div>
+      <button class="btn-primary" @click="openAdd">Add Pet</button>
+    </div>
 
-    <div class="row q-gutter-md" v-else>
-      <q-card
-        v-for="pet in inventory.pets"
-        :key="pet.id"
-        class="pet-card"
-        bordered
-        flat
-      >
-        <q-card-section class="q-pb-xs">
-          <div class="row items-center no-wrap">
-            <div class="col text-weight-bold ellipsis">{{ pet.name }}</div>
-            <q-badge :color="FORM_COLOR[pet.form]" class="q-ml-sm">
-              {{ FORM_LABELS[pet.form] }}
-            </q-badge>
-          </div>
-        </q-card-section>
+    <!-- Pet grid -->
+    <div class="pet-grid" v-else>
+      <div class="pet-card" v-for="pet in inventory.pets" :key="pet.id">
 
-        <q-card-section class="q-pt-xs q-pb-xs">
-          <div class="row items-center q-gutter-sm">
-            <span class="text-caption text-grey-6">Cantidad:</span>
-            <q-btn
-              dense flat round icon="remove" size="xs"
+        <!-- Thumbnail -->
+        <div class="pet-thumb" :style="{ background: FORM_GRADIENT[pet.form] }">
+          <span class="thumb-emoji">🐾</span>
+          <span
+            class="thumb-badge"
+            :style="{ color: FORM_COLOR_HEX[pet.form], borderColor: FORM_COLOR_HEX[pet.form] + '44' }"
+          >
+            {{ FORM_LABELS[pet.form] }}
+          </span>
+        </div>
+
+        <!-- Card body -->
+        <div class="pet-body">
+          <div class="pet-name" :title="pet.name">{{ pet.name }}</div>
+
+          <!-- Quantity -->
+          <div class="qty-row">
+            <button
+              class="qty-btn"
               @click="inventory.updateQuantity(pet.id, pet.quantity - 1)"
-              :disable="pet.quantity <= 1"
-            />
-            <span class="text-body2 text-weight-medium">{{ pet.quantity }}</span>
-            <q-btn
-              dense flat round icon="add" size="xs"
-              @click="inventory.updateQuantity(pet.id, pet.quantity + 1)"
-            />
+              :disabled="pet.quantity <= 1"
+            >−</button>
+            <span class="qty-val">{{ pet.quantity }}</span>
+            <button class="qty-btn" @click="inventory.updateQuantity(pet.id, pet.quantity + 1)">+</button>
           </div>
 
-          <!-- Value from AMVGG (fetched lazily) -->
-          <div class="row items-center q-mt-xs q-gutter-xs">
-            <q-icon name="monetization_on" size="xs" color="amber-7" />
-            <span class="text-caption">
-              AMVGG:
-              <template v-if="loadingValue[pet.id]">
-                <q-spinner size="xs" />
-              </template>
-              <template v-else-if="petValue[pet.id] !== null && petValue[pet.id] !== undefined">
-                <strong>{{ petValue[pet.id] }}</strong>
-              </template>
-              <template v-else>
-                <q-btn dense flat size="xs" label="Ver" @click="fetchValue(pet)" />
-              </template>
-            </span>
+          <!-- AMVGG value -->
+          <div class="value-row">
+            <span class="value-lbl">AMVGG</span>
+            <q-spinner v-if="loadingValue[pet.id]" size="13px" />
+            <span
+              v-else-if="petValue[pet.id] !== null && petValue[pet.id] !== undefined"
+              class="value-num"
+            >{{ petValue[pet.id] }}</span>
+            <button v-else class="value-fetch" @click="fetchValue(pet)">Fetch</button>
           </div>
-        </q-card-section>
+        </div>
 
-        <q-separator />
-
-        <q-card-actions align="right" class="q-pa-xs">
-          <q-btn-dropdown flat dense size="sm" label="Forma" icon="tune">
-            <q-list dense>
+        <!-- Hover actions -->
+        <div class="pet-actions">
+          <q-btn-dropdown flat dense size="xs" icon="tune" class="action-btn" no-icon-animation>
+            <q-list dense style="min-width: 100px">
               <q-item
                 v-for="(label, form) in FORM_LABELS"
                 :key="form"
-                clickable
-                v-close-popup
+                clickable v-close-popup
                 @click="changeForm(pet.id, form as PetForm)"
                 :active="pet.form === form"
                 active-class="text-primary"
@@ -78,54 +82,55 @@
             </q-list>
           </q-btn-dropdown>
 
-          <q-btn flat dense round icon="delete" color="negative" @click="confirmRemove(pet.id, pet.name)" />
-        </q-card-actions>
-      </q-card>
+          <button class="action-btn action-del" @click="confirmRemove(pet.id, pet.name)">
+            <q-icon name="delete_outline" size="15px" />
+          </button>
+        </div>
+
+      </div>
     </div>
 
     <!-- Add pet dialog -->
     <q-dialog v-model="showAdd" persistent>
-      <q-card style="min-width: 340px">
-        <q-card-section>
-          <div class="text-h6">Agregar pet</div>
+      <q-card class="add-card">
+        <q-card-section class="q-pb-sm">
+          <div class="dialog-title">Add Pet</div>
         </q-card-section>
 
-        <q-card-section class="q-pt-none q-gutter-md">
+        <q-card-section class="q-pt-sm q-gutter-sm">
           <q-input
             v-model="newPetName"
-            label="Nombre del pet"
-            outlined
-            autofocus
-            hint="Ej: Bat Dragon, Giraffe"
+            label="Pet name"
+            outlined dense autofocus
+            hint="e.g. Bat Dragon, Giraffe"
           />
           <q-select
             v-model="newPetForm"
             :options="formOptions"
-            label="Forma"
-            outlined
-            emit-value
-            map-options
+            label="Form"
+            outlined dense
+            emit-value map-options
           />
           <q-input
             v-model.number="newPetQty"
             type="number"
-            label="Cantidad"
-            outlined
+            label="Quantity"
+            outlined dense
             :min="1"
           />
         </q-card-section>
 
-        <q-card-actions align="right">
-          <q-btn flat label="Cancelar" v-close-popup />
-          <q-btn
-            color="primary"
-            label="Agregar"
-            :disable="!newPetName.trim()"
+        <q-card-actions align="right" class="q-px-md q-pb-md">
+          <button class="btn-ghost" @click="showAdd = false">Cancel</button>
+          <button
+            class="btn-primary"
+            :disabled="!newPetName.trim()"
             @click="confirmAdd"
-          />
+          >Add</button>
         </q-card-actions>
       </q-card>
     </q-dialog>
+
   </q-page>
 </template>
 
@@ -134,25 +139,28 @@ import { ref, reactive } from 'vue'
 import { useQuasar } from 'quasar'
 import { useInventoryStore } from 'src/stores/inventory'
 import { useValuesStore } from 'src/stores/values'
-import { FORM_LABELS, FORM_COLOR, type PetForm, type InventoryPet } from 'src/types'
+import {
+  FORM_LABELS, FORM_GRADIENT, FORM_COLOR_HEX,
+  type PetForm, type InventoryPet,
+} from 'src/types'
 
 const $q = useQuasar()
 const inventory = useInventoryStore()
 const values = useValuesStore()
 
-// ── Add dialog state ──────────────────────────────────────────────────────────
-const showAdd = ref(false)
+// ── Add dialog ────────────────────────────────────────────────────────────────
+const showAdd    = ref(false)
 const newPetName = ref('')
 const newPetForm = ref<PetForm>('fr')
-const newPetQty = ref(1)
+const newPetQty  = ref(1)
 
 const formOptions = Object.entries(FORM_LABELS).map(([value, label]) => ({ value, label }))
 
 function openAdd () {
   newPetName.value = ''
   newPetForm.value = 'fr'
-  newPetQty.value = 1
-  showAdd.value = true
+  newPetQty.value  = 1
+  showAdd.value    = true
 }
 
 function confirmAdd () {
@@ -162,7 +170,7 @@ function confirmAdd () {
 }
 
 // ── Value fetching ────────────────────────────────────────────────────────────
-const petValue = reactive<Record<string, number | null>>({})
+const petValue    = reactive<Record<string, number | null>>({})
 const loadingValue = reactive<Record<string, boolean>>({})
 
 async function fetchValue (pet: InventoryPet) {
@@ -174,22 +182,268 @@ async function fetchValue (pet: InventoryPet) {
 // ── Actions ───────────────────────────────────────────────────────────────────
 function changeForm (id: string, form: PetForm) {
   inventory.updateForm(id, form)
-  // Clear cached value since form changed
   const pet = inventory.pets.find(p => p.id === id)
   if (pet) delete petValue[id]
 }
 
 function confirmRemove (id: string, name: string) {
   $q.dialog({
-    title: 'Confirmar',
-    message: `¿Eliminar "${name}" del inventario?`,
+    title: 'Remove pet',
+    message: `Remove "${name}" from inventory?`,
     cancel: true,
+    ok: { label: 'Remove', color: 'negative', flat: true },
   }).onOk(() => inventory.removePet(id))
 }
 </script>
 
 <style scoped>
+.inv-page {
+  padding: 28px 28px 28px;
+  min-height: 100vh;
+}
+
+/* Page header */
+.page-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  margin-bottom: 24px;
+}
+
+.page-title {
+  font-size: 22px;
+  font-weight: 800;
+  color: var(--text-1);
+  letter-spacing: -0.5px;
+}
+
+.page-sub {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-3);
+  margin-top: 2px;
+}
+
+/* Buttons */
+.btn-primary {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  border: none;
+  border-radius: 10px;
+  background: var(--primary);
+  color: #fff;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: opacity 0.15s, transform 0.1s;
+}
+.btn-primary:hover   { opacity: 0.88; }
+.btn-primary:active  { transform: scale(0.97); }
+.btn-primary:disabled { opacity: 0.4; cursor: not-allowed; }
+
+.btn-ghost {
+  display: inline-flex;
+  align-items: center;
+  padding: 8px 16px;
+  border: 1px solid var(--border-hi);
+  border-radius: 10px;
+  background: transparent;
+  color: var(--text-2);
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+.btn-ghost:hover { background: var(--surface-3); color: var(--text-1); }
+
+/* Empty state */
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 80px 0;
+  text-align: center;
+}
+.empty-paw   { font-size: 52px; line-height: 1; margin-bottom: 6px; }
+.empty-title { font-size: 18px; font-weight: 800; color: var(--text-1); }
+.empty-sub   { font-size: 13px; color: var(--text-2); margin-bottom: 8px; }
+
+/* Pet grid */
+.pet-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
+  gap: 16px;
+}
+
+/* Pet card */
 .pet-card {
-  width: 220px;
+  position: relative;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  overflow: hidden;
+  transition: border-color 0.2s, transform 0.15s, box-shadow 0.2s;
+}
+.pet-card:hover {
+  border-color: var(--border-hi);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+}
+.pet-card:hover .pet-actions { opacity: 1; }
+
+/* Thumbnail */
+.pet-thumb {
+  position: relative;
+  height: 110px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+.pet-thumb::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(to bottom, transparent 40%, rgba(0,0,0,0.35));
+}
+.thumb-emoji {
+  font-size: 40px;
+  filter: drop-shadow(0 2px 8px rgba(0,0,0,0.4));
+  position: relative;
+  z-index: 1;
+}
+.thumb-badge {
+  position: absolute;
+  bottom: 7px;
+  right: 8px;
+  z-index: 2;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.5px;
+  padding: 2px 7px;
+  border-radius: 20px;
+  border: 1px solid currentColor;
+  background: rgba(0, 0, 0, 0.45);
+  backdrop-filter: blur(4px);
+}
+
+/* Card body */
+.pet-body {
+  padding: 10px 12px 12px;
+}
+.pet-name {
+  font-size: 13px;
+  font-weight: 800;
+  color: var(--text-1);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin-bottom: 8px;
+}
+
+/* Quantity */
+.qty-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+.qty-btn {
+  width: 22px;
+  height: 22px;
+  border: 1px solid var(--border-hi);
+  border-radius: 6px;
+  background: var(--surface-2);
+  color: var(--text-2);
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1;
+  cursor: pointer;
+  transition: background 0.12s, color 0.12s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.qty-btn:hover:not(:disabled) { background: var(--surface-3); color: var(--text-1); }
+.qty-btn:disabled              { opacity: 0.3; cursor: not-allowed; }
+.qty-val {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-1);
+  min-width: 20px;
+  text-align: center;
+}
+
+/* Value */
+.value-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.value-lbl {
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--text-3);
+  letter-spacing: 0.8px;
+  text-transform: uppercase;
+}
+.value-num {
+  font-size: 13px;
+  font-weight: 800;
+  color: var(--gold);
+}
+.value-fetch {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--primary);
+  background: var(--primary-dim);
+  border: none;
+  border-radius: 6px;
+  padding: 2px 8px;
+  cursor: pointer;
+  transition: background 0.12s;
+}
+.value-fetch:hover { background: rgba(124, 108, 248, 0.2); }
+
+/* Hover actions */
+.pet-actions {
+  position: absolute;
+  top: 7px;
+  right: 7px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+.action-btn {
+  width: 26px;
+  height: 26px;
+  border: none;
+  border-radius: 7px;
+  background: rgba(12, 14, 26, 0.75);
+  backdrop-filter: blur(6px);
+  color: var(--text-2);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.12s, color 0.12s;
+}
+.action-btn:hover { background: var(--surface-3); color: var(--text-1); }
+.action-del:hover { color: var(--negative); }
+
+/* Dialog */
+.add-card {
+  min-width: 340px;
+}
+.dialog-title {
+  font-size: 17px;
+  font-weight: 800;
+  color: var(--text-1);
 }
 </style>

@@ -1,1 +1,94 @@
-// Global styles
+@import url('https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;600;700;800;900&display=swap');
+
+// ── Design tokens ─────────────────────────────────────────────────────────────
+:root {
+  --bg:           #0c0e1a;
+  --surface:      #141624;
+  --surface-2:    #1c1f32;
+  --surface-3:    #252840;
+  --border:       rgba(255, 255, 255, 0.07);
+  --border-hi:    rgba(255, 255, 255, 0.13);
+  --primary:      #7c6cf8;
+  --primary-glow: rgba(124, 108, 248, 0.22);
+  --primary-dim:  rgba(124, 108, 248, 0.1);
+  --gold:         #f0b429;
+  --gold-dim:     rgba(240, 180, 41, 0.12);
+  --positive:     #34d399;
+  --negative:     #f87171;
+  --text-1:       #e8eaf2;
+  --text-2:       #8b90a4;
+  --text-3:       #4a4f63;
+}
+
+// ── Base ──────────────────────────────────────────────────────────────────────
+*,
+*::before,
+*::after {
+  font-family: 'Nunito', 'Segoe UI', system-ui, sans-serif !important;
+  box-sizing: border-box;
+}
+
+.q-app,
+body {
+  background: var(--bg) !important;
+  color: var(--text-1) !important;
+}
+
+// ── Scrollbar ─────────────────────────────────────────────────────────────────
+::-webkit-scrollbar             { width: 5px; height: 5px; }
+::-webkit-scrollbar-track       { background: transparent; }
+::-webkit-scrollbar-thumb       { background: var(--surface-3); border-radius: 10px; }
+::-webkit-scrollbar-thumb:hover { background: var(--text-3); }
+
+// ── Quasar patches ────────────────────────────────────────────────────────────
+.q-page-container {
+  background: var(--bg) !important;
+}
+
+.q-drawer {
+  background: var(--surface) !important;
+  border-right: 1px solid var(--border) !important;
+  box-shadow: none !important;
+}
+
+// Quasar dark dialog card
+.q-dialog .q-card {
+  background: var(--surface-2) !important;
+  border: 1px solid var(--border-hi);
+  border-radius: 16px !important;
+}
+
+// Quasar outlined fields in dark mode
+.q-field--outlined .q-field__control {
+  background: var(--surface) !important;
+}
+.q-field--outlined .q-field__control::before {
+  border-color: var(--border-hi) !important;
+}
+.q-field--outlined.q-field--focused .q-field__control::before {
+  border-color: var(--primary) !important;
+}
+
+// Quasar menu / dropdown
+.q-menu {
+  background: var(--surface-2) !important;
+  border: 1px solid var(--border-hi) !important;
+  border-radius: 10px !important;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5) !important;
+}
+.q-item:hover {
+  background: var(--surface-3) !important;
+}
+
+// Quasar btn
+.q-btn--flat {
+  color: var(--text-2) !important;
+}
+.q-btn--flat:hover {
+  color: var(--text-1) !important;
+}
+
+// Spinner color
+.q-spinner {
+  color: var(--primary) !important;
+}
