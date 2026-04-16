@@ -34,7 +34,12 @@ export default configure(function (/* ctx */) {
       builder: {
         appId: 'com.joaquin.adoptme-trader',
         productName: 'AdoptMe Trader',
-        win: { target: 'nsis' },
+        icon: 'public/icons/icon.ico',
+        win: {
+          target: 'portable',
+          icon: 'public/icons/icon.ico',
+          signingHashAlgorithms: [],
+        },
         linux: { target: 'AppImage' },
         mac: { target: 'dmg' },
       },
