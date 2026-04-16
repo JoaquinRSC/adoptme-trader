@@ -44,12 +44,13 @@
 
 <script setup lang="ts">
 import { ref } from 'vue'
+import { matInventory2, matSwapHoriz } from '@quasar/extras/material-icons'
 
 const drawer = ref(true)
 
 const navItems = [
-  { name: 'inventory',     icon: 'inventory_2', label: 'My Pets'       },
-  { name: 'trade-builder', icon: 'swap_horiz',  label: 'Trade Builder' },
+  { name: 'inventory',     icon: matInventory2, label: 'My Pets'       },
+  { name: 'trade-builder', icon: matSwapHoriz,  label: 'Trade Builder' },
 ]
 </script>
 

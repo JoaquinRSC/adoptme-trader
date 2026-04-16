@@ -11,14 +11,14 @@
       <!-- ── LEFT: offered pets ─────────────────────────────────────────────── -->
       <div class="trade-panel">
         <div class="panel-header">
-          <q-icon name="upload" size="16px" />
+          <q-icon :name="matUpload" size="16px" />
           <span>You offer</span>
           <span class="panel-count" v-if="offeredPets.length">{{ offeredPets.length }}</span>
         </div>
 
         <div class="panel-body">
           <button class="btn-add-inventory" @click="showInventoryPicker = true">
-            <q-icon name="add" size="15px" />
+            <q-icon :name="matAdd" size="15px" />
             Add from inventory
           </button>
 
@@ -41,7 +41,7 @@
                   <span class="offered-val">
                     <q-spinner v-if="item.loading" size="11px" />
                     <template v-else-if="item.value !== null">
-                      <q-icon name="monetization_on" size="11px" color="warning" />
+                      <q-icon :name="matMonetizationOn" size="11px" color="warning" />
                       {{ item.value }}
                     </template>
                     <span v-else class="no-data">no data</span>
@@ -49,7 +49,7 @@
                 </div>
               </div>
               <button class="remove-btn" @click="removeOffered(item.pet.id)">
-                <q-icon name="close" size="13px" />
+                <q-icon :name="matClose" size="13px" />
               </button>
             </div>
           </div>
@@ -68,7 +68,7 @@
       <!-- ── CENTER: controls ───────────────────────────────────────────────── -->
       <div class="trade-controls">
         <div class="swap-icon-wrap">
-          <q-icon name="swap_horiz" size="28px" style="color: var(--text-3)" />
+          <q-icon :name="matSwapHoriz" size="28px" style="color: var(--text-3)" />
         </div>
 
         <div class="control-label">Receive form</div>
@@ -86,12 +86,12 @@
           @click="search"
         >
           <q-spinner v-if="searching" size="16px" color="white" />
-          <q-icon v-else name="search" size="16px" />
+          <q-icon v-else :name="matSearch" size="16px" />
           <span>{{ searching ? 'Searching…' : 'Find matches' }}</span>
         </button>
 
         <div class="phase2-notice">
-          <q-icon name="info_outline" size="13px" />
+          <q-icon :name="matInfo" size="13px" />
           Elvebredd cross-check in Phase 2
         </div>
       </div>
@@ -99,7 +99,7 @@
       <!-- ── RIGHT: suggestions ─────────────────────────────────────────────── -->
       <div class="trade-panel">
         <div class="panel-header">
-          <q-icon name="auto_awesome" size="16px" />
+          <q-icon :name="matAutoAwesome" size="16px" />
           <span>Suggestions</span>
           <span class="panel-count" v-if="suggestions.length">{{ suggestions.length }}</span>
         </div>
@@ -169,7 +169,7 @@
                   <span class="qty-text">×{{ pet.quantity }}</span>
                 </div>
               </div>
-              <q-icon name="add_circle_outline" size="18px" style="color: var(--primary)" />
+              <q-icon :name="matAddCircleOutline" size="18px" style="color: var(--primary)" />
             </button>
           </div>
         </q-card-section>
@@ -184,6 +184,10 @@
 
 <script setup lang="ts">
 import { ref, computed } from 'vue'
+import {
+  matUpload, matAdd, matMonetizationOn, matClose, matSwapHoriz,
+  matInfo, matAutoAwesome, matAddCircleOutline, matSearch,
+} from '@quasar/extras/material-icons'
 import { useInventoryStore } from 'src/stores/inventory'
 import { useValuesStore } from 'src/stores/values'
 import {
