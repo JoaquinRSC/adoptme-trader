@@ -26,22 +26,18 @@ export default configure(function (/* ctx */) {
     electron: {
       preloadScripts: ['electron-preload'],
       inspectPort: 5858,
-      bundler: 'builder',
+      bundler: 'packager',
       extendElectronMainConf (esbuildConf: Record<string, unknown>) {
         esbuildConf.format = 'cjs'
         esbuildConf.platform = 'node'
       },
-      builder: {
-        appId: 'com.joaquin.adoptme-trader',
-        productName: 'AdoptMe Trader',
+      packager: {
+        platform: 'win32',
+        arch: 'x64',
         icon: 'public/icons/icon.ico',
-        win: {
-          target: 'portable',
-          icon: 'public/icons/icon.ico',
-          signingHashAlgorithms: [],
-        },
-        linux: { target: 'AppImage' },
-        mac: { target: 'dmg' },
+        appVersion: '0.1.0',
+        out: 'dist/electron/Packaged',
+        overwrite: true,
       },
     },
   }
