@@ -96,8 +96,8 @@ async function fetchPetDetails (petName: string): Promise<PetDetails> {
 
 async function fetchAmvggValue (petName: string, form: string): Promise<number | null> {
   const details = await fetchPetDetails(petName)
-  if (form === 'nfr') return details.neonValue
-  if (form === 'mfr') return details.megaValue
+  if (form === 'n' || form === 'nfr') return details.neonValue
+  if (form === 'm' || form === 'mfr') return details.megaValue
   return details.regularValue
 }
 

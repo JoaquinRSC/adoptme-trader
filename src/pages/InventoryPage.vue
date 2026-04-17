@@ -356,10 +356,10 @@ async function fetchValue (pet: InventoryPet) {
   loadingValue[pet.id] = true
   try {
     const details = await window.electronAPI.getPetDetails(pet.name)
-    if (pet.form === 'nfr') {
+    if (pet.form === 'n' || pet.form === 'nfr') {
       petValue[pet.id]  = details.neonValue
       petDemand[pet.id] = details.neonDemand
-    } else if (pet.form === 'mfr') {
+    } else if (pet.form === 'm' || pet.form === 'mfr') {
       petValue[pet.id]  = details.megaValue
       petDemand[pet.id] = details.megaDemand
     } else {
