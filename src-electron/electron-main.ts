@@ -108,31 +108,12 @@ async function fetchAllPets (): Promise<Array<{ name: string; value: number }>> 
     if (!res.ok) return []
     const html = await res.text()
 
-    // Try __NEXT_DATA__ JSON first (structured, reliable)
-    const nextDataMatch = html.match(/<script id="__NEXT_DATA__"[^>]*>([^<]+)<\/script>/)
-    if (nextDataMatch) {
-      try {
-        const data = JSON.parse(nextDataMatch[1]) as Record<string, unknown>
-        const json = JSON.stringify(data)
-        // Extract all name+value pairs: "name":"Bat Dragon"..."value":3.35
-        const pets: Array<{ name: string; value: number }> = []
-        const nameValueRe = /"name"\s*:\s*"([^"]+)"[^}]{0,200}"value"\s*:\s*([\d.]+)/g
-        let m: RegExpExecArray | null
-        while ((m = nameValueRe.exec(json)) !== null) {
-          pets.push({ name: m[1].trim(), value: parseFloat(m[2]) })
-        }
-        if (pets.length > 0) return pets
-      } catch { /* fall through to regex */ }
-    }
-
-    // Fallback: regex on raw HTML
-    const pattern = /([A-Z][a-zA-Z\s'-]+?)\s*Value\s*([\d.]+)\s*Demand/g
+    // AMVGG uses Next.js App Router RSC payload — quotes are escaped as \"
     const pets: Array<{ name: string; value: number }> = []
+    const nameValueRe = /\\"name\\":\\"([^"\\]+)\\",\\"regularValue\\":\\"([\d.]+)\\"/g
     let m: RegExpExecArray | null
-    while ((m = pattern.exec(html)) !== null) {
-      const name = m[1].trim()
-      const value = parseFloat(m[2])
-      if (name && !isNaN(value)) pets.push({ name, value })
+    while ((m = nameValueRe.exec(html)) !== null) {
+      pets.push({ name: m[1], value: parseFloat(m[2]) })
     }
     return pets
   } catch {
