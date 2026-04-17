@@ -215,10 +215,11 @@ function openAdd () {
 
 function confirmAdd () {
   if (!newPetName.value.trim()) return
-  inventory.addPet(newPetName.value.trim(), newPetForm.value, newPetQty.value)
+  const count = Math.max(1, newPetQty.value)
+  inventory.addPet(newPetName.value.trim(), newPetForm.value, count)
   showAdd.value = false
-  const added = inventory.pets[inventory.pets.length - 1]
-  if (added) void fetchValue(added)
+  const added = inventory.pets.slice(-count)
+  for (const pet of added) void fetchValue(pet)
 }
 
 // ── Pet search autocomplete ───────────────────────────────────────────────────
