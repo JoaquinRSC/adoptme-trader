@@ -46,6 +46,15 @@ const api = {
   // Debug: dump pet page HTML info to userData/debug-pet-html.txt
   debugPetPage: (petName: string): Promise<Record<string, unknown>> =>
     ipcRenderer.invoke('debug:petPage', petName),
+
+  // Auto-updater: fires when a new version has been downloaded and is ready to install
+  onUpdateDownloaded: (cb: () => void) => {
+    ipcRenderer.on('updater:update-downloaded', () => cb())
+  },
+
+  // Quit and install the downloaded update
+  installUpdate: (): Promise<void> =>
+    ipcRenderer.invoke('updater:install'),
 } as const
 
 contextBridge.exposeInMainWorld('electronAPI', api)

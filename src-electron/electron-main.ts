@@ -1,4 +1,5 @@
 import { app, BrowserWindow, ipcMain, Menu, net, session } from 'electron'
+import { autoUpdater } from 'electron-updater'
 import path from 'path'
 import fs from 'fs'
 
@@ -392,6 +393,21 @@ async function fetchElveValue (petName: string, form: string): Promise<number | 
   return elveValuesCache.get(petName)?.[form] ?? null
 }
 
+// ── Auto-updater (portable exe, production only) ──────────────────────────────
+function setupAutoUpdater (win: BrowserWindow): void {
+  autoUpdater.autoDownload = true
+  autoUpdater.autoInstallOnAppQuit = true
+  autoUpdater.logger = null
+
+  autoUpdater.on('update-downloaded', () => {
+    win.webContents.send('updater:update-downloaded')
+  })
+
+  autoUpdater.on('error', () => { /* silent — don't bother user with network errors */ })
+
+  autoUpdater.checkForUpdates().catch(() => {})
+}
+
 // ── IPC handlers ──────────────────────────────────────────────────────────────
 function registerIpcHandlers () {
   // Get cached value for a specific pet + form, fetching if needed
@@ -465,6 +481,10 @@ function registerIpcHandlers () {
   // Elvebredd: single value
   ipcMain.handle('pet:getElveValue', async (_, petName: string, form: string) => {
     return await fetchElveValue(petName, form)
+  })
+
+  ipcMain.handle('updater:install', () => {
+    autoUpdater.quitAndInstall(false, true)
   })
 
   // Elvebredd: batch values
@@ -553,6 +573,7 @@ app.whenReady().then(() => {
   Menu.setApplicationMenu(null)
   registerIpcHandlers()
   createWindow()
+  if (!process.env.DEV && mainWindow) setupAutoUpdater(mainWindow)
 })
 
 app.on('window-all-closed', () => { if (process.platform !== 'darwin') app.quit() })
