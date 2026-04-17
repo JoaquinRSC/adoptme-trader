@@ -7,7 +7,17 @@ const STORAGE_KEY = 'adoptme_inventory'
 
 function loadFromStorage (): InventoryPet[] {
   try {
-    return JSON.parse(localStorage.getItem(STORAGE_KEY) ?? '[]')
+    const raw = JSON.parse(localStorage.getItem(STORAGE_KEY) ?? '[]') as Array<{
+      id: string; name: string; form: PetForm; quantity?: number
+    }>
+    const result: InventoryPet[] = []
+    for (const p of raw) {
+      const count = Math.max(1, p.quantity ?? 1)
+      for (let i = 0; i < count; i++) {
+        result.push({ id: i === 0 ? p.id : uid(), name: p.name, form: p.form })
+      }
+    }
+    return result
   } catch {
     return []
   }
@@ -20,12 +30,9 @@ export const useInventoryStore = defineStore('inventory', () => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(val))
   }, { deep: true })
 
-  function addPet (name: string, form: PetForm, quantity = 1) {
-    const existing = pets.value.find(p => p.name === name && p.form === form)
-    if (existing) {
-      existing.quantity += quantity
-    } else {
-      pets.value.push({ id: uid(), name, form, quantity })
+  function addPet (name: string, form: PetForm, count = 1) {
+    for (let i = 0; i < count; i++) {
+      pets.value.push({ id: uid(), name, form })
     }
   }
 
@@ -34,15 +41,10 @@ export const useInventoryStore = defineStore('inventory', () => {
     if (idx !== -1) pets.value.splice(idx, 1)
   }
 
-  function updateQuantity (id: string, quantity: number) {
-    const pet = pets.value.find(p => p.id === id)
-    if (pet) pet.quantity = Math.max(1, quantity)
-  }
-
   function updateForm (id: string, form: PetForm) {
     const pet = pets.value.find(p => p.id === id)
     if (pet) pet.form = form
   }
 
-  return { pets, addPet, removePet, updateQuantity, updateForm }
+  return { pets, addPet, removePet, updateForm }
 })
