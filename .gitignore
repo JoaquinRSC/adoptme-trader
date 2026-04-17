@@ -15,6 +15,13 @@ dist/electron/Packaged/
 *.json.bak
 value-cache.json
 
+# Generated data files (fetched at runtime)
+pet-images.json
+pets-full.json
+
+# Playwright MCP session data
+.playwright-mcp/
+
 # Sensitive: session cookies / auth tokens (future phases)
 *.cookie
 *.session
