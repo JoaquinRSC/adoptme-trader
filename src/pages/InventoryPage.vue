@@ -356,16 +356,8 @@ async function fetchValue (pet: InventoryPet) {
   loadingValue[pet.id] = true
   try {
     const details = await window.electronAPI.getPetDetails(pet.name)
-    if (pet.form === 'n' || pet.form === 'nfr') {
-      petValue[pet.id]  = details.neonValue
-      petDemand[pet.id] = details.neonDemand
-    } else if (pet.form === 'm' || pet.form === 'mfr') {
-      petValue[pet.id]  = details.megaValue
-      petDemand[pet.id] = details.megaDemand
-    } else {
-      petValue[pet.id]  = details.regularValue
-      petDemand[pet.id] = details.regularDemand
-    }
+    petValue[pet.id]  = details.values[pet.form] ?? null
+    petDemand[pet.id] = details.demands[pet.form] ?? null
   } catch {
     petValue[pet.id] = null
   } finally {

@@ -5,13 +5,9 @@ import type { PetForm } from 'src/types'
 export type DemandLevel = 'Very Low' | 'Low' | 'Medium' | 'High' | null
 
 export interface PetDetails {
-  regularValue:  number | null
-  regularDemand: DemandLevel
-  neonValue:     number | null
-  neonDemand:    DemandLevel
-  megaValue:     number | null
-  megaDemand:    DemandLevel
-  rarity:        string | null
+  values:  Partial<Record<PetForm, number | null>>
+  demands: Partial<Record<PetForm, DemandLevel>>
+  rarity:  string | null
 }
 
 declare global {

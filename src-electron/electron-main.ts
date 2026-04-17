@@ -41,16 +41,70 @@ const AMVGG_FORM_PREFIX: Record<string, string> = {
 export type DemandLevel = 'Very Low' | 'Low' | 'Medium' | 'High' | null
 
 export interface PetDetails {
-  regularValue:  number | null
-  regularDemand: DemandLevel
-  neonValue:     number | null
-  neonDemand:    DemandLevel
-  megaValue:     number | null
-  megaDemand:    DemandLevel
-  rarity:        string | null
+  values:  Record<string, number | null>
+  demands: Record<string, DemandLevel>
+  rarity:  string | null
 }
 
-const detailsCache = new Map<string, PetDetails>()
+// AMVGG field name → PetForm key
+const AMVGG_VALUE_FIELDS: Array<[string, string]> = [
+  ['npRegularValue', 'normal'],
+  ['fValue',         'fly'],
+  ['rValue',         'ride'],
+  ['regularValue',   'fr'],
+  ['npNeonValue',    'n'],
+  ['nfValue',        'nf'],
+  ['nrValue',        'nr'],
+  ['neonValue',      'nfr'],
+  ['npMegaValue',    'm'],
+  ['mfValue',        'mf'],
+  ['mrValue',        'mr'],
+  ['megaValue',      'mfr'],
+]
+
+const AMVGG_DEMAND_FIELDS: Array<[string, string]> = [
+  ['npRegularDemand', 'normal'],
+  ['fDemand',         'fly'],
+  ['rDemand',         'ride'],
+  ['regularDemand',   'fr'],
+  ['npNeonDemand',    'n'],
+  ['nfDemand',        'nf'],
+  ['nrDemand',        'nr'],
+  ['neonDemand',      'nfr'],
+  ['npMegaDemand',    'm'],
+  ['mfDemand',        'mf'],
+  ['mrDemand',        'mr'],
+  ['megaDemand',      'mfr'],
+]
+
+function extractNumField (text: string, field: string): number | null {
+  const re = new RegExp(`\\\\"${field}\\\\":\\\\"([\\d.]+)\\\\"`)
+  const m  = text.match(re)
+  return m ? parseFloat(m[1]) : null
+}
+
+function extractStrField (text: string, field: string): string | null {
+  const re = new RegExp(`\\\\"${field}\\\\":\\\\"([^"\\\\]+)\\\\"`)
+  const m  = text.match(re)
+  return m ? m[1] : null
+}
+
+function parseDetailsFromBlock (block: string): PetDetails {
+  const values:  Record<string, number | null> = {}
+  const demands: Record<string, DemandLevel>   = {}
+  for (const [field, form] of AMVGG_VALUE_FIELDS) {
+    const v = extractNumField(block, field)
+    if (v !== null) values[form] = v
+  }
+  for (const [field, form] of AMVGG_DEMAND_FIELDS) {
+    const d = extractStrField(block, field)
+    if (d !== null) demands[form] = d as DemandLevel
+  }
+  return { values, demands, rarity: extractStrField(block, 'rarity') }
+}
+
+const detailsCache      = new Map<string, PetDetails>()
+let   allPetsCacheFilled = false
 
 function fetchWithTimeout (url: string, timeoutMs = 10000): Promise<Response> {
   const fetchPromise = net.fetch(url, {
@@ -62,33 +116,58 @@ function fetchWithTimeout (url: string, timeoutMs = 10000): Promise<Response> {
   return Promise.race([fetchPromise, timeoutPromise])
 }
 
+// ── Populate detailsCache from /values/pets listing (all 12 fields per pet) ──
+async function warmDetailsCache (): Promise<void> {
+  if (allPetsCacheFilled) return
+  allPetsCacheFilled = true
+  try {
+    const res = await fetchWithTimeout('https://amvgg.com/values/pets')
+    if (!res.ok) return
+    const html = await res.text()
+
+    const namePattern = '\\"name\\":\\"'
+    let pos = 0
+    while (true) {
+      const nameStart = html.indexOf(namePattern, pos)
+      if (nameStart === -1) break
+      const nameValueStart = nameStart + namePattern.length
+      const nameEnd = html.indexOf('\\"', nameValueStart)
+      if (nameEnd === -1) break
+      const petName = html.substring(nameValueStart, nameEnd)
+      pos = nameEnd + 2
+
+      // Block spans from this name match until the next \"name\": or 3000 chars
+      const nextName = html.indexOf(namePattern, pos)
+      const blockEnd = nextName > 0 ? Math.min(nextName, nameStart + 3000) : nameStart + 3000
+      const block    = html.substring(nameStart, blockEnd)
+
+      if (!block.includes('\\"regularValue\\":\\"')) continue
+      const details = parseDetailsFromBlock(block)
+      if (Object.keys(details.values).length > 0) detailsCache.set(petName, details)
+    }
+  } catch { /* cache will be partial; individual-page fallback handles misses */ }
+}
+
 async function fetchPetDetails (petName: string): Promise<PetDetails> {
   if (detailsCache.has(petName)) return detailsCache.get(petName)!
 
-  const slug = petName.replace(/ /g, '_')
-  const url  = `https://amvgg.com/pet/${slug}`
-  const empty: PetDetails = { regularValue: null, regularDemand: null, neonValue: null, neonDemand: null, megaValue: null, megaDemand: null, rarity: null }
+  if (!allPetsCacheFilled) {
+    await warmDetailsCache()
+    if (detailsCache.has(petName)) return detailsCache.get(petName)!
+  }
 
+  // Fallback: individual pet page (only has 3 field groups but better than nothing)
+  const slug  = petName.replace(/ /g, '_')
+  const empty: PetDetails = { values: {}, demands: {}, rarity: null }
   try {
-    const res = await fetchWithTimeout(url)
+    const res = await fetchWithTimeout(`https://amvgg.com/pet/${slug}`)
     if (!res.ok) return empty
-    const html = await res.text()
-
-    // AMVGG uses Next.js App Router RSC payload — quotes are escaped as \"
-    const m = html.match(/\\"regularValue\\":\\"([\d.]+)\\",\\"regularDemand\\":\\"([^"\\]+)\\",\\"neonValue\\":\\"([\d.]+)\\",\\"neonDemand\\":\\"([^"\\]+)\\",\\"megaValue\\":\\"([\d.]+)\\",\\"megaDemand\\":\\"([^"\\]+)\\"(?:,\\"rarity\\":\\"([^"\\]+)\\")?/)
-    if (!m) return empty
-
-    const details: PetDetails = {
-      regularValue:  parseFloat(m[1]),
-      regularDemand: m[2] as DemandLevel,
-      neonValue:     parseFloat(m[3]),
-      neonDemand:    m[4] as DemandLevel,
-      megaValue:     parseFloat(m[5]),
-      megaDemand:    m[6] as DemandLevel,
-      rarity:        m[7] ?? null,
+    const details = parseDetailsFromBlock(await res.text())
+    if (Object.keys(details.values).length > 0) {
+      detailsCache.set(petName, details)
+      return details
     }
-    detailsCache.set(petName, details)
-    return details
+    return empty
   } catch {
     return empty
   }
@@ -96,29 +175,18 @@ async function fetchPetDetails (petName: string): Promise<PetDetails> {
 
 async function fetchAmvggValue (petName: string, form: string): Promise<number | null> {
   const details = await fetchPetDetails(petName)
-  if (form === 'n' || form === 'nfr') return details.neonValue
-  if (form === 'm' || form === 'mfr') return details.megaValue
-  return details.regularValue
+  return details.values[form] ?? null
 }
 
 // ── Fetch all pets list from AMVGG /values/pets ───────────────────────────────
 async function fetchAllPets (): Promise<Array<{ name: string; value: number }>> {
-  try {
-    const res = await fetchWithTimeout('https://amvgg.com/values/pets')
-    if (!res.ok) return []
-    const html = await res.text()
-
-    // AMVGG uses Next.js App Router RSC payload — quotes are escaped as \"
-    const pets: Array<{ name: string; value: number }> = []
-    const nameValueRe = /\\"name\\":\\"([^"\\]+)\\",\\"regularValue\\":\\"([\d.]+)\\"/g
-    let m: RegExpExecArray | null
-    while ((m = nameValueRe.exec(html)) !== null) {
-      pets.push({ name: m[1], value: parseFloat(m[2]) })
-    }
-    return pets
-  } catch {
-    return []
+  await warmDetailsCache()
+  const result: Array<{ name: string; value: number }> = []
+  for (const [name, details] of detailsCache) {
+    const frValue = details.values['fr']
+    if (frValue != null) result.push({ name, value: frValue })
   }
+  return result
 }
 
 // ── Pet search list (names only, for autocomplete) ────────────────────────────

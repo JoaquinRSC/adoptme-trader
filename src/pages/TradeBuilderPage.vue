@@ -272,9 +272,7 @@ function demandStars (d: DemandLevel): string {
 }
 
 function getFormDemand (details: Awaited<ReturnType<typeof window.electronAPI.getPetDetails>>, form: PetForm): DemandLevel {
-  if (form === 'n' || form === 'nfr') return details.neonDemand
-  if (form === 'm' || form === 'mfr') return details.megaDemand
-  return details.regularDemand
+  return details.demands[form] ?? null
 }
 
 // ── Fairness ──────────────────────────────────────────────────────────────────
@@ -317,9 +315,7 @@ async function addOffered (pet: InventoryPet) {
     const details = await window.electronAPI.getPetDetails(pet.name)
     const found = offeredPets.value.find(o => o.pet.id === pet.id)
     if (found) {
-      if (pet.form === 'n' || pet.form === 'nfr') found.value = details.neonValue
-      else if (pet.form === 'm' || pet.form === 'mfr') found.value = details.megaValue
-      else found.value = details.regularValue
+      found.value  = details.values[pet.form] ?? null
       found.demand = getFormDemand(details, pet.form)
     }
   } catch {
