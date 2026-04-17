@@ -232,7 +232,7 @@
                   :key="val"
                   class="form-chip"
                   :class="{ 'form-chip--active': selectedForm === val }"
-                  :style="{ '--chip-accent': FORM_COLOR_HEX[val as PetForm] }"
+                  :style="selectedForm === val ? { background: FORM_GRADIENT[val as PetForm], borderColor: 'transparent', color: '#fff' } : {}"
                   @click="selectedForm = val as PetForm"
                 >{{ label }}</button>
               </div>
@@ -258,7 +258,7 @@
 import { ref, computed, watch } from 'vue'
 import { matAdd, matClose, matSearch, matCheck, matBalance } from '@quasar/extras/material-icons'
 import { uid } from 'quasar'
-import { FORM_LABELS, FORM_COLOR_HEX, type PetForm } from 'src/types'
+import { FORM_LABELS, FORM_GRADIENT, FORM_COLOR_HEX, type PetForm } from 'src/types'
 import { useValuesStore } from 'src/stores/values'
 import { ADOPT_ME_PETS } from 'src/data/pets'
 
@@ -899,33 +899,36 @@ function confirmAdd() {
 }
 
 .form-grid {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 4px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
 }
 
 .form-chip {
-  padding: 4px 2px;
-  border: 1.5px solid var(--border);
-  border-radius: 6px;
-  background: transparent;
-  color: var(--text-2);
-  font-size: 11px;
+  padding: 7px 14px;
+  font-size: 12px;
   font-weight: 700;
+  border-radius: 99px;
+  border: 1.5px solid rgba(255,255,255,0.12);
+  background: rgba(255,255,255,0.06);
+  color: rgba(255,255,255,0.45);
   cursor: pointer;
-  transition: border-color 0.12s, color 0.12s, background 0.12s;
+  transition: all 0.15s;
   text-align: center;
+  line-height: 1;
+  letter-spacing: 0.03em;
 }
 
 .form-chip:hover {
-  border-color: var(--chip-accent, var(--primary));
-  color: var(--chip-accent, var(--primary));
+  border-color: rgba(255,255,255,0.3);
+  color: rgba(255,255,255,0.85);
+  background: rgba(255,255,255,0.1);
 }
 
 .form-chip--active {
-  border-color: var(--chip-accent, var(--primary));
-  color: var(--chip-accent, var(--primary));
-  background: color-mix(in srgb, var(--chip-accent, var(--primary)) 12%, transparent);
+  box-shadow: 0 3px 12px rgba(0,0,0,0.45);
+  color: #fff;
+  border-color: transparent;
 }
 
 .add-actions {

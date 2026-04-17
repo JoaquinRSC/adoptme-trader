@@ -64,18 +64,6 @@
           </div>
         </div>
 
-        <!-- Form pills -->
-        <div class="form-pills">
-          <button
-            v-for="[val, label] in formEntries"
-            :key="val"
-            class="form-pill"
-            :class="{ 'form-pill--active': pet.form === val }"
-            :style="pet.form === val ? { background: FORM_GRADIENT[val as PetForm] } : {}"
-            @click="changeForm(pet.id, val as PetForm)"
-          >{{ label }}</button>
-        </div>
-
         <!-- Hover actions -->
         <div class="pet-actions">
           <button class="action-btn action-del" @click="confirmRemove(pet.id, pet.name)">
@@ -178,7 +166,7 @@
                   :key="val"
                   class="form-chip"
                   :class="{ 'form-chip--active': newPetForm === val }"
-                  :style="{ '--chip-accent': FORM_COLOR_HEX[val as PetForm] }"
+                  :style="newPetForm === val ? { background: FORM_GRADIENT[val as PetForm], borderColor: 'transparent', color: '#fff' } : {}"
                   @click="newPetForm = val as PetForm"
                 >{{ label }}</button>
               </div>
@@ -680,36 +668,6 @@ function confirmRemove (id: string, name: string) {
 .action-btn:hover { background: var(--surface-3); color: var(--text-1); }
 .action-del:hover { color: var(--negative); }
 
-/* Form pills on card */
-.form-pills {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 4px;
-  padding: 0 10px 10px;
-}
-.form-pill {
-  padding: 3px 8px;
-  font-size: 10px;
-  font-weight: 700;
-  border-radius: 20px;
-  border: 1px solid rgba(255,255,255,0.1);
-  background: rgba(255,255,255,0.05);
-  color: rgba(255,255,255,0.35);
-  cursor: pointer;
-  line-height: 1.4;
-  transition: all 0.12s;
-  letter-spacing: 0.02em;
-}
-.form-pill:hover {
-  border-color: rgba(255,255,255,0.25);
-  color: rgba(255,255,255,0.7);
-}
-.form-pill--active {
-  border-color: transparent;
-  color: #fff;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.4);
-}
-
 /* Dialog */
 /* ── Add Pet dialog ─────────────────────────────────────────────────────────── */
 .add-card {
@@ -915,35 +873,36 @@ function confirmRemove (id: string, name: string) {
 }
 
 .form-grid {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 5px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
 }
 
 .form-chip {
-  padding: 5px 2px;
-  font-size: 11px;
+  padding: 7px 14px;
+  font-size: 12px;
   font-weight: 700;
-  border-radius: 6px;
-  border: 1px solid var(--border-hi);
-  background: var(--surface);
-  color: var(--text-2);
+  border-radius: 99px;
+  border: 1.5px solid rgba(255,255,255,0.12);
+  background: rgba(255,255,255,0.06);
+  color: rgba(255,255,255,0.45);
   cursor: pointer;
-  transition: all 0.12s;
+  transition: all 0.15s;
   text-align: center;
   line-height: 1;
+  letter-spacing: 0.03em;
 }
 
 .form-chip:hover {
-  border-color: var(--chip-accent);
-  color: var(--chip-accent);
-  background: color-mix(in srgb, var(--chip-accent) 10%, transparent);
+  border-color: rgba(255,255,255,0.3);
+  color: rgba(255,255,255,0.85);
+  background: rgba(255,255,255,0.1);
 }
 
 .form-chip--active {
-  border-color: var(--chip-accent);
-  color: var(--chip-accent);
-  background: color-mix(in srgb, var(--chip-accent) 15%, transparent);
+  box-shadow: 0 3px 12px rgba(0,0,0,0.45);
+  color: #fff;
+  border-color: transparent;
 }
 
 /* Actions */
