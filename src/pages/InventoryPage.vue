@@ -156,6 +156,13 @@
             outlined dense
             emit-value map-options
           />
+          <q-input
+            v-model.number="newPetQty"
+            type="number"
+            label="Quantity"
+            outlined dense
+            :min="1"
+          />
         </q-card-section>
 
         <q-card-actions align="right" class="q-px-md q-pb-md">
@@ -192,12 +199,14 @@ const values = useValuesStore()
 const showAdd    = ref(false)
 const newPetName = ref('')
 const newPetForm = ref<PetForm>('fr')
+const newPetQty  = ref(1)
 
 const formOptions = Object.entries(FORM_LABELS).map(([value, label]) => ({ value, label }))
 
 function openAdd () {
   newPetName.value    = ''
   newPetForm.value    = 'fr'
+  newPetQty.value     = 1
   searchQuery.value   = ''
   searchResults.value = []
   showAdd.value       = true
@@ -206,7 +215,7 @@ function openAdd () {
 
 function confirmAdd () {
   if (!newPetName.value.trim()) return
-  inventory.addPet(newPetName.value.trim(), newPetForm.value)
+  inventory.addPet(newPetName.value.trim(), newPetForm.value, newPetQty.value)
   showAdd.value = false
   const added = inventory.pets[inventory.pets.length - 1]
   if (added) void fetchValue(added)
