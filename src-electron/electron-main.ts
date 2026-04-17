@@ -52,6 +52,15 @@ export interface PetDetails {
 
 const detailsCache = new Map<string, PetDetails>()
 
+function fetchWithTimeout (url: string, timeoutMs = 10000): Promise<Response> {
+  const controller = new AbortController()
+  const timer = setTimeout(() => controller.abort(), timeoutMs)
+  return net.fetch(url, {
+    headers: { 'User-Agent': 'Mozilla/5.0 (compatible; AdoptMeTrader/1.0)' },
+    signal: controller.signal,
+  }).finally(() => clearTimeout(timer))
+}
+
 async function fetchPetDetails (petName: string): Promise<PetDetails> {
   if (detailsCache.has(petName)) return detailsCache.get(petName)!
 
@@ -60,13 +69,12 @@ async function fetchPetDetails (petName: string): Promise<PetDetails> {
   const empty: PetDetails = { regularValue: null, regularDemand: null, neonValue: null, neonDemand: null, megaValue: null, megaDemand: null, rarity: null }
 
   try {
-    const res = await net.fetch(url, {
-      headers: { 'User-Agent': 'Mozilla/5.0 (compatible; AdoptMeTrader/1.0)' },
-    })
+    const res = await fetchWithTimeout(url)
     if (!res.ok) { detailsCache.set(petName, empty); return empty }
     const html = await res.text()
 
-    const m = html.match(/"regularValue":"([\d.]+)","regularDemand":"([^"]+)","neonValue":"([\d.]+)","neonDemand":"([^"]+)","megaValue":"([\d.]+)","megaDemand":"([^"]+)"(?:,"rarity":"([^"]+)")?/)
+    // AMVGG uses Next.js App Router RSC payload — quotes are escaped as \"
+    const m = html.match(/\\"regularValue\\":\\"([\d.]+)\\",\\"regularDemand\\":\\"([^"\\]+)\\",\\"neonValue\\":\\"([\d.]+)\\",\\"neonDemand\\":\\"([^"\\]+)\\",\\"megaValue\\":\\"([\d.]+)\\",\\"megaDemand\\":\\"([^"\\]+)\\"(?:,\\"rarity\\":\\"([^"\\]+)\\")?/)
     if (!m) { detailsCache.set(petName, empty); return empty }
 
     const details: PetDetails = {
@@ -96,9 +104,7 @@ async function fetchAmvggValue (petName: string, form: string): Promise<number |
 // ── Fetch all pets list from AMVGG /values/pets ───────────────────────────────
 async function fetchAllPets (): Promise<Array<{ name: string; value: number }>> {
   try {
-    const res = await net.fetch('https://amvgg.com/values/pets', {
-      headers: { 'User-Agent': 'Mozilla/5.0 (compatible; AdoptMeTrader/1.0)' },
-    })
+    const res = await fetchWithTimeout('https://amvgg.com/values/pets')
     if (!res.ok) return []
     const html = await res.text()
 
@@ -188,19 +194,14 @@ async function fetchPetImageAsBase64 (petName: string): Promise<string | null> {
   const petPageUrl = `https://amvgg.com/pet/${slug}`
 
   try {
-    const pageRes = await net.fetch(petPageUrl, {
-      headers: { 'User-Agent': 'Mozilla/5.0 (compatible; AdoptMeTrader/1.0)' },
-    })
+    const pageRes = await fetchWithTimeout(petPageUrl)
     if (!pageRes.ok) { imageCache.set(petName, null); return null }
     const html = await pageRes.text()
 
     const imageUrl = extractImageUrlFromHtml(html)
     if (!imageUrl) { imageCache.set(petName, null); return null }
 
-    // Fetch the image binary and encode as base64 data URL
-    const imgRes = await net.fetch(imageUrl, {
-      headers: { 'User-Agent': 'Mozilla/5.0 (compatible; AdoptMeTrader/1.0)' },
-    })
+    const imgRes = await fetchWithTimeout(imageUrl)
     if (!imgRes.ok) { imageCache.set(petName, null); return null }
 
     const buffer = await imgRes.arrayBuffer()
@@ -271,9 +272,7 @@ function registerIpcHandlers () {
     const slug = petName.replace(/ /g, '_')
     const url = `https://amvgg.com/pet/${slug}`
     try {
-      const res = await net.fetch(url, {
-        headers: { 'User-Agent': 'Mozilla/5.0 (compatible; AdoptMeTrader/1.0)' },
-      })
+      const res = await fetchWithTimeout(url)
       const html = await res.text()
       const debugPath = path.join(app.getPath('userData'), 'debug-pet-html.txt')
       // Save relevant parts: og tags + first img src + __NEXT_DATA__ presence
