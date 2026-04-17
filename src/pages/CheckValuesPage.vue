@@ -15,9 +15,9 @@
           @click="valueSource = 'amvgg'"
         >AMV</button>
         <button
-          class="source-btn source-btn--disabled"
-          title="Coming in Phase 2"
-          disabled
+          class="source-btn"
+          :class="{ 'source-btn--active': valueSource === 'elvebredd' }"
+          @click="valueSource = 'elvebredd'"
         >Elve</button>
       </div>
     </div>
@@ -255,7 +255,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, watch } from 'vue'
 import { matAdd, matClose, matSearch, matCheck, matBalance } from '@quasar/extras/material-icons'
 import { uid } from 'quasar'
 import { FORM_LABELS, FORM_COLOR_HEX, type PetForm } from 'src/types'
@@ -277,6 +277,7 @@ interface SideEntry {
 // ── State ────────────────────────────────────────────────────────────────────
 
 const valueSource = ref<'amvgg' | 'elvebredd'>('amvgg')
+watch(valueSource, refreshValues)
 const yourSide = ref<SideEntry[]>([])
 const themSide = ref<SideEntry[]>([])
 
@@ -322,11 +323,30 @@ async function addPetToSide(side: 'your' | 'them', name: string, form: PetForm) 
   const entry: SideEntry = { id: uid(), name, form, value: null, loading: true }
   list.value.push(entry)
 
-  const value = await valuesStore.getValue(name, form)
+  const value = valueSource.value === 'elvebredd'
+    ? await valuesStore.getElveValue(name, form)
+    : await valuesStore.getValue(name, form)
+
   const found = list.value.find(e => e.id === entry.id)
   if (found) {
     found.value = value
     found.loading = false
+  }
+}
+
+// When source changes, re-fetch values for all pets already on both sides
+async function refreshValues() {
+  const allEntries = [...yourSide.value, ...themSide.value]
+  for (const entry of allEntries) {
+    entry.loading = true
+    entry.value = null
+  }
+  for (const entry of allEntries) {
+    const value = valueSource.value === 'elvebredd'
+      ? await valuesStore.getElveValue(entry.name, entry.form)
+      : await valuesStore.getValue(entry.name, entry.form)
+    entry.value = value
+    entry.loading = false
   }
 }
 

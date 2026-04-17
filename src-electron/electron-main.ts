@@ -314,6 +314,82 @@ async function fetchPetImageAsBase64 (petName: string): Promise<string | null> {
   }
 }
 
+// ── Elvebredd value fetching ──────────────────────────────────────────────────
+
+const elveValuesCache = new Map<string, Record<string, number>>()
+let elveFetchDone = false
+let elveFetchInFlight: Promise<void> | null = null
+
+const ELVE_FORMS = ['normal', 'fly', 'ride', 'fr', 'n', 'nf', 'nr', 'nfr', 'm', 'mf', 'mr', 'mfr'] as const
+
+// Returns a fresh regex (g flag maintains state — never share instances)
+function elveFieldRe (form: string): RegExp {
+  switch (form) {
+    case 'normal': return /\\"rvalue - nopotion\\":([\d.]+)/g
+    case 'fly':    return /\\"rvalue - fly\\":([\d.]+)/g
+    case 'ride':   return /\\"rvalue - ride\\":([\d.]+)/g
+    case 'fr':     return /\\"rvalue - fly(?:\\u0026|&)ride\\":([\d.]+)/g
+    case 'n':      return /\\"nvalue - nopotion\\":([\d.]+)/g
+    case 'nf':     return /\\"nvalue - fly\\":([\d.]+)/g
+    case 'nr':     return /\\"nvalue - ride\\":([\d.]+)/g
+    case 'nfr':    return /\\"nvalue - fly(?:\\u0026|&)ride\\":([\d.]+)/g
+    case 'm':      return /\\"mvalue - nopotion\\":([\d.]+)/g
+    case 'mf':     return /\\"mvalue - fly\\":([\d.]+)/g
+    case 'mr':     return /\\"mvalue - ride\\":([\d.]+)/g
+    case 'mfr':    return /\\"mvalue - fly(?:\\u0026|&)ride\\":([\d.]+)/g
+    default:       return /(?:)/g
+  }
+}
+
+async function warmElveCache (): Promise<void> {
+  if (elveFetchDone) return
+  if (elveFetchInFlight) return elveFetchInFlight
+
+  elveFetchInFlight = (async () => {
+    elveFetchDone = true
+    try {
+      const res = await fetchWithTimeout('https://www.elvebredd.com/adopt-me-calculator', 15000)
+      if (!res.ok) return
+      const html = await res.text()
+
+      type NamePos = { pos: number; name: string }
+      const namePositions: NamePos[] = []
+      const nameRe = /\\"name\\":\\"([^"\\]+)\\"/g
+      let nm: RegExpExecArray | null
+      while ((nm = nameRe.exec(html)) !== null) {
+        namePositions.push({ pos: nm.index, name: nm[1] })
+      }
+      if (!namePositions.length) return
+
+      function nearestName (fieldPos: number): string | null {
+        let best: NamePos | null = null
+        for (const np of namePositions) {
+          if (np.pos < fieldPos && fieldPos - np.pos < 6000 && (!best || np.pos > best.pos)) best = np
+        }
+        return best ? best.name : null
+      }
+
+      for (const form of ELVE_FORMS) {
+        const re = elveFieldRe(form)
+        let m: RegExpExecArray | null
+        while ((m = re.exec(html)) !== null) {
+          const name = nearestName(m.index)
+          if (!name) continue
+          if (!elveValuesCache.has(name)) elveValuesCache.set(name, {})
+          elveValuesCache.get(name)![form] = parseFloat(m[1])
+        }
+      }
+    } catch { /* silently fail — caller handles null */ }
+  })()
+
+  return elveFetchInFlight
+}
+
+async function fetchElveValue (petName: string, form: string): Promise<number | null> {
+  await warmElveCache()
+  return elveValuesCache.get(petName)?.[form] ?? null
+}
+
 // ── IPC handlers ──────────────────────────────────────────────────────────────
 function registerIpcHandlers () {
   // Get cached value for a specific pet + form, fetching if needed
@@ -382,6 +458,21 @@ function registerIpcHandlers () {
     } catch (e) {
       return { error: String(e) }
     }
+  })
+
+  // Elvebredd: single value
+  ipcMain.handle('pet:getElveValue', async (_, petName: string, form: string) => {
+    return await fetchElveValue(petName, form)
+  })
+
+  // Elvebredd: batch values
+  ipcMain.handle('pet:getElveBatch', async (_, requests: Array<{ name: string; form: string }>) => {
+    await warmElveCache()
+    const results: Record<string, number | null> = {}
+    for (const { name, form } of requests) {
+      results[`${name}__${form}`] = elveValuesCache.get(name)?.[form] ?? null
+    }
+    return results
   })
 
   // Get multiple values at once (batch)
