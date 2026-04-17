@@ -227,14 +227,11 @@
             <div class="form-section">
               <div class="form-section-label">Form</div>
               <div class="form-grid">
-                <button
-                  v-for="[val, label] in formEntries"
-                  :key="val"
-                  class="form-chip"
-                  :class="{ 'form-chip--active': selectedForm === val }"
-                  :style="selectedForm === val ? { background: FORM_GRADIENT[val as PetForm], borderColor: 'transparent', color: '#fff' } : {}"
-                  @click="selectedForm = val as PetForm"
-                >{{ label }}</button>
+                <button class="form-chip" :class="{'form-chip--active': flyPick}" :style="flyPick ? {background: flyGrad} : {}" @click="flyPick = !flyPick">F</button>
+                <button class="form-chip" :class="{'form-chip--active': ridePick}" :style="ridePick ? {background: rideGrad} : {}" @click="ridePick = !ridePick">R</button>
+                <button class="form-chip" :class="{'form-chip--active': isNormal}" :style="isNormal ? {background: normGrad} : {}" @click="resetForm()">D</button>
+                <button class="form-chip" :class="{'form-chip--active': nmPick === 'n'}" :style="nmPick === 'n' ? {background: nGrad} : {}" @click="nmPick = nmPick === 'n' ? 'none' : 'n'">N</button>
+                <button class="form-chip" :class="{'form-chip--active': nmPick === 'm'}" :style="nmPick === 'm' ? {background: mGrad} : {}" @click="nmPick = nmPick === 'm' ? 'none' : 'm'">M</button>
               </div>
             </div>
 
@@ -258,9 +255,10 @@
 import { ref, computed, watch } from 'vue'
 import { matAdd, matClose, matSearch, matCheck, matBalance } from '@quasar/extras/material-icons'
 import { uid } from 'quasar'
-import { FORM_LABELS, FORM_GRADIENT, FORM_COLOR_HEX, type PetForm } from 'src/types'
+import { FORM_LABELS, FORM_COLOR_HEX, type PetForm } from 'src/types'
 import { useValuesStore } from 'src/stores/values'
 import { ADOPT_ME_PETS } from 'src/data/pets'
+import { useFormPicker } from 'src/composables/useFormPicker'
 
 const valuesStore = useValuesStore()
 
@@ -283,7 +281,6 @@ const themSide = ref<SideEntry[]>([])
 
 // ── Computed ─────────────────────────────────────────────────────────────────
 
-const formEntries = Object.entries(FORM_LABELS) as [PetForm, string][]
 
 const yourTotal = computed(() =>
   yourSide.value.reduce((sum, e) => sum + (e.value ?? 0), 0)
@@ -364,7 +361,7 @@ const searchResults = ref<string[]>([])
 const searching = ref(false)
 const dropIndex = ref(0)
 const selectedPetName = ref('')
-const selectedForm = ref<PetForm>('normal')
+const { flyPick, ridePick, nmPick, form: selectedForm, reset: resetForm, isNormal, flyGrad, rideGrad, normGrad, nGrad, mGrad } = useFormPicker()
 const searchInputRef = ref()
 
 let searchTimer: ReturnType<typeof setTimeout> | null = null
@@ -414,7 +411,7 @@ function resetDialog() {
   searching.value = false
   dropIndex.value = 0
   selectedPetName.value = ''
-  selectedForm.value = 'normal'
+  resetForm()
 }
 
 function onSearchInput() {

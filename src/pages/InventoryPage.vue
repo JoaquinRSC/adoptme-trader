@@ -161,14 +161,11 @@
             <div class="form-section">
               <div class="form-section-label">Form</div>
               <div class="form-grid">
-                <button
-                  v-for="[val, label] in formEntries"
-                  :key="val"
-                  class="form-chip"
-                  :class="{ 'form-chip--active': newPetForm === val }"
-                  :style="newPetForm === val ? { background: FORM_GRADIENT[val as PetForm], borderColor: 'transparent', color: '#fff' } : {}"
-                  @click="newPetForm = val as PetForm"
-                >{{ label }}</button>
+                <button class="form-chip" :class="{'form-chip--active': flyPick}" :style="flyPick ? {background: flyGrad} : {}" @click="flyPick = !flyPick">F</button>
+                <button class="form-chip" :class="{'form-chip--active': ridePick}" :style="ridePick ? {background: rideGrad} : {}" @click="ridePick = !ridePick">R</button>
+                <button class="form-chip" :class="{'form-chip--active': isNormal}" :style="isNormal ? {background: normGrad} : {}" @click="resetForm()">D</button>
+                <button class="form-chip" :class="{'form-chip--active': nmPick === 'n'}" :style="nmPick === 'n' ? {background: nGrad} : {}" @click="nmPick = nmPick === 'n' ? 'none' : 'n'">N</button>
+                <button class="form-chip" :class="{'form-chip--active': nmPick === 'm'}" :style="nmPick === 'm' ? {background: mGrad} : {}" @click="nmPick = nmPick === 'm' ? 'none' : 'm'">M</button>
               </div>
             </div>
 
@@ -200,13 +197,14 @@
 
 <script setup lang="ts">
 import { ref, reactive, watch, onMounted } from 'vue'
+import { useFormPicker } from 'src/composables/useFormPicker'
 import { useQuasar } from 'quasar'
 import { matAdd, matDeleteOutline, matSearch, matCheck } from '@quasar/extras/material-icons'
 import { useInventoryStore } from 'src/stores/inventory'
 import { useValuesStore, type DemandLevel } from 'src/stores/values'
 import { ADOPT_ME_PETS } from 'src/data/pets'
 import {
-  FORM_LABELS, FORM_GRADIENT, FORM_COLOR_HEX,
+  FORM_LABELS, FORM_COLOR_HEX,
   type PetForm, type InventoryPet,
 } from 'src/types'
 
@@ -217,14 +215,13 @@ const values = useValuesStore()
 // ── Add dialog ────────────────────────────────────────────────────────────────
 const showAdd    = ref(false)
 const newPetName = ref('')
-const newPetForm = ref<PetForm>('fr')
 const newPetQty  = ref(1)
 
-const formEntries = Object.entries(FORM_LABELS) as [PetForm, string][]
+const { flyPick, ridePick, nmPick, form: newPetForm, reset: resetForm, isNormal, flyGrad, rideGrad, normGrad, nGrad, mGrad } = useFormPicker()
 
 function openAdd () {
   newPetName.value    = ''
-  newPetForm.value    = 'fr'
+  resetForm()
   newPetQty.value     = 1
   searchQuery.value   = ''
   searchResults.value = []

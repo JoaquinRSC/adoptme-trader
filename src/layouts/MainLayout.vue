@@ -32,7 +32,7 @@
           </router-link>
         </nav>
 
-        <div class="sidebar-footer">v0.1.0</div>
+        <div class="sidebar-footer">v{{ version }}</div>
       </div>
     </q-drawer>
 
@@ -46,6 +46,7 @@
 import { ref, onMounted } from 'vue'
 import { useQuasar } from 'quasar'
 import { matInventory2, matSwapHoriz, matBalance } from '@quasar/extras/material-icons'
+import { version } from '../../package.json'
 
 const drawer = ref(true)
 const $q = useQuasar()
