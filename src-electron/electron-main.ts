@@ -125,27 +125,57 @@ async function warmDetailsCache (): Promise<void> {
     if (!res.ok) return
     const html = await res.text()
 
-    const namePattern = '\\"name\\":\\"'
-    let pos = 0
-    while (true) {
-      const nameStart = html.indexOf(namePattern, pos)
-      if (nameStart === -1) break
-      const nameValueStart = nameStart + namePattern.length
-      const nameEnd = html.indexOf('\\"', nameValueStart)
-      if (nameEnd === -1) break
-      const petName = html.substring(nameValueStart, nameEnd)
-      pos = nameEnd + 2
-
-      // Block spans from this name match until the next \"name\": or 3000 chars
-      const nextName = html.indexOf(namePattern, pos)
-      const blockEnd = nextName > 0 ? Math.min(nextName, nameStart + 3000) : nameStart + 3000
-      const block    = html.substring(nameStart, blockEnd)
-
-      if (!block.includes('\\"regularValue\\":\\"')) continue
-      const details = parseDetailsFromBlock(block)
-      if (Object.keys(details.values).length > 0) detailsCache.set(petName, details)
+    // Collect all \"name\":\"...\" positions
+    type NamePos = { pos: number; name: string }
+    const namePositions: NamePos[] = []
+    const nameRe = /\\"name\\":\\"([^"\\]+)\\"/g
+    let nm: RegExpExecArray | null
+    while ((nm = nameRe.exec(html)) !== null) {
+      namePositions.push({ pos: nm.index, name: nm[1] })
     }
-  } catch { /* cache will be partial; individual-page fallback handles misses */ }
+    if (!namePositions.length) return
+
+    // For a field at fieldPos, find the nearest name that precedes it (within 20 000 chars)
+    function nearestPrecedingName (fieldPos: number): string | null {
+      let best: NamePos | null = null
+      for (const np of namePositions) {
+        if (np.pos < fieldPos && (!best || np.pos > best.pos)) best = np
+      }
+      return best && (fieldPos - best.pos) < 20000 ? best.name : null
+    }
+
+    // Build per-pet value/demand maps by scanning each field type across the full HTML
+    const petValues  = new Map<string, Record<string, number | null>>()
+    const petDemands = new Map<string, Record<string, DemandLevel>>()
+
+    for (const [field, form] of AMVGG_VALUE_FIELDS) {
+      const re = new RegExp(`\\\\"${field}\\\\":\\\\"([\\d.]+)\\\\"`, 'g')
+      let m: RegExpExecArray | null
+      while ((m = re.exec(html)) !== null) {
+        const name = nearestPrecedingName(m.index)
+        if (!name) continue
+        if (!petValues.has(name)) petValues.set(name, {})
+        petValues.get(name)![form] = parseFloat(m[1])
+      }
+    }
+
+    for (const [field, form] of AMVGG_DEMAND_FIELDS) {
+      const re = new RegExp(`\\\\"${field}\\\\":\\\\"([^"\\\\]+)\\\\"`, 'g')
+      let m: RegExpExecArray | null
+      while ((m = re.exec(html)) !== null) {
+        const name = nearestPrecedingName(m.index)
+        if (!name) continue
+        if (!petDemands.has(name)) petDemands.set(name, {})
+        petDemands.get(name)![form] = m[1] as DemandLevel
+      }
+    }
+
+    // Only keep pets that at minimum have a regularValue (fr)
+    for (const [name, values] of petValues) {
+      if (!('fr' in values)) continue
+      detailsCache.set(name, { values, demands: petDemands.get(name) ?? {}, rarity: null })
+    }
+  } catch { /* fallback to individual-page fetch handles misses */ }
 }
 
 async function fetchPetDetails (petName: string): Promise<PetDetails> {
