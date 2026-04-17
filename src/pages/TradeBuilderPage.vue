@@ -3,7 +3,7 @@
 
     <div class="page-head">
       <div class="page-title">Trade Builder</div>
-      <div class="page-sub">Find pets with matching AMVGG value</div>
+      <div class="page-sub">AMVGG values + demand cross-check</div>
     </div>
 
     <div class="trade-layout">
@@ -28,24 +28,27 @@
 
           <div class="offered-list" v-else>
             <div class="offered-item" v-for="item in offeredPets" :key="item.pet.id">
-              <div
-                class="offered-thumb"
-                :style="{ background: FORM_GRADIENT[item.pet.form] }"
-              >🐾</div>
+              <div class="offered-thumb">
+                <img
+                  :src="`https://amvgg.com/items/${encodeURIComponent(item.pet.name)}.webp`"
+                  class="offered-thumb-img"
+                  @error="(e) => (e.target as HTMLImageElement).style.display='none'"
+                />
+              </div>
               <div class="offered-info">
                 <div class="offered-name">{{ item.pet.name }}</div>
                 <div class="offered-meta">
                   <span class="form-pill" :style="{ color: FORM_COLOR_HEX[item.pet.form] }">
                     {{ FORM_LABELS[item.pet.form] }}
                   </span>
-                  <span class="offered-val">
-                    <q-spinner v-if="item.loading" size="11px" />
-                    <template v-else-if="item.value !== null">
-                      <q-icon :name="matMonetizationOn" size="11px" color="warning" />
-                      {{ item.value }}
-                    </template>
-                    <span v-else class="no-data">no data</span>
-                  </span>
+                  <q-spinner v-if="item.loading" size="11px" />
+                  <template v-else-if="item.value !== null">
+                    <span class="offered-val">{{ item.value }}</span>
+                    <span class="demand-stars" :class="`stars--${demandClass(item.demand)}`" :title="item.demand ?? ''">
+                      {{ demandStars(item.demand) }}
+                    </span>
+                  </template>
+                  <span v-else class="no-data">no data</span>
                 </div>
               </div>
               <button class="remove-btn" @click="removeOffered(item.pet.id)">
@@ -55,7 +58,6 @@
           </div>
         </div>
 
-        <!-- Total value -->
         <div class="panel-footer" v-if="offeredPets.length">
           <span class="footer-label">Total value</span>
           <span class="footer-value">
@@ -69,6 +71,18 @@
       <div class="trade-controls">
         <div class="swap-icon-wrap">
           <q-icon :name="matSwapHoriz" size="28px" style="color: var(--text-3)" />
+        </div>
+
+        <!-- Fairness indicator -->
+        <div class="fairness-wrap" v-if="fairness !== null">
+          <div class="fairness-score" :class="fairnessClass">
+            {{ fairness >= 0 ? '+' : '' }}{{ fairness.toFixed(1) }}%
+          </div>
+          <div class="fairness-label">demand-adjusted</div>
+          <div class="demand-warning" v-if="demandWarning">
+            <q-icon :name="matWarning" size="12px" />
+            {{ demandWarning }}
+          </div>
         </div>
 
         <div class="control-label">Receive form</div>
@@ -89,11 +103,6 @@
           <q-icon v-else :name="matSearch" size="16px" />
           <span>{{ searching ? 'Searching…' : 'Find matches' }}</span>
         </button>
-
-        <div class="phase2-notice">
-          <q-icon :name="matInfo" size="13px" />
-          Elvebredd cross-check in Phase 2
-        </div>
       </div>
 
       <!-- ── RIGHT: suggestions ─────────────────────────────────────────────── -->
@@ -116,7 +125,13 @@
               :key="s.name"
               :class="deltaCardClass(s.delta)"
             >
-              <div class="sug-thumb" :style="{ background: FORM_GRADIENT[s.form] }">🐾</div>
+              <div class="sug-thumb">
+                <img
+                  :src="`https://amvgg.com/items/${encodeURIComponent(s.name)}.webp`"
+                  class="sug-thumb-img"
+                  @error="(e) => (e.target as HTMLImageElement).style.display='none'"
+                />
+              </div>
               <div class="sug-body">
                 <div class="sug-name">{{ s.name }}</div>
                 <div class="sug-meta">
@@ -124,12 +139,14 @@
                     {{ FORM_LABELS[s.form] }}
                   </span>
                   <span class="sug-val">{{ s.amvggValue }}</span>
+                  <span v-if="s.demand" class="demand-stars" :class="`stars--${demandClass(s.demand)}`" :title="s.demand">
+                    {{ demandStars(s.demand) }}
+                  </span>
                 </div>
               </div>
-              <div
-                class="delta-chip"
-                :class="deltaChipClass(s.delta)"
-              >{{ s.delta > 0 ? '+' : '' }}{{ s.delta.toFixed(1) }}%</div>
+              <div class="delta-chip" :class="deltaChipClass(s.delta)">
+                {{ s.delta > 0 ? '+' : '' }}{{ s.delta.toFixed(1) }}%
+              </div>
             </div>
           </div>
 
@@ -159,7 +176,13 @@
               :key="pet.id"
               @click="addOffered(pet); showInventoryPicker = false"
             >
-              <div class="offered-thumb" :style="{ background: FORM_GRADIENT[pet.form] }">🐾</div>
+              <div class="offered-thumb">
+                <img
+                  :src="`https://amvgg.com/items/${encodeURIComponent(pet.name)}.webp`"
+                  class="offered-thumb-img"
+                  @error="(e) => (e.target as HTMLImageElement).style.display='none'"
+                />
+              </div>
               <div class="offered-info">
                 <div class="offered-name">{{ pet.name }}</div>
                 <div class="offered-meta">
@@ -186,12 +209,12 @@
 import { ref, computed } from 'vue'
 import {
   matUpload, matAdd, matMonetizationOn, matClose, matSwapHoriz,
-  matInfo, matAutoAwesome, matAddCircleOutline, matSearch,
+  matAutoAwesome, matAddCircleOutline, matSearch, matWarning,
 } from '@quasar/extras/material-icons'
 import { useInventoryStore } from 'src/stores/inventory'
-import { useValuesStore } from 'src/stores/values'
+import { useValuesStore, type DemandLevel } from 'src/stores/values'
 import {
-  FORM_LABELS, FORM_GRADIENT, FORM_COLOR_HEX,
+  FORM_LABELS, FORM_COLOR_HEX,
   type PetForm, type InventoryPet, type PetSuggestion,
 } from 'src/types'
 
@@ -199,10 +222,20 @@ const inventory = useInventoryStore()
 const values    = useValuesStore()
 
 // ── State ─────────────────────────────────────────────────────────────────────
-interface OfferedItem { pet: InventoryPet; value: number | null; loading: boolean }
+interface OfferedItem {
+  pet: InventoryPet
+  value: number | null
+  demand: DemandLevel
+  loading: boolean
+}
+
+interface SuggestionWithDemand extends PetSuggestion {
+  demand: DemandLevel
+}
+
 const offeredPets         = ref<OfferedItem[]>([])
 const desiredForm         = ref<PetForm>('fr')
-const suggestions         = ref<PetSuggestion[]>([])
+const suggestions         = ref<SuggestionWithDemand[]>([])
 const showInventoryPicker = ref(false)
 const searching           = ref(false)
 const searchDone          = ref(false)
@@ -218,13 +251,84 @@ const totalOfferedValue = computed(() =>
   offeredPets.value.reduce((acc, item) => acc + (item.value ?? 0), 0)
 )
 
+// ── Demand helpers ─────────────────────────────────────────────────────────────
+const DEMAND_MULT: Record<string, number> = {
+  'High': 1.0, 'Medium': 0.88, 'Low': 0.70, 'Very Low': 0.50,
+}
+
+function demandMult (d: DemandLevel) {
+  return DEMAND_MULT[d ?? 'Medium'] ?? 0.88
+}
+
+function demandClass (d: DemandLevel) {
+  if (d === 'High') return 'high'
+  if (d === 'Medium') return 'medium'
+  return 'low'
+}
+
+function demandStars (d: DemandLevel): string {
+  const n = d === 'High' ? 3 : d === 'Medium' ? 2 : d === 'Low' ? 1 : d === 'Very Low' ? 1 : 0
+  return '★'.repeat(n) + '☆'.repeat(3 - n)
+}
+
+function getFormDemand (details: Awaited<ReturnType<typeof window.electronAPI.getPetDetails>>, form: PetForm): DemandLevel {
+  if (form === 'nfr') return details.neonDemand
+  if (form === 'mfr') return details.megaDemand
+  return details.regularDemand
+}
+
+// ── Fairness ──────────────────────────────────────────────────────────────────
+const fairness = computed<number | null>(() => {
+  if (!offeredPets.value.length || totalOfferedValue.value === 0) return null
+  if (suggestions.value.length === 0) return null
+  const top = suggestions.value[0]
+  if (top.value === null) return null
+  const offeredAdjusted = offeredPets.value.reduce((acc, item) => {
+    return acc + (item.value ?? 0) * demandMult(item.demand)
+  }, 0)
+  const receivedAdjusted = (top.amvggValue ?? 0) * demandMult(top.demand)
+  if (receivedAdjusted === 0) return null
+  return ((receivedAdjusted - offeredAdjusted) / offeredAdjusted) * 100
+})
+
+const fairnessClass = computed(() => {
+  const f = fairness.value
+  if (f === null) return ''
+  if (f >= -5) return 'fair--good'
+  if (f >= -20) return 'fair--warn'
+  return 'fair--bad'
+})
+
+const demandWarning = computed(() => {
+  if (!offeredPets.value.length || !suggestions.value.length) return null
+  const topSug = suggestions.value[0]
+  const highDemandOffered = offeredPets.value.some(i => i.demand === 'High')
+  const lowDemandReceived = topSug.demand === 'Low' || topSug.demand === 'Very Low'
+  if (highDemandOffered && lowDemandReceived) return 'Giving High for Low demand'
+  return null
+})
+
 // ── Actions ───────────────────────────────────────────────────────────────────
 async function addOffered (pet: InventoryPet) {
-  const item: OfferedItem = { pet, value: null, loading: true }
+  const item: OfferedItem = { pet, value: null, demand: null, loading: true }
   offeredPets.value.push(item)
-  const val = await values.getValue(pet.name, pet.form)
-  const found = offeredPets.value.find(o => o.pet.id === pet.id)
-  if (found) { found.value = val; found.loading = false }
+
+  try {
+    const details = await window.electronAPI.getPetDetails(pet.name)
+    const found = offeredPets.value.find(o => o.pet.id === pet.id)
+    if (found) {
+      if (pet.form === 'nfr') found.value = details.neonValue
+      else if (pet.form === 'mfr') found.value = details.megaValue
+      else found.value = details.regularValue
+      found.demand = getFormDemand(details, pet.form)
+    }
+  } catch {
+    const found = offeredPets.value.find(o => o.pet.id === pet.id)
+    if (found) found.value = null
+  } finally {
+    const found = offeredPets.value.find(o => o.pet.id === pet.id)
+    if (found) found.loading = false
+  }
 }
 
 function removeOffered (id: string) {
@@ -239,35 +343,47 @@ const TOLERANCE = 0.20
 
 async function search () {
   if (!offeredPets.value.length || totalOfferedValue.value === 0) return
-  searching.value  = true
-  searchDone.value = false
+  searching.value   = true
+  searchDone.value  = false
   suggestions.value = []
 
-  await values.loadAllPets()
+  try {
+    await values.loadAllPets()
 
-  const target     = totalOfferedValue.value
-  const form       = desiredForm.value
-  const candidates = values.allPets.filter(
-    p => !offeredPets.value.some(o => o.pet.name === p.name)
-  )
+    const target     = totalOfferedValue.value
+    const form       = desiredForm.value
+    const candidates = values.allPets.filter(
+      p => !offeredPets.value.some(o => o.pet.name === p.name)
+    )
 
-  const batchRequests = candidates.map(p => ({ name: p.name, form }))
-  const batchResult   = await values.getBatch(batchRequests)
+    const batchRequests = candidates.map(p => ({ name: p.name, form }))
+    const batchResult   = await values.getBatch(batchRequests)
 
-  const results: PetSuggestion[] = []
-  for (const req of batchRequests) {
-    const val = batchResult.find(r => r.name === req.name && r.form === req.form)?.value
-    if (val === null || val === undefined) continue
-    const delta = ((val - target) / target) * 100
-    if (Math.abs(delta) <= TOLERANCE * 100) {
-      results.push({ name: req.name, form, amvggValue: val, delta })
+    const results: SuggestionWithDemand[] = []
+    for (const req of batchRequests) {
+      const val = batchResult.find(r => r.name === req.name && r.form === req.form)?.value
+      if (val === null || val === undefined) continue
+      const delta = ((val - target) / target) * 100
+      if (Math.abs(delta) <= TOLERANCE * 100) {
+        results.push({ name: req.name, form, amvggValue: val, delta, demand: null })
+      }
     }
-  }
 
-  results.sort((a, b) => Math.abs(a.delta) - Math.abs(b.delta))
-  suggestions.value = results.slice(0, 20)
-  searchDone.value  = true
-  searching.value   = false
+    results.sort((a, b) => Math.abs(a.delta) - Math.abs(b.delta))
+    const top20 = results.slice(0, 20)
+
+    await Promise.all(top20.map(async s => {
+      try {
+        const details = await window.electronAPI.getPetDetails(s.name)
+        s.demand = getFormDemand(details, s.form as PetForm)
+      } catch { /* demand stays null */ }
+    }))
+
+    suggestions.value = top20
+    searchDone.value  = true
+  } finally {
+    searching.value = false
+  }
 }
 
 // ── Delta helpers ─────────────────────────────────────────────────────────────
@@ -290,15 +406,13 @@ function deltaChipClass (delta: number) {
   min-height: 100vh;
 }
 
-/* Header */
 .page-head    { margin-bottom: 24px; }
 .page-title   { font-size: 22px; font-weight: 800; color: var(--text-1); letter-spacing: -0.5px; }
 .page-sub     { font-size: 12px; font-weight: 600; color: var(--text-3); margin-top: 2px; }
 
-/* Layout */
 .trade-layout {
   display: grid;
-  grid-template-columns: 1fr 140px 1fr;
+  grid-template-columns: 1fr 148px 1fr;
   gap: 16px;
   align-items: start;
 }
@@ -353,7 +467,7 @@ function deltaChipClass (delta: number) {
 .footer-label { font-size: 11px; font-weight: 700; color: var(--text-3); text-transform: uppercase; letter-spacing: 0.8px; }
 .footer-value { font-size: 16px; font-weight: 800; color: var(--gold); }
 
-/* Controls (center column) */
+/* Controls */
 .trade-controls {
   display: flex;
   flex-direction: column;
@@ -371,6 +485,44 @@ function deltaChipClass (delta: number) {
   display: flex;
   align-items: center;
   justify-content: center;
+}
+
+/* Fairness */
+.fairness-wrap {
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+}
+
+.fairness-score {
+  font-size: 20px;
+  font-weight: 900;
+  letter-spacing: -0.5px;
+}
+
+.fair--good { color: var(--positive); }
+.fair--warn { color: var(--gold); }
+.fair--bad  { color: var(--negative); }
+
+.fairness-label {
+  font-size: 10px;
+  color: var(--text-3);
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+}
+
+.demand-warning {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--negative);
+  margin-top: 2px;
+  text-align: center;
 }
 
 .control-label {
@@ -401,16 +553,15 @@ function deltaChipClass (delta: number) {
 .btn-search:active:not(:disabled) { transform: scale(0.97); }
 .btn-search:disabled { opacity: 0.35; cursor: not-allowed; }
 
-.phase2-notice {
-  display: flex;
-  align-items: center;
-  gap: 5px;
-  font-size: 10px;
-  color: var(--text-3);
-  font-weight: 600;
-  text-align: center;
-  line-height: 1.4;
+/* Demand stars */
+.demand-stars {
+  font-size: 11px;
+  letter-spacing: 1px;
+  line-height: 1;
 }
+.stars--high   { color: #34d399; }
+.stars--medium { color: #f0b429; }
+.stars--low    { color: #f87171; }
 
 /* Offered pets */
 .btn-add-inventory {
@@ -459,14 +610,24 @@ function deltaChipClass (delta: number) {
 }
 
 .offered-thumb {
-  width: 32px;
-  height: 32px;
+  position: relative;
+  width: 36px;
+  height: 36px;
   border-radius: 8px;
+  background: var(--surface-3);
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 16px;
   flex-shrink: 0;
+  overflow: hidden;
+}
+
+.offered-thumb-img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
 }
 
 .offered-info { flex: 1; min-width: 0; }
@@ -481,18 +642,16 @@ function deltaChipClass (delta: number) {
 .offered-meta {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 5px;
   margin-top: 2px;
+  flex-wrap: wrap;
 }
 .offered-val {
   font-size: 11px;
-  font-weight: 600;
+  font-weight: 700;
   color: var(--gold);
-  display: flex;
-  align-items: center;
-  gap: 3px;
 }
-.no-data { color: var(--text-3); }
+.no-data { font-size: 11px; color: var(--text-3); }
 
 .form-pill {
   font-size: 10px;
@@ -522,7 +681,7 @@ function deltaChipClass (delta: number) {
 }
 .remove-btn:hover { background: rgba(248, 113, 113, 0.15); color: var(--negative); }
 
-/* Suggestions grid */
+/* Suggestions */
 .suggestions-grid {
   display: flex;
   flex-direction: column;
@@ -545,14 +704,24 @@ function deltaChipClass (delta: number) {
 .sug-card--red   { background: rgba(248, 113, 113, 0.06); }
 
 .sug-thumb {
-  width: 34px;
-  height: 34px;
+  position: relative;
+  width: 36px;
+  height: 36px;
   border-radius: 8px;
+  background: var(--surface-3);
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 17px;
   flex-shrink: 0;
+  overflow: hidden;
+}
+
+.sug-thumb-img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
 }
 
 .sug-body { flex: 1; min-width: 0; }
@@ -567,8 +736,9 @@ function deltaChipClass (delta: number) {
 .sug-meta {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 5px;
   margin-top: 2px;
+  flex-wrap: wrap;
 }
 .sug-val {
   font-size: 11px;
