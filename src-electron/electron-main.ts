@@ -53,12 +53,13 @@ export interface PetDetails {
 const detailsCache = new Map<string, PetDetails>()
 
 function fetchWithTimeout (url: string, timeoutMs = 10000): Promise<Response> {
-  const controller = new AbortController()
-  const timer = setTimeout(() => controller.abort(), timeoutMs)
-  return net.fetch(url, {
+  const fetchPromise = net.fetch(url, {
     headers: { 'User-Agent': 'Mozilla/5.0 (compatible; AdoptMeTrader/1.0)' },
-    signal: controller.signal,
-  }).finally(() => clearTimeout(timer))
+  })
+  const timeoutPromise = new Promise<never>((_, reject) =>
+    setTimeout(() => reject(new Error('fetch timeout')), timeoutMs)
+  )
+  return Promise.race([fetchPromise, timeoutPromise])
 }
 
 async function fetchPetDetails (petName: string): Promise<PetDetails> {
@@ -70,12 +71,12 @@ async function fetchPetDetails (petName: string): Promise<PetDetails> {
 
   try {
     const res = await fetchWithTimeout(url)
-    if (!res.ok) { detailsCache.set(petName, empty); return empty }
+    if (!res.ok) return empty
     const html = await res.text()
 
     // AMVGG uses Next.js App Router RSC payload — quotes are escaped as \"
     const m = html.match(/\\"regularValue\\":\\"([\d.]+)\\",\\"regularDemand\\":\\"([^"\\]+)\\",\\"neonValue\\":\\"([\d.]+)\\",\\"neonDemand\\":\\"([^"\\]+)\\",\\"megaValue\\":\\"([\d.]+)\\",\\"megaDemand\\":\\"([^"\\]+)\\"(?:,\\"rarity\\":\\"([^"\\]+)\\")?/)
-    if (!m) { detailsCache.set(petName, empty); return empty }
+    if (!m) return empty
 
     const details: PetDetails = {
       regularValue:  parseFloat(m[1]),
@@ -89,7 +90,6 @@ async function fetchPetDetails (petName: string): Promise<PetDetails> {
     detailsCache.set(petName, details)
     return details
   } catch {
-    detailsCache.set(petName, empty)
     return empty
   }
 }
