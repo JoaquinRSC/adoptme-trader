@@ -297,7 +297,7 @@ const diffPct = computed(() => {
   if (!themTotal.value && !yourTotal.value) return null
   const base = Math.max(yourTotal.value, themTotal.value)
   if (!base) return null
-  return ((yourTotal.value - themTotal.value) / base) * 100
+  return ((themTotal.value - yourTotal.value) / base) * 100
 })
 
 const diffClass = computed(() => {
@@ -307,7 +307,7 @@ const diffClass = computed(() => {
 })
 
 const diffLabel = computed(() => {
-  const d = yourTotal.value - themTotal.value
+  const d = themTotal.value - yourTotal.value
   if (d === 0) return 'Even'
   return d > 0 ? `+${d.toFixed(3)}` : d.toFixed(3)
 })
