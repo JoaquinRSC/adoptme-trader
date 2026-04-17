@@ -30,9 +30,9 @@
         <!-- Thumbnail -->
         <div class="pet-thumb">
           <img
-            :src="`https://amvgg.com/items/${encodeURIComponent(pet.name)}.webp`"
+            v-if="petImageUrl[pet.id]"
+            :src="petImageUrl[pet.id]!"
             class="thumb-img"
-            @error="(e) => (e.target as HTMLImageElement).style.display = 'none'"
           />
           <span class="thumb-emoji">🐾</span>
           <span
@@ -64,26 +64,20 @@
           </div>
         </div>
 
+        <!-- Form pills -->
+        <div class="form-pills">
+          <button
+            v-for="[val, label] in formEntries"
+            :key="val"
+            class="form-pill"
+            :class="{ 'form-pill--active': pet.form === val }"
+            :style="pet.form === val ? { background: FORM_GRADIENT[val as PetForm] } : {}"
+            @click="changeForm(pet.id, val as PetForm)"
+          >{{ label }}</button>
+        </div>
+
         <!-- Hover actions -->
         <div class="pet-actions">
-          <button class="action-btn">
-            <q-icon :name="matTune" size="15px" />
-            <q-menu auto-close>
-              <q-list dense style="min-width: 110px">
-                <q-item
-                  v-for="(label, form) in FORM_LABELS"
-                  :key="form"
-                  clickable
-                  @click="changeForm(pet.id, form as PetForm)"
-                  :active="pet.form === form"
-                  active-class="text-primary"
-                >
-                  <q-item-section>{{ label }}</q-item-section>
-                </q-item>
-              </q-list>
-            </q-menu>
-          </button>
-
           <button class="action-btn action-del" @click="confirmRemove(pet.id, pet.name)">
             <q-icon :name="matDeleteOutline" size="15px" />
           </button>
@@ -158,9 +152,9 @@
               <div v-if="newPetName" class="preview-filled">
                 <div class="preview-img-wrap" :key="newPetName">
                   <img
-                    :src="`https://amvgg.com/items/${encodeURIComponent(newPetName)}.webp`"
+                    v-if="previewImageUrl"
+                    :src="previewImageUrl"
                     class="preview-img"
-                    @error="(e) => (e.target as HTMLImageElement).style.display='none'"
                   />
                   <div class="preview-img-ph">🐾</div>
                 </div>
@@ -217,9 +211,9 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive, watch, onMounted } from 'vue'
 import { useQuasar } from 'quasar'
-import { matAdd, matDeleteOutline, matTune, matSearch, matCheck } from '@quasar/extras/material-icons'
+import { matAdd, matDeleteOutline, matSearch, matCheck } from '@quasar/extras/material-icons'
 import { useInventoryStore } from 'src/stores/inventory'
 import { useValuesStore, type DemandLevel } from 'src/stores/values'
 import { ADOPT_ME_PETS } from 'src/data/pets'
@@ -256,7 +250,10 @@ function confirmAdd () {
   inventory.addPet(newPetName.value.trim(), newPetForm.value, count)
   showAdd.value = false
   const added = inventory.pets.slice(-count)
-  for (const pet of added) void fetchValue(pet)
+  for (const pet of added) {
+    void fetchValue(pet)
+    void fetchImage(pet.id, pet.name)
+  }
 }
 
 // ── Pet search autocomplete ───────────────────────────────────────────────────
@@ -377,6 +374,20 @@ function resetSearch () {
   showDropdown.value  = false
 }
 
+// ── Image fetching ────────────────────────────────────────────────────────────
+const petImageUrl = reactive<Record<string, string | null>>({})
+
+async function fetchImage (id: string, name: string) {
+  const url = await window.electronAPI.getPetImageUrl(name)
+  petImageUrl[id] = url
+}
+
+const previewImageUrl = ref<string | null>(null)
+watch(() => newPetName.value, async (name) => {
+  previewImageUrl.value = null
+  if (name) previewImageUrl.value = await window.electronAPI.getPetImageUrl(name)
+})
+
 // ── Value + demand fetching ───────────────────────────────────────────────────
 const petValue    = reactive<Record<string, number | null>>({})
 const petDemand   = reactive<Record<string, DemandLevel>>({})
@@ -406,11 +417,15 @@ async function fetchValue (pet: InventoryPet) {
   }
 }
 
-// Auto-fetch values + demand on mount — max 3 concurrent to avoid saturating AMVGG
+// Auto-fetch values, demand, and images on mount — max 3 concurrent
 onMounted(() => {
-  const queue = [...inventory.pets]
-  const worker = async () => { while (queue.length) await fetchValue(queue.shift()!) }
-  void Promise.all([worker(), worker(), worker()])
+  const valueQueue = [...inventory.pets]
+  const valueWorker = async () => { while (valueQueue.length) await fetchValue(valueQueue.shift()!) }
+  void Promise.all([valueWorker(), valueWorker(), valueWorker()])
+
+  const imgQueue = [...inventory.pets]
+  const imgWorker = async () => { while (imgQueue.length) { const p = imgQueue.shift()!; await fetchImage(p.id, p.name) } }
+  void Promise.all([imgWorker(), imgWorker(), imgWorker()])
 })
 
 // ── Actions ───────────────────────────────────────────────────────────────────
@@ -664,6 +679,36 @@ function confirmRemove (id: string, name: string) {
 }
 .action-btn:hover { background: var(--surface-3); color: var(--text-1); }
 .action-del:hover { color: var(--negative); }
+
+/* Form pills on card */
+.form-pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  padding: 0 10px 10px;
+}
+.form-pill {
+  padding: 3px 8px;
+  font-size: 10px;
+  font-weight: 700;
+  border-radius: 20px;
+  border: 1px solid rgba(255,255,255,0.1);
+  background: rgba(255,255,255,0.05);
+  color: rgba(255,255,255,0.35);
+  cursor: pointer;
+  line-height: 1.4;
+  transition: all 0.12s;
+  letter-spacing: 0.02em;
+}
+.form-pill:hover {
+  border-color: rgba(255,255,255,0.25);
+  color: rgba(255,255,255,0.7);
+}
+.form-pill--active {
+  border-color: transparent;
+  color: #fff;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.4);
+}
 
 /* Dialog */
 /* ── Add Pet dialog ─────────────────────────────────────────────────────────── */
