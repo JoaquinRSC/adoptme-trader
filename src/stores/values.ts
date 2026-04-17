@@ -2,12 +2,29 @@ import { defineStore } from 'pinia'
 import { ref } from 'vue'
 import type { PetForm } from 'src/types'
 
+export type DemandLevel = 'Very Low' | 'Low' | 'Medium' | 'High' | null
+
+export interface PetDetails {
+  regularValue:  number | null
+  regularDemand: DemandLevel
+  neonValue:     number | null
+  neonDemand:    DemandLevel
+  megaValue:     number | null
+  megaDemand:    DemandLevel
+  rarity:        string | null
+}
+
 declare global {
   interface Window {
     electronAPI: {
       getPetValue: (name: string, form: string) => Promise<number | null>
       getAllPets: () => Promise<Array<{ name: string; value: number }>>
       getBatchValues: (requests: Array<{ name: string; form: string }>) => Promise<Record<string, number | null>>
+      getPetDetails: (petName: string) => Promise<PetDetails>
+      loadPetList: () => Promise<string[]>
+      searchPets: (query: string) => Promise<string[]>
+      getPetImageUrl: (petName: string) => Promise<string | null>
+      debugPetPage: (petName: string) => Promise<Record<string, unknown>>
     }
   }
 }
@@ -46,8 +63,11 @@ export const useValuesStore = defineStore('values', () => {
   async function loadAllPets () {
     if (allPets.value.length > 0 || loadingAllPets.value) return
     loadingAllPets.value = true
-    allPets.value = await window.electronAPI.getAllPets()
-    loadingAllPets.value = false
+    try {
+      allPets.value = await window.electronAPI.getAllPets()
+    } finally {
+      loadingAllPets.value = false
+    }
   }
 
   function getCached (name: string, form: PetForm) {

@@ -1,7 +1,6 @@
 import { app, BrowserWindow, ipcMain, Menu, net, session } from 'electron'
 import path from 'path'
 import fs from 'fs'
-import os from 'os'
 
 // ── Security: refuse any new-window / navigation outside the app ─────────────
 app.on('web-contents-created', (_, contents) => {
@@ -39,23 +38,59 @@ const AMVGG_FORM_PREFIX: Record<string, string> = {
   normal: '',
 }
 
-async function fetchAmvggValue (petName: string, form: string): Promise<number | null> {
-  const prefix = AMVGG_FORM_PREFIX[form] ?? ''
+export type DemandLevel = 'Very Low' | 'Low' | 'Medium' | 'High' | null
+
+export interface PetDetails {
+  regularValue:  number | null
+  regularDemand: DemandLevel
+  neonValue:     number | null
+  neonDemand:    DemandLevel
+  megaValue:     number | null
+  megaDemand:    DemandLevel
+  rarity:        string | null
+}
+
+const detailsCache = new Map<string, PetDetails>()
+
+async function fetchPetDetails (petName: string): Promise<PetDetails> {
+  if (detailsCache.has(petName)) return detailsCache.get(petName)!
+
   const slug = petName.replace(/ /g, '_')
-  const url = `https://amvgg.com/pet/${prefix}${slug}`
+  const url  = `https://amvgg.com/pet/${slug}`
+  const empty: PetDetails = { regularValue: null, regularDemand: null, neonValue: null, neonDemand: null, megaValue: null, megaDemand: null, rarity: null }
 
   try {
     const res = await net.fetch(url, {
       headers: { 'User-Agent': 'Mozilla/5.0 (compatible; AdoptMeTrader/1.0)' },
     })
-    if (!res.ok) return null
+    if (!res.ok) { detailsCache.set(petName, empty); return empty }
     const html = await res.text()
-    // Pattern: "Value 3.35 Demand" — reliable because it's the pet's value label
-    const match = html.match(/Value\s+([\d.]+)\s+Demand/)
-    return match ? parseFloat(match[1]) : null
+
+    const m = html.match(/"regularValue":"([\d.]+)","regularDemand":"([^"]+)","neonValue":"([\d.]+)","neonDemand":"([^"]+)","megaValue":"([\d.]+)","megaDemand":"([^"]+)"(?:,"rarity":"([^"]+)")?/)
+    if (!m) { detailsCache.set(petName, empty); return empty }
+
+    const details: PetDetails = {
+      regularValue:  parseFloat(m[1]),
+      regularDemand: m[2] as DemandLevel,
+      neonValue:     parseFloat(m[3]),
+      neonDemand:    m[4] as DemandLevel,
+      megaValue:     parseFloat(m[5]),
+      megaDemand:    m[6] as DemandLevel,
+      rarity:        m[7] ?? null,
+    }
+    detailsCache.set(petName, details)
+    return details
   } catch {
-    return null
+    detailsCache.set(petName, empty)
+    return empty
   }
+}
+
+async function fetchAmvggValue (petName: string, form: string): Promise<number | null> {
+  const details = await fetchPetDetails(petName)
+  if (form === 'nfr') return details.neonValue
+  if (form === 'mfr') return details.megaValue
+  return details.regularValue
 }
 
 // ── Fetch all pets list from AMVGG /values/pets ───────────────────────────────
@@ -66,7 +101,25 @@ async function fetchAllPets (): Promise<Array<{ name: string; value: number }>> 
     })
     if (!res.ok) return []
     const html = await res.text()
-    // Extract all "PetName Value X.XX Demand" patterns from SSR HTML
+
+    // Try __NEXT_DATA__ JSON first (structured, reliable)
+    const nextDataMatch = html.match(/<script id="__NEXT_DATA__"[^>]*>([^<]+)<\/script>/)
+    if (nextDataMatch) {
+      try {
+        const data = JSON.parse(nextDataMatch[1]) as Record<string, unknown>
+        const json = JSON.stringify(data)
+        // Extract all name+value pairs: "name":"Bat Dragon"..."value":3.35
+        const pets: Array<{ name: string; value: number }> = []
+        const nameValueRe = /"name"\s*:\s*"([^"]+)"[^}]{0,200}"value"\s*:\s*([\d.]+)/g
+        let m: RegExpExecArray | null
+        while ((m = nameValueRe.exec(json)) !== null) {
+          pets.push({ name: m[1].trim(), value: parseFloat(m[2]) })
+        }
+        if (pets.length > 0) return pets
+      } catch { /* fall through to regex */ }
+    }
+
+    // Fallback: regex on raw HTML
     const pattern = /([A-Z][a-zA-Z\s'-]+?)\s*Value\s*([\d.]+)\s*Demand/g
     const pets: Array<{ name: string; value: number }> = []
     let m: RegExpExecArray | null
@@ -78,6 +131,88 @@ async function fetchAllPets (): Promise<Array<{ name: string; value: number }>> 
     return pets
   } catch {
     return []
+  }
+}
+
+// ── Pet search list (names only, for autocomplete) ────────────────────────────
+let petNamesCache: string[] | null = null
+
+async function getPetNamesList (): Promise<string[]> {
+  if (petNamesCache) return petNamesCache
+  // Use AMVGG list for freshness, supplement with bundled fallback at renderer side
+  try {
+    const pets = await fetchAllPets()
+    if (pets.length > 0) {
+      petNamesCache = [...new Set(pets.map(p => p.name))]
+      return petNamesCache
+    }
+  } catch { /* fall through */ }
+  petNamesCache = []
+  return petNamesCache
+}
+
+// ── Pet image proxied as base64 data URL (bypasses CSP) ──────────────────────
+const imageCache = new Map<string, string | null>()
+
+function extractImageUrlFromHtml (html: string): string | null {
+  // Try __NEXT_DATA__ JSON (most reliable for Next.js apps)
+  const nextDataMatch = html.match(/<script id="__NEXT_DATA__"[^>]*>([^<]+)<\/script>/)
+  if (nextDataMatch) {
+    try {
+      const data = JSON.parse(nextDataMatch[1]) as Record<string, unknown>
+      const json = JSON.stringify(data)
+      // Find any image URL pattern in the serialized JSON
+      const urlMatch = json.match(/"(?:image|img|imageUrl|thumbnail|icon)[Uu]rl?"\s*:\s*"(https?:[^"]+)"/)
+        ?? json.match(/"(https?:\/\/[^"]+\.(?:png|jpg|jpeg|webp|gif)(?:[^"]*)?)"/)
+      if (urlMatch) return urlMatch[1]
+    } catch { /* fall through */ }
+  }
+
+  // Try og:image meta tag
+  const ogMatch = html.match(/<meta[^>]+property="og:image"[^>]+content="([^"]+)"/)
+    ?? html.match(/<meta[^>]+content="([^"]+)"[^>]+property="og:image"/)
+  if (ogMatch) return ogMatch[1]
+
+  // Try any img src that looks like a pet image
+  const imgMatch = html.match(/src="(https?:\/\/[^"]+\.(?:png|jpg|jpeg|webp)(?:\?[^"]*)?)"/)
+  if (imgMatch) return imgMatch[1]
+
+  return null
+}
+
+async function fetchPetImageAsBase64 (petName: string): Promise<string | null> {
+  if (imageCache.has(petName)) return imageCache.get(petName) ?? null
+
+  // Use same slug format as value fetching (preserves case, spaces → underscores)
+  const slug = petName.replace(/ /g, '_')
+  const petPageUrl = `https://amvgg.com/pet/${slug}`
+
+  try {
+    const pageRes = await net.fetch(petPageUrl, {
+      headers: { 'User-Agent': 'Mozilla/5.0 (compatible; AdoptMeTrader/1.0)' },
+    })
+    if (!pageRes.ok) { imageCache.set(petName, null); return null }
+    const html = await pageRes.text()
+
+    const imageUrl = extractImageUrlFromHtml(html)
+    if (!imageUrl) { imageCache.set(petName, null); return null }
+
+    // Fetch the image binary and encode as base64 data URL
+    const imgRes = await net.fetch(imageUrl, {
+      headers: { 'User-Agent': 'Mozilla/5.0 (compatible; AdoptMeTrader/1.0)' },
+    })
+    if (!imgRes.ok) { imageCache.set(petName, null); return null }
+
+    const buffer = await imgRes.arrayBuffer()
+    const base64 = Buffer.from(buffer).toString('base64')
+    const contentType = imgRes.headers.get('content-type') ?? 'image/jpeg'
+    const dataUrl = `data:${contentType};base64,${base64}`
+
+    imageCache.set(petName, dataUrl)
+    return dataUrl
+  } catch {
+    imageCache.set(petName, null)
+    return null
   }
 }
 
@@ -104,6 +239,53 @@ function registerIpcHandlers () {
   // Get all pets with their FR value (for trade suggestions)
   ipcMain.handle('pets:getAll', async () => {
     return await fetchAllPets()
+  })
+
+  // Get full pet details (value + demand for all forms)
+  ipcMain.handle('pet:getDetails', async (_, petName: string) => {
+    return await fetchPetDetails(petName)
+  })
+
+  // Pre-load and return the full AMVGG pets list (call on dialog open)
+  ipcMain.handle('pets:loadList', async () => {
+    return await getPetNamesList()
+  })
+
+  // Search pet names by query (for autocomplete)
+  ipcMain.handle('pets:searchList', async (_, query: string) => {
+    const list = await getPetNamesList()
+    const q = query.toLowerCase().trim()
+    if (!q) return []
+    return list
+      .filter(name => name.toLowerCase().includes(q))
+      .slice(0, 20)
+  })
+
+  // Get pet image as base64 data URL (proxied through main to bypass CSP)
+  ipcMain.handle('pet:getImageUrl', async (_, petName: string) => {
+    return await fetchPetImageAsBase64(petName)
+  })
+
+  // Debug: fetch raw HTML snippet from a pet page to inspect structure
+  ipcMain.handle('debug:petPage', async (_, petName: string) => {
+    const slug = petName.replace(/ /g, '_')
+    const url = `https://amvgg.com/pet/${slug}`
+    try {
+      const res = await net.fetch(url, {
+        headers: { 'User-Agent': 'Mozilla/5.0 (compatible; AdoptMeTrader/1.0)' },
+      })
+      const html = await res.text()
+      const debugPath = path.join(app.getPath('userData'), 'debug-pet-html.txt')
+      // Save relevant parts: og tags + first img src + __NEXT_DATA__ presence
+      const ogImage = html.match(/<meta[^>]+og:image[^>]+>/)?.[0] ?? 'NOT FOUND'
+      const hasNextData = html.includes('__NEXT_DATA__')
+      const firstImg = html.match(/src="(https?[^"]+)"/)?.[1] ?? 'NOT FOUND'
+      const snippet = `URL: ${url}\nStatus: ${res.status}\nog:image tag: ${ogImage}\nhas __NEXT_DATA__: ${hasNextData}\nFirst https img src: ${firstImg}\n\nHTML first 2000 chars:\n${html.substring(0, 2000)}`
+      fs.writeFileSync(debugPath, snippet, 'utf8')
+      return { status: res.status, ogImage, hasNextData, firstImg, debugPath }
+    } catch (e) {
+      return { error: String(e) }
+    }
   })
 
   // Get multiple values at once (batch)

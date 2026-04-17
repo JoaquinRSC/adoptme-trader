@@ -16,6 +16,26 @@ const api = {
     requests: Array<{ name: string; form: string }>
   ): Promise<Record<string, number | null>> =>
     ipcRenderer.invoke('pet:getBatch', requests),
+
+  // Get full pet details: value + demand for regular/neon/mega
+  getPetDetails: (petName: string): Promise<import('./electron-main').PetDetails> =>
+    ipcRenderer.invoke('pet:getDetails', petName),
+
+  // Pre-load full AMVGG pets list (call on dialog open)
+  loadPetList: (): Promise<string[]> =>
+    ipcRenderer.invoke('pets:loadList'),
+
+  // Search pet names from AMVGG list (for autocomplete)
+  searchPets: (query: string): Promise<string[]> =>
+    ipcRenderer.invoke('pets:searchList', query),
+
+  // Get image URL for a pet (proxied as base64, bypasses CSP)
+  getPetImageUrl: (petName: string): Promise<string | null> =>
+    ipcRenderer.invoke('pet:getImageUrl', petName),
+
+  // Debug: dump pet page HTML info to userData/debug-pet-html.txt
+  debugPetPage: (petName: string): Promise<Record<string, unknown>> =>
+    ipcRenderer.invoke('debug:petPage', petName),
 } as const
 
 contextBridge.exposeInMainWorld('electronAPI', api)
