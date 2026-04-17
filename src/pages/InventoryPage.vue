@@ -292,8 +292,16 @@ let blurTimer:   ReturnType<typeof setTimeout> | null = null
 
 function localSearch (q: string): string[] {
   const lower = q.toLowerCase()
-  const source = mergedPetList.value
-  return source.filter(n => n.toLowerCase().includes(lower)).slice(0, 20)
+  const matches = mergedPetList.value.filter(n => n.toLowerCase().includes(lower))
+  matches.sort((a, b) => {
+    const al = a.toLowerCase(), bl = b.toLowerCase()
+    const aExact = al === lower, bExact = bl === lower
+    const aStart = al.startsWith(lower), bStart = bl.startsWith(lower)
+    if (aExact !== bExact) return aExact ? -1 : 1
+    if (aStart !== bStart) return aStart ? -1 : 1
+    return a.localeCompare(b)
+  })
+  return matches.slice(0, 20)
 }
 
 function onSearchInput (val: string | number | null) {
