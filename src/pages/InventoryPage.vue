@@ -95,84 +95,121 @@
     <!-- Add pet dialog -->
     <q-dialog v-model="showAdd" persistent @hide="resetSearch">
       <q-card class="add-card">
-        <q-card-section class="q-pb-sm">
+        <div class="add-header">
           <div class="dialog-title">Add Pet</div>
-        </q-card-section>
+        </div>
 
-        <q-card-section class="q-pt-sm q-gutter-sm">
-
-          <!-- Pet search autocomplete -->
-          <div class="search-wrap">
+        <div class="add-body">
+          <!-- LEFT: Search + results -->
+          <div class="add-left">
             <q-input
               ref="searchInputRef"
               v-model="searchQuery"
-              label="Pet name"
+              label="Search pets…"
               outlined dense autofocus
               autocomplete="off"
               @update:model-value="onSearchInput"
               @keydown.enter.prevent="pickFirstResult"
-              @keydown.escape="closeDropdown"
-              @focus="onSearchFocus"
-              @blur="onSearchBlur"
+              @keydown.escape.prevent="showAdd = false"
+              @keydown.up.prevent="dropIndex = Math.max(dropIndex - 1, 0)"
+              @keydown.down.prevent="dropIndex = Math.min(dropIndex + 1, searchResults.length - 1)"
             >
               <template #prepend>
                 <q-icon :name="matSearch" size="16px" style="color:var(--text-3)" />
               </template>
             </q-input>
 
-            <!-- Dropdown results -->
-            <transition name="drop">
-              <div v-if="showDropdown && (searchResults.length || searching)" class="search-drop">
-                <div v-if="searching && !searchResults.length" class="drop-searching">
-                  <q-spinner size="14px" color="primary" /> Searching…
-                </div>
-                <div
-                  v-for="(name, i) in searchResults"
-                  :key="name"
-                  class="drop-item"
-                  :class="{ 'drop-item--active': i === dropIndex }"
-                  @mousedown.prevent="selectPet(name)"
-                  @mouseover="dropIndex = i"
-                >
-                  <div class="drop-img-wrap">
-                    <img
-                      :src="`https://amvgg.com/items/${encodeURIComponent(name)}.webp`"
-                      class="drop-img"
-                      @error="(e) => (e.target as HTMLImageElement).style.display='none'"
-                    />
-                    <div class="drop-img-placeholder">🐾</div>
-                  </div>
-                  <span class="drop-name">{{ name }}</span>
-                  <q-icon v-if="newPetName === name" :name="matCheck" size="13px" style="color:var(--primary);margin-left:auto" />
-                </div>
+            <div class="results-panel">
+              <div v-if="searching && !searchResults.length" class="results-state">
+                <q-spinner size="14px" color="primary" /><span>Searching…</span>
               </div>
-            </transition>
+              <div v-else-if="!searchQuery.trim()" class="results-state">
+                Start typing to find a pet
+              </div>
+              <div v-else-if="!searchResults.length" class="results-state">
+                No results for "{{ searchQuery }}"
+              </div>
+              <div
+                v-for="(name, i) in searchResults"
+                :key="name"
+                class="result-item"
+                :class="{ 'result-item--active': i === dropIndex }"
+                @mousedown.prevent="selectPet(name)"
+                @mouseover="dropIndex = i"
+              >
+                <div class="result-img-wrap">
+                  <img
+                    :src="`https://amvgg.com/items/${encodeURIComponent(name)}.webp`"
+                    class="result-img"
+                    @error="(e) => (e.target as HTMLImageElement).style.display='none'"
+                  />
+                  <div class="result-img-placeholder">🐾</div>
+                </div>
+                <span class="result-name">{{ name }}</span>
+                <q-icon v-if="newPetName === name" :name="matCheck" size="13px" style="color:var(--primary);margin-left:auto" />
+              </div>
+            </div>
           </div>
 
-          <q-select
-            v-model="newPetForm"
-            :options="formOptions"
-            label="Form"
-            outlined dense
-            emit-value map-options
-          />
-          <q-input
-            v-model.number="newPetQty"
-            type="number"
-            label="Quantity"
-            outlined dense
-            :min="1"
-          />
-        </q-card-section>
+          <!-- RIGHT: Config -->
+          <div class="add-right">
+            <!-- Pet preview -->
+            <div class="pet-preview-card">
+              <div v-if="newPetName" class="preview-filled">
+                <div class="preview-img-wrap" :key="newPetName">
+                  <img
+                    :src="`https://amvgg.com/items/${encodeURIComponent(newPetName)}.webp`"
+                    class="preview-img"
+                    @error="(e) => (e.target as HTMLImageElement).style.display='none'"
+                  />
+                  <div class="preview-img-ph">🐾</div>
+                </div>
+                <div class="preview-info">
+                  <div class="preview-name">{{ newPetName }}</div>
+                  <div
+                    class="preview-form-badge"
+                    :style="{ color: FORM_COLOR_HEX[newPetForm], borderColor: FORM_COLOR_HEX[newPetForm] }"
+                  >{{ FORM_LABELS[newPetForm] }}</div>
+                </div>
+              </div>
+              <div v-else class="preview-empty">← Select a pet from the list</div>
+            </div>
 
-        <q-card-actions align="right" class="q-px-md q-pb-md">
-          <button class="btn-ghost" @click="showAdd = false">Cancel</button>
-          <button
-            class="btn-primary"
-            :disabled="!newPetName.trim()"
-            @click="confirmAdd"
-          >Add</button>
-        </q-card-actions>
+            <!-- Form chips -->
+            <div class="form-section">
+              <div class="form-section-label">Form</div>
+              <div class="form-grid">
+                <button
+                  v-for="[val, label] in formEntries"
+                  :key="val"
+                  class="form-chip"
+                  :class="{ 'form-chip--active': newPetForm === val }"
+                  :style="{ '--chip-accent': FORM_COLOR_HEX[val as PetForm] }"
+                  @click="newPetForm = val as PetForm"
+                >{{ label }}</button>
+              </div>
+            </div>
+
+            <!-- Quantity -->
+            <q-input
+              v-model.number="newPetQty"
+              type="number"
+              label="Quantity"
+              outlined dense
+              :min="1"
+            />
+
+            <!-- Actions -->
+            <div class="add-actions">
+              <button class="btn-ghost" @click="showAdd = false">Cancel</button>
+              <button
+                class="btn-primary"
+                :disabled="!newPetName.trim()"
+                @click="confirmAdd"
+              >Add to Inventory</button>
+            </div>
+          </div>
+        </div>
       </q-card>
     </q-dialog>
 
@@ -201,7 +238,7 @@ const newPetName = ref('')
 const newPetForm = ref<PetForm>('fr')
 const newPetQty  = ref(1)
 
-const formOptions = Object.entries(FORM_LABELS).map(([value, label]) => ({ value, label }))
+const formEntries = Object.entries(FORM_LABELS) as [PetForm, string][]
 
 function openAdd () {
   newPetName.value    = ''
@@ -230,8 +267,9 @@ const showDropdown    = ref(false)
 const searching       = ref(false)
 const dropIndex       = ref(-1)
 
-// AMVGG pet list — reactive so search updates when it loads
-const amvggPetList  = ref<string[]>([])
+// Merged pet list: bundled list + any AMVGG-only pets, pre-computed when AMVGG loads
+const amvggPetList    = ref<string[]>([])
+const mergedPetList   = ref<string[]>([...ADOPT_ME_PETS])
 let amvggListLoaded = false
 
 async function ensureAmvggList () {
@@ -241,6 +279,7 @@ async function ensureAmvggList () {
     const list = await window.electronAPI.loadPetList()
     if (list.length) {
       amvggPetList.value = list
+      mergedPetList.value = [...new Set([...ADOPT_ME_PETS, ...list])]
       if (searchQuery.value.trim()) {
         searchResults.value = localSearch(searchQuery.value.trim())
       }
@@ -253,15 +292,15 @@ let blurTimer:   ReturnType<typeof setTimeout> | null = null
 
 function localSearch (q: string): string[] {
   const lower = q.toLowerCase()
-  const source = amvggPetList.value.length ? amvggPetList.value : ADOPT_ME_PETS
+  const source = mergedPetList.value
   return source.filter(n => n.toLowerCase().includes(lower)).slice(0, 20)
 }
 
 function onSearchInput (val: string | number | null) {
   const q = String(val ?? '').trim()
-  newPetName.value = q
 
   if (!q) {
+    newPetName.value    = ''
     searchResults.value = []
     showDropdown.value  = false
     return
@@ -615,71 +654,86 @@ function confirmRemove (id: string, name: string) {
 .action-del:hover { color: var(--negative); }
 
 /* Dialog */
+/* ── Add Pet dialog ─────────────────────────────────────────────────────────── */
 .add-card {
-  min-width: 340px;
+  width: 620px;
+  max-width: 94vw;
+  overflow: hidden;
 }
+
+.add-header {
+  padding: 20px 24px 16px;
+  border-bottom: 1px solid var(--border);
+}
+
 .dialog-title {
   font-size: 17px;
   font-weight: 800;
   color: var(--text-1);
 }
 
-/* Search autocomplete */
-.search-wrap {
-  position: relative;
+.add-body {
+  display: flex;
+  height: 420px;
 }
 
-.search-drop {
-  position: absolute;
-  top: calc(100% + 4px);
-  left: 0;
-  right: 0;
-  z-index: 9999;
-  background: var(--surface-2);
-  border: 1px solid var(--border-hi);
-  border-radius: 12px;
+/* Left panel — search + results list */
+.add-left {
+  width: 250px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 16px;
+  border-right: 1px solid var(--border);
   overflow: hidden;
-  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5);
-  max-height: 280px;
-  overflow-y: auto;
 }
 
-.drop-searching {
+.results-panel {
+  flex: 1;
+  overflow-y: auto;
+  border-radius: 10px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+}
+
+.results-state {
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: 8px;
-  padding: 12px 14px;
+  height: 100%;
+  min-height: 80px;
   font-size: 12px;
   color: var(--text-3);
+  text-align: center;
+  padding: 16px;
 }
 
-.drop-item {
+.result-item {
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 8px 12px;
+  gap: 9px;
+  padding: 7px 10px;
   cursor: pointer;
   transition: background 0.1s;
 }
-.drop-item:hover,
-.drop-item--active {
+.result-item:hover,
+.result-item--active {
   background: var(--surface-3);
 }
 
-.drop-img-wrap {
+.result-img-wrap {
   position: relative;
   flex-shrink: 0;
-  width: 38px;
-  height: 38px;
-  border-radius: 8px;
-  overflow: hidden;
-  background: linear-gradient(145deg, #312e81, #818cf8);
+  width: 30px;
+  height: 30px;
   display: flex;
   align-items: center;
   justify-content: center;
 }
 
-.drop-img {
+.result-img {
   position: absolute;
   inset: 0;
   width: 100%;
@@ -688,16 +742,15 @@ function confirmRemove (id: string, name: string) {
   z-index: 1;
 }
 
-.drop-img-placeholder {
-  font-size: 18px;
-  line-height: 1;
-  opacity: 0.5;
+.result-img-placeholder {
+  font-size: 13px;
+  opacity: 0.45;
   z-index: 0;
 }
 
-.drop-name {
-  font-size: 13px;
-  font-weight: 700;
+.result-name {
+  font-size: 12px;
+  font-weight: 600;
   color: var(--text-1);
   flex: 1;
   white-space: nowrap;
@@ -705,14 +758,143 @@ function confirmRemove (id: string, name: string) {
   text-overflow: ellipsis;
 }
 
-/* Dropdown transition */
-.drop-enter-active,
-.drop-leave-active {
-  transition: opacity 0.12s, transform 0.12s;
+/* Right panel — config */
+.add-right {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 16px;
 }
-.drop-enter-from,
-.drop-leave-to {
-  opacity: 0;
-  transform: translateY(-4px);
+
+/* Pet preview */
+.pet-preview-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  min-height: 76px;
+  display: flex;
+  align-items: center;
+}
+
+.preview-filled {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 14px;
+  width: 100%;
+}
+
+.preview-img-wrap {
+  width: 52px;
+  height: 52px;
+  flex-shrink: 0;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.preview-img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  z-index: 1;
+  filter: drop-shadow(0 2px 8px rgba(0,0,0,0.4));
+}
+
+.preview-img-ph {
+  font-size: 22px;
+  opacity: 0.6;
+  z-index: 0;
+}
+
+.preview-info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.preview-name {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-1);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.preview-form-badge {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  border: 1px solid;
+  border-radius: 4px;
+  padding: 1px 5px;
+  align-self: flex-start;
+  opacity: 0.85;
+}
+
+.preview-empty {
+  font-size: 12px;
+  color: var(--text-3);
+  padding: 0 16px;
+  width: 100%;
+  text-align: center;
+}
+
+/* Form chips */
+.form-section-label {
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--text-3);
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  margin-bottom: 4px;
+}
+
+.form-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 5px;
+}
+
+.form-chip {
+  padding: 5px 2px;
+  font-size: 11px;
+  font-weight: 700;
+  border-radius: 6px;
+  border: 1px solid var(--border-hi);
+  background: var(--surface);
+  color: var(--text-2);
+  cursor: pointer;
+  transition: all 0.12s;
+  text-align: center;
+  line-height: 1;
+}
+
+.form-chip:hover {
+  border-color: var(--chip-accent);
+  color: var(--chip-accent);
+  background: color-mix(in srgb, var(--chip-accent) 10%, transparent);
+}
+
+.form-chip--active {
+  border-color: var(--chip-accent);
+  color: var(--chip-accent);
+  background: color-mix(in srgb, var(--chip-accent) 15%, transparent);
+}
+
+/* Actions */
+.add-actions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+  margin-top: auto;
+  padding-top: 4px;
 }
 </style>
