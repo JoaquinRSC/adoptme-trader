@@ -364,10 +364,9 @@ async function ensureAmvggList() {
   } catch { /* use local fallback */ }
 }
 
-function localSearch(q: string): string[] {
+function sortResults(list: string[], q: string): string[] {
   const lower = q.toLowerCase()
-  const matches = mergedPetList.value.filter(n => n.toLowerCase().includes(lower))
-  matches.sort((a, b) => {
+  return [...list].sort((a, b) => {
     const al = a.toLowerCase(), bl = b.toLowerCase()
     const aExact = al === lower, bExact = bl === lower
     const aStart = al.startsWith(lower), bStart = bl.startsWith(lower)
@@ -375,7 +374,12 @@ function localSearch(q: string): string[] {
     if (aStart !== bStart) return aStart ? -1 : 1
     return a.localeCompare(b)
   })
-  return matches.slice(0, 20)
+}
+
+function localSearch(q: string): string[] {
+  const lower = q.toLowerCase()
+  const matches = mergedPetList.value.filter(n => n.toLowerCase().includes(lower))
+  return sortResults(matches, q).slice(0, 20)
 }
 
 function openAddDialog(side: 'your' | 'them') {
@@ -406,7 +410,7 @@ function onSearchInput() {
     try {
       const remote = await window.electronAPI.searchPets(q)
       if (remote.length) {
-        searchResults.value = [...new Set([...remote, ...localSearch(q)])].slice(0, 20)
+        searchResults.value = sortResults([...new Set([...remote, ...localSearch(q)])], q).slice(0, 20)
       }
     } finally {
       searching.value = false
