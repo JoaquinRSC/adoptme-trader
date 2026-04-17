@@ -361,10 +361,12 @@ async function warmElveCache (): Promise<void> {
       }
       if (!namePositions.length) return
 
+      // In Elvebredd's RSC payload, "name" comes AFTER the value fields in each object.
+      // So look for the nearest name that FOLLOWS the field position.
       function nearestName (fieldPos: number): string | null {
         let best: NamePos | null = null
         for (const np of namePositions) {
-          if (np.pos < fieldPos && fieldPos - np.pos < 6000 && (!best || np.pos > best.pos)) best = np
+          if (np.pos > fieldPos && np.pos - fieldPos < 3000 && (!best || np.pos < best.pos)) best = np
         }
         return best ? best.name : null
       }
