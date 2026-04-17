@@ -33,6 +33,16 @@ const api = {
   getPetImageUrl: (petName: string): Promise<string | null> =>
     ipcRenderer.invoke('pet:getImageUrl', petName),
 
+  // Elvebredd: single value
+  getElveValue: (petName: string, form: string): Promise<number | null> =>
+    ipcRenderer.invoke('pet:getElveValue', petName, form),
+
+  // Elvebredd: batch values
+  getElveBatchValues: (
+    requests: Array<{ name: string; form: string }>
+  ): Promise<Record<string, number | null>> =>
+    ipcRenderer.invoke('pet:getElveBatch', requests),
+
   // Debug: dump pet page HTML info to userData/debug-pet-html.txt
   debugPetPage: (petName: string): Promise<Record<string, unknown>> =>
     ipcRenderer.invoke('debug:petPage', petName),

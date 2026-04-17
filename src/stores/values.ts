@@ -20,6 +20,8 @@ declare global {
       loadPetList: () => Promise<string[]>
       searchPets: (query: string) => Promise<string[]>
       getPetImageUrl: (petName: string) => Promise<string | null>
+      getElveValue: (petName: string, form: string) => Promise<number | null>
+      getElveBatchValues: (requests: Array<{ name: string; form: string }>) => Promise<Record<string, number | null>>
       debugPetPage: (petName: string) => Promise<Record<string, unknown>>
     }
   }
@@ -66,9 +68,31 @@ export const useValuesStore = defineStore('values', () => {
     }
   }
 
+  const elveCache = ref<Record<string, number | null>>({})
+
+  async function getElveValue (name: string, form: PetForm): Promise<number | null> {
+    const key = cacheKey(name, form)
+    if (key in elveCache.value) return elveCache.value[key]
+    const value = await window.electronAPI.getElveValue(name, form)
+    elveCache.value[key] = value
+    return value
+  }
+
+  async function getElveBatch (requests: Array<{ name: string; form: PetForm }>) {
+    const missing = requests.filter(r => !(cacheKey(r.name, r.form) in elveCache.value))
+    if (missing.length > 0) {
+      const result = await window.electronAPI.getElveBatchValues(missing)
+      for (const [k, v] of Object.entries(result)) elveCache.value[k] = v
+    }
+    return requests.map(r => ({
+      ...r,
+      value: elveCache.value[cacheKey(r.name, r.form)] ?? null,
+    }))
+  }
+
   function getCached (name: string, form: PetForm) {
     return cache.value[cacheKey(name, form)] ?? null
   }
 
-  return { cache, allPets, loadingAllPets, getValue, getBatch, loadAllPets, getCached }
+  return { cache, allPets, loadingAllPets, getValue, getBatch, loadAllPets, getCached, getElveValue, getElveBatch }
 })
