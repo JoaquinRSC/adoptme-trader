@@ -23,17 +23,20 @@ jobs:
       - name: Build and package
         run: npm run package:win
 
-      - name: Find packaged exe
-        id: find_exe
+      - name: Find packaged artifacts
+        id: find_artifacts
         shell: pwsh
         run: |
           $exe = Get-ChildItem -Path "dist/electron/Packaged" -Filter "*.exe" -Recurse | Select-Object -First 1
+          $yml = Get-ChildItem -Path "dist/electron/Packaged" -Filter "latest.yml" -Recurse | Select-Object -First 1
           echo "EXE_PATH=$($exe.FullName)" >> $env:GITHUB_OUTPUT
-          echo "EXE_NAME=$($exe.Name)" >> $env:GITHUB_OUTPUT
+          echo "YML_PATH=$($yml.FullName)" >> $env:GITHUB_OUTPUT
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          files: ${{ steps.find_exe.outputs.EXE_PATH }}
+          files: |
+            ${{ steps.find_artifacts.outputs.EXE_PATH }}
+            ${{ steps.find_artifacts.outputs.YML_PATH }}
           generate_release_notes: true
           draft: false
