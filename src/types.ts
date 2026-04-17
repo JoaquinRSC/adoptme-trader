@@ -34,7 +34,6 @@ export interface InventoryPet {
   id: string
   name: string
   form: PetForm
-  quantity: number
 }
 
 export const FORM_GRADIENT: Record<PetForm, string> = {

@@ -189,7 +189,6 @@
                   <span class="form-pill" :style="{ color: FORM_COLOR_HEX[pet.form] }">
                     {{ FORM_LABELS[pet.form] }}
                   </span>
-                  <span class="qty-text">×{{ pet.quantity }}</span>
                 </div>
               </div>
               <q-icon :name="matAddCircleOutline" size="18px" style="color: var(--primary)" />

@@ -47,17 +47,6 @@
         <div class="pet-body">
           <div class="pet-name" :title="pet.name">{{ pet.name }}</div>
 
-          <!-- Quantity -->
-          <div class="qty-row">
-            <button
-              class="qty-btn"
-              @click="inventory.updateQuantity(pet.id, pet.quantity - 1)"
-              :disabled="pet.quantity <= 1"
-            >−</button>
-            <span class="qty-val">{{ pet.quantity }}</span>
-            <button class="qty-btn" @click="inventory.updateQuantity(pet.id, pet.quantity + 1)">+</button>
-          </div>
-
           <!-- AMVGG value + demand stars -->
           <div class="value-row">
             <span class="value-lbl">AMVGG</span>
@@ -167,13 +156,6 @@
             outlined dense
             emit-value map-options
           />
-          <q-input
-            v-model.number="newPetQty"
-            type="number"
-            label="Quantity"
-            outlined dense
-            :min="1"
-          />
         </q-card-section>
 
         <q-card-actions align="right" class="q-px-md q-pb-md">
@@ -210,14 +192,12 @@ const values = useValuesStore()
 const showAdd    = ref(false)
 const newPetName = ref('')
 const newPetForm = ref<PetForm>('fr')
-const newPetQty  = ref(1)
 
 const formOptions = Object.entries(FORM_LABELS).map(([value, label]) => ({ value, label }))
 
 function openAdd () {
   newPetName.value    = ''
   newPetForm.value    = 'fr'
-  newPetQty.value     = 1
   searchQuery.value   = ''
   searchResults.value = []
   showAdd.value       = true
@@ -226,7 +206,7 @@ function openAdd () {
 
 function confirmAdd () {
   if (!newPetName.value.trim()) return
-  inventory.addPet(newPetName.value.trim(), newPetForm.value, newPetQty.value)
+  inventory.addPet(newPetName.value.trim(), newPetForm.value)
   showAdd.value = false
   const added = inventory.pets[inventory.pets.length - 1]
   if (added) void fetchValue(added)
@@ -378,6 +358,7 @@ function changeForm (id: string, form: PetForm) {
   delete petValue[id]
   delete petDemand[id]
 }
+
 
 function confirmRemove (id: string, name: string) {
   $q.dialog({
@@ -538,39 +519,6 @@ function confirmRemove (id: string, name: string) {
   overflow: hidden;
   text-overflow: ellipsis;
   margin-bottom: 8px;
-}
-
-/* Quantity */
-.qty-row {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  margin-bottom: 8px;
-}
-.qty-btn {
-  width: 22px;
-  height: 22px;
-  border: 1px solid var(--border-hi);
-  border-radius: 6px;
-  background: var(--surface-2);
-  color: var(--text-2);
-  font-size: 14px;
-  font-weight: 700;
-  line-height: 1;
-  cursor: pointer;
-  transition: background 0.12s, color 0.12s;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-.qty-btn:hover:not(:disabled) { background: var(--surface-3); color: var(--text-1); }
-.qty-btn:disabled              { opacity: 0.3; cursor: not-allowed; }
-.qty-val {
-  font-size: 13px;
-  font-weight: 700;
-  color: var(--text-1);
-  min-width: 20px;
-  text-align: center;
 }
 
 /* Value */
