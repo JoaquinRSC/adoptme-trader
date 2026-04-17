@@ -260,6 +260,7 @@ import { matAdd, matClose, matSearch, matCheck, matBalance } from '@quasar/extra
 import { uid } from 'quasar'
 import { FORM_LABELS, FORM_COLOR_HEX, type PetForm } from 'src/types'
 import { useValuesStore } from 'src/stores/values'
+import { ADOPT_ME_PETS } from 'src/data/pets'
 
 const valuesStore = useValuesStore()
 
@@ -348,9 +349,30 @@ const searchInputRef = ref()
 
 let searchTimer: ReturnType<typeof setTimeout> | null = null
 
+const mergedPetList = ref<string[]>([...ADOPT_ME_PETS])
+let amvggListLoaded = false
+
+async function ensureAmvggList() {
+  if (amvggListLoaded) return
+  amvggListLoaded = true
+  try {
+    const list = await window.electronAPI.loadPetList()
+    if (list.length) {
+      mergedPetList.value = [...new Set([...ADOPT_ME_PETS, ...list])]
+      if (searchQuery.value.trim()) searchResults.value = localSearch(searchQuery.value.trim())
+    }
+  } catch { /* use local fallback */ }
+}
+
+function localSearch(q: string): string[] {
+  const lower = q.toLowerCase()
+  return mergedPetList.value.filter(n => n.toLowerCase().includes(lower)).slice(0, 20)
+}
+
 function openAddDialog(side: 'your' | 'them') {
   addingTo.value = side
   showAdd.value = true
+  ensureAmvggList()
 }
 
 function resetDialog() {
@@ -367,10 +389,19 @@ function onSearchInput() {
   if (searchTimer) clearTimeout(searchTimer)
   const q = searchQuery.value.trim()
   if (!q) { searchResults.value = []; searching.value = false; return }
+
+  searchResults.value = localSearch(q)
+
   searching.value = true
   searchTimer = setTimeout(async () => {
-    searchResults.value = await window.electronAPI.searchPets(q)
-    searching.value = false
+    try {
+      const remote = await window.electronAPI.searchPets(q)
+      if (remote.length) {
+        searchResults.value = [...new Set([...remote, ...localSearch(q)])].slice(0, 20)
+      }
+    } finally {
+      searching.value = false
+    }
   }, 220)
 }
 
