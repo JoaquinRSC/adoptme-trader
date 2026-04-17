@@ -106,6 +106,23 @@ function parseDetailsFromBlock (block: string): PetDetails {
 const detailsCache      = new Map<string, PetDetails>()
 let   allPetsCacheFilled = false
 
+// If AMVGG omits a partial-form field (e.g. mfValue) when it equals the full form,
+// fall back to the nearest fully-equipped variant so the field is never null.
+function applyFormFallbacks (details: PetDetails): PetDetails {
+  const v = details.values
+  const d = details.demands
+  const fallbacks: Array<[string, string]> = [
+    ['mf', 'mfr'], ['mr', 'mfr'], ['m', 'mfr'],
+    ['nf', 'nfr'], ['nr', 'nfr'], ['n', 'nfr'],
+    ['fly', 'fr'], ['ride', 'fr'], ['normal', 'fr'],
+  ]
+  for (const [form, base] of fallbacks) {
+    if (v[form] == null && v[base] != null) v[form] = v[base]
+    if (d[form] == null && d[base] != null) d[form] = d[base]
+  }
+  return details
+}
+
 function fetchWithTimeout (url: string, timeoutMs = 10000): Promise<Response> {
   const fetchPromise = net.fetch(url, {
     headers: { 'User-Agent': 'Mozilla/5.0 (compatible; AdoptMeTrader/1.0)' },
@@ -173,7 +190,8 @@ async function warmDetailsCache (): Promise<void> {
     // Only keep pets that at minimum have a regularValue (fr)
     for (const [name, values] of petValues) {
       if (!('fr' in values)) continue
-      detailsCache.set(name, { values, demands: petDemands.get(name) ?? {}, rarity: null })
+      const entry: PetDetails = { values, demands: petDemands.get(name) ?? {}, rarity: null }
+      detailsCache.set(name, applyFormFallbacks(entry))
     }
   } catch { /* fallback to individual-page fetch handles misses */ }
 }
@@ -192,7 +210,7 @@ async function fetchPetDetails (petName: string): Promise<PetDetails> {
   try {
     const res = await fetchWithTimeout(`https://amvgg.com/pet/${slug}`)
     if (!res.ok) return empty
-    const details = parseDetailsFromBlock(await res.text())
+    const details = applyFormFallbacks(parseDetailsFromBlock(await res.text()))
     if (Object.keys(details.values).length > 0) {
       detailsCache.set(petName, details)
       return details
