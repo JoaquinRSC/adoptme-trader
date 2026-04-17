@@ -10,7 +10,7 @@
     "build": "quasar build -m electron",
     "lint": "eslint --ext .js,.ts,.vue src src-electron",
     "package:win": "quasar build -m electron",
-    "shortcut:win": "powershell -Command \"$s=New-Object -ComObject WScript.Shell;$sc=$s.CreateShortcut([System.IO.Path]::Combine([System.Environment]::GetFolderPath('Desktop'),'AdoptMe Trader.lnk'));$sc.TargetPath=(Resolve-Path 'dist/electron/Packaged/AdoptMe Trader-win32-x64/AdoptMe Trader.exe').Path;$sc.Save()\""
+    "shortcut:win": "powershell -Command \"$s=New-Object -ComObject WScript.Shell;$sc=$s.CreateShortcut([System.IO.Path]::Combine([System.Environment]::GetFolderPath('Desktop'),'AdoptMe Trader.lnk'));$sc.TargetPath=(Resolve-Path 'dist/electron/Packaged/AdoptMe Trader-win32-x64/AdoptMe Trader.exe').Path;$sc.IconLocation=(Resolve-Path 'public/icons/icon.ico').Path+',0';$sc.Save()\""
   },
   "dependencies": {
     "pinia": "^2.1.7",
