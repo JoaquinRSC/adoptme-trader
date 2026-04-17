@@ -50,8 +50,8 @@ const drawer = ref(true)
 
 const navItems = [
   { name: 'inventory',     icon: matInventory2, label: 'My Pets'       },
-  { name: 'trade-builder', icon: matSwapHoriz,  label: 'Trade Builder' },
   { name: 'check-values',  icon: matBalance,    label: 'Check Values'  },
+  { name: 'trade-builder', icon: matSwapHoriz,  label: 'Trade Builder' },
 ]
 </script>
 
