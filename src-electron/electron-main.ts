@@ -303,7 +303,7 @@ function createWindow () {
     minHeight: 600,
     title: 'AdoptMe Trader',
     webPreferences: {
-      preload: path.resolve(__dirname, 'electron-preload.js'),
+      preload: path.resolve(__dirname, 'preload', 'electron-preload.cjs'),
       contextIsolation: true,   // Renderer cannot access Node APIs
       nodeIntegration: false,   // Never allow renderer to use require()
       sandbox: true,            // Extra OS-level isolation
