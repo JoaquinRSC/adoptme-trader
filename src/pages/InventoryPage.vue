@@ -446,17 +446,17 @@ function confirmRemove (id: string, name: string) {
 }
 
 .page-title {
-  font-size: 22px;
+  font-size: 26px;
   font-weight: 800;
   color: var(--text-1);
   letter-spacing: -0.5px;
 }
 
 .page-sub {
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 600;
   color: var(--text-3);
-  margin-top: 2px;
+  margin-top: 3px;
 }
 
 /* Buttons */
@@ -510,8 +510,8 @@ function confirmRemove (id: string, name: string) {
 /* Pet grid */
 .pet-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
-  gap: 16px;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 18px;
 }
 
 /* Pet card */
@@ -533,35 +533,35 @@ function confirmRemove (id: string, name: string) {
 /* Thumbnail */
 .pet-thumb {
   position: relative;
-  height: 110px;
+  height: 130px;
   display: flex;
   align-items: center;
   justify-content: center;
   overflow: hidden;
 }
 .thumb-img {
-  width: 80px;
-  height: 80px;
+  width: 96px;
+  height: 96px;
   object-fit: contain;
   position: relative;
   z-index: 1;
   filter: drop-shadow(0 4px 12px rgba(0,0,0,0.5));
 }
 .thumb-emoji {
-  font-size: 40px;
+  font-size: 48px;
   filter: drop-shadow(0 2px 8px rgba(0,0,0,0.4));
   position: absolute;
   z-index: 0;
 }
 .thumb-badge {
   position: absolute;
-  bottom: 7px;
-  right: 8px;
+  bottom: 8px;
+  right: 9px;
   z-index: 3;
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 800;
   letter-spacing: 0.5px;
-  padding: 2px 7px;
+  padding: 3px 8px;
   border-radius: 20px;
   border: 1px solid currentColor;
   background: rgba(0, 0, 0, 0.45);
@@ -570,16 +570,16 @@ function confirmRemove (id: string, name: string) {
 
 /* Card body */
 .pet-body {
-  padding: 10px 12px 12px;
+  padding: 12px 14px 14px;
 }
 .pet-name {
-  font-size: 13px;
+  font-size: 15px;
   font-weight: 800;
   color: var(--text-1);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  margin-bottom: 8px;
+  margin-bottom: 9px;
 }
 
 /* Value */
@@ -589,14 +589,14 @@ function confirmRemove (id: string, name: string) {
   gap: 6px;
 }
 .value-lbl {
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 700;
   color: var(--text-3);
   letter-spacing: 0.8px;
   text-transform: uppercase;
 }
 .value-num {
-  font-size: 13px;
+  font-size: 15px;
   font-weight: 800;
   color: var(--gold);
 }
@@ -618,15 +618,15 @@ function confirmRemove (id: string, name: string) {
   display: flex;
   align-items: center;
   gap: 5px;
-  margin-top: 4px;
+  margin-top: 5px;
 }
 .demand-stars {
-  font-size: 11px;
+  font-size: 13px;
   letter-spacing: 1px;
   line-height: 1;
 }
 .demand-label {
-  font-size: 9px;
+  font-size: 11px;
   font-weight: 700;
   letter-spacing: 0.5px;
   text-transform: uppercase;

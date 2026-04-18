@@ -463,7 +463,7 @@ function confirmAdd() {
 }
 
 .page-title {
-  font-size: 22px;
+  font-size: 26px;
   font-weight: 800;
   color: var(--text-1);
   letter-spacing: -0.4px;
@@ -531,7 +531,7 @@ function confirmAdd() {
 }
 
 .panel-label {
-  font-size: 13px;
+  font-size: 15px;
   font-weight: 800;
   color: var(--text-1);
   letter-spacing: 1.5px;
@@ -580,21 +580,21 @@ function confirmAdd() {
   bottom: 0;
   left: 0;
   right: 0;
-  background: rgba(0,0,0,0.6);
+  background: rgba(0,0,0,0.65);
   border-radius: 0 0 9px 9px;
-  padding: 2px 5px;
+  padding: 3px 6px;
   display: flex;
   align-items: center;
   justify-content: space-between;
 }
 
 .slot-form {
-  font-size: 8px;
+  font-size: 10px;
   font-weight: 800;
 }
 
 .slot-demand {
-  font-size: 8px;
+  font-size: 10px;
   line-height: 1;
 }
 .demand--high   { color: #34d399; }
@@ -602,22 +602,22 @@ function confirmAdd() {
 .demand--low    { color: #f87171; }
 
 .slot-val {
-  font-size: 8px;
+  font-size: 10px;
   color: var(--gold);
   font-weight: 700;
 }
 
 .slot-remove {
   position: absolute;
-  top: -6px;
-  right: -6px;
-  width: 16px;
-  height: 16px;
+  top: -7px;
+  right: -7px;
+  width: 20px;
+  height: 20px;
   border-radius: 50%;
   background: var(--surface-1);
   border: 1px solid var(--border-hi);
   color: var(--text-2);
-  font-size: 12px;
+  font-size: 14px;
   line-height: 1;
   display: flex;
   align-items: center;
@@ -678,7 +678,7 @@ function confirmAdd() {
 }
 
 .total-value {
-  font-size: 15px;
+  font-size: 18px;
   font-weight: 800;
   color: var(--text-1);
 }
@@ -696,7 +696,7 @@ function confirmAdd() {
 }
 
 .diff-value {
-  font-size: 20px;
+  font-size: 26px;
   font-weight: 800;
   letter-spacing: -0.5px;
 }
@@ -706,7 +706,7 @@ function confirmAdd() {
 .diff--loss  { color: #f87171; }
 
 .diff-sub {
-  font-size: 12px;
+  font-size: 14px;
   font-weight: 600;
   color: var(--text-3);
   margin-top: 4px;
