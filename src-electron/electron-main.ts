@@ -634,9 +634,6 @@ function registerIpcHandlers () {
     offering:   Array<{ name: string; form: string }>
     lookingFor: Array<{ name: string; form: string }>
   }) => {
-    const cookies = await amvggSession!.cookies.get({ domain: 'amvgg.com' })
-    const cookieHeader = cookies.map(c => `${c.name}=${c.value}`).join('; ')
-
     const buildItem = async (name: string, form: string) => {
       const details = await fetchPetDetails(name)
       const v = details.values
@@ -681,11 +678,10 @@ function registerIpcHandlers () {
       Promise.all(lookingFor.map(p => buildItem(p.name, p.form))),
     ])
 
-    const res = await net.fetch('https://amvgg.com/api/createPost', {
+    const res = await amvggSession!.fetch('https://amvgg.com/api/createPost', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Cookie':       cookieHeader,
         'Referer':      'https://amvgg.com/trades/create',
         'Origin':       'https://amvgg.com',
         'User-Agent':   'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36',
@@ -728,16 +724,19 @@ function registerIpcHandlers () {
         } catch { /* page still loading */ }
       }
 
-      // CSRF: try cookies first, then DOM
-      const elveCookies = await elveSession!.cookies.get({ domain: 'elvebredd.com' })
-      const csrfCookie = elveCookies.find(c =>
-        c.name.toUpperCase() === 'XSRF-TOKEN' || c.name.toLowerCase().includes('csrf')
+      // CSRF: cookies first, then DOM meta tag
+      const cookiesForCsrf = await elveSession!.cookies.get({ domain: 'elvebredd.com' })
+      const csrfCookie = cookiesForCsrf.find(c =>
+        c.name.toUpperCase() === 'XSRF-TOKEN' ||
+        c.name.toUpperCase() === 'CSRF-TOKEN'  ||
+        c.name.toLowerCase().includes('csrf')
       )
       if (csrfCookie) {
         csrfToken = decodeURIComponent(csrfCookie.value)
       } else {
         csrfToken = await hidden.webContents.executeJavaScript(`
-          document.querySelector('meta[name="csrf-token"]')?.content || null
+          document.querySelector('meta[name="csrf-token"]')?.content ||
+          document.querySelector('input[name="_token"]')?.value || null
         `).catch(() => null) as string | null
       }
     } finally {
@@ -745,6 +744,7 @@ function registerIpcHandlers () {
     }
 
     if (!turnstileToken) throw new Error('Could not get Turnstile token — try again')
+    if (!csrfToken)      throw new Error('Could not get CSRF token — try again')
 
     const buildItem = (name: string, form: string, side: 'your' | 'their') => ({
       id:             elveIdMap.get(name) ?? 0,
@@ -757,21 +757,15 @@ function registerIpcHandlers () {
       side,
     })
 
-    const elveCookies = await elveSession!.cookies.get({ domain: 'elvebredd.com' })
-    const cookieHeader = elveCookies.map(c => `${c.name}=${c.value}`).join('; ')
-
-    const headers: Record<string, string> = {
-      'Content-Type': 'application/json',
-      'Cookie':       cookieHeader,
-      'Referer':      'https://elvebredd.com/create-listing',
-      'Origin':       'https://elvebredd.com',
-      'User-Agent':   'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36',
-    }
-    if (csrfToken) headers['X-Csrf-Token'] = csrfToken
-
-    const res = await net.fetch('https://elvebredd.com/api/create-listing', {
+    const res = await elveSession!.fetch('https://elvebredd.com/api/create-listing', {
       method: 'POST',
-      headers,
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Csrf-Token': csrfToken,
+        'Referer':      'https://elvebredd.com/create-listing',
+        'Origin':       'https://elvebredd.com',
+        'User-Agent':   'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36',
+      },
       body: JSON.stringify({
         game:          'Adopt Me',
         version:       elveVersion,
