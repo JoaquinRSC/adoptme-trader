@@ -572,8 +572,11 @@ function registerIpcHandlers () {
   // ── Auth ────────────────────────────────────────────────────────────────────
 
   ipcMain.handle('auth:login', async (_, platform: 'amvgg' | 'elvebredd') => {
-    const ses     = platform === 'amvgg' ? amvggSession! : elveSession!
-    const startUrl = platform === 'amvgg' ? 'https://amvgg.com' : 'https://elvebredd.com'
+    const ses      = platform === 'amvgg' ? amvggSession! : elveSession!
+    const loginUrl = platform === 'amvgg'
+      ? 'https://amvgg.com/api/auth/signin'
+      : 'https://elvebredd.com/login'
+    const homeUrl  = platform === 'amvgg' ? 'https://amvgg.com/' : 'https://elvebredd.com/'
     const domain   = platform === 'amvgg' ? 'amvgg.com' : 'elvebredd.com'
 
     return new Promise<{ success: boolean }>((resolve) => {
@@ -583,13 +586,15 @@ function registerIpcHandlers () {
         webPreferences: { session: ses, contextIsolation: true, nodeIntegration: false, sandbox: false },
       })
 
-      void win.loadURL(startUrl)
+      void win.loadURL(loginUrl)
 
-      // Auto-detect successful login: URL lands back on platform domain outside auth pages
+      // Detect successful login: navigated back to the platform home (not a login/auth/roblox page)
       win.webContents.on('did-navigate', async (_, url) => {
         if (!url.includes(domain)) return
-        if (url.includes('login') || url.includes('auth') || url.includes('oauth') || url.includes('roblox')) return
-        await new Promise(r => setTimeout(r, 1500))
+        const isAuthPage = url.includes('login') || url.includes('auth') || url.includes('oauth') || url.includes('signin') || url.includes('roblox')
+        if (isAuthPage) return
+        // Landed on a non-auth platform page → login complete
+        await new Promise(r => setTimeout(r, 800))
         resolve({ success: true })
         if (!win.isDestroyed()) win.close()
       })
@@ -602,10 +607,14 @@ function registerIpcHandlers () {
     const ses    = platform === 'amvgg' ? amvggSession! : elveSession!
     const domain = platform === 'amvgg' ? 'amvgg.com' : 'elvebredd.com'
     const cookies = await ses.cookies.get({ domain })
+    // Look for real session cookies (httpOnly, not tracking cookies)
     const hasSession = cookies.some(c =>
-      c.name.toLowerCase().includes('session') ||
-      c.name.toLowerCase().includes('token') ||
-      c.name.toLowerCase().includes('auth')
+      c.httpOnly === true && (
+        c.name.toLowerCase().includes('session') ||
+        c.name.toLowerCase().includes('token') ||
+        c.name.toLowerCase().includes('auth') ||
+        c.name.toLowerCase().includes('user')
+      )
     )
     return { loggedIn: hasSession }
   })
