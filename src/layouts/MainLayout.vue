@@ -1,11 +1,19 @@
 <template>
   <q-layout view="lHh Lpr lFf" class="app-layout">
-    <q-drawer v-model="drawer" show-if-above :width="220" :breakpoint="600" class="sidebar">
+    <q-drawer
+      v-model="drawer"
+      show-if-above
+      :width="220"
+      :mini="collapsed"
+      :mini-width="64"
+      :breakpoint="600"
+      class="sidebar"
+    >
       <div class="sidebar-inner">
         <!-- Logo -->
-        <div class="sidebar-logo">
+        <div class="sidebar-logo" :class="{ 'sidebar-logo--mini': collapsed }">
           <span class="logo-paw">🐾</span>
-          <div>
+          <div v-if="!collapsed">
             <div class="logo-name">AdoptMe</div>
             <div class="logo-tag">TRADER</div>
           </div>
@@ -22,18 +30,19 @@
           >
             <button
               class="nav-item"
-              :class="{ 'nav-item--active': isActive }"
+              :class="{ 'nav-item--active': isActive, 'nav-item--mini': collapsed }"
+              :title="collapsed ? item.label : undefined"
               @click="navigate"
             >
-              <q-icon :name="item.icon" size="18px" class="nav-icon" />
-              <span class="nav-label">{{ item.label }}</span>
-              <span v-if="isActive" class="nav-pip" />
+              <q-icon :name="item.icon" size="20px" class="nav-icon" />
+              <span v-if="!collapsed" class="nav-label">{{ item.label }}</span>
+              <span v-if="isActive && !collapsed" class="nav-pip" />
             </button>
           </router-link>
         </nav>
 
-        <div class="sidebar-footer">
-          <div class="theme-picker">
+        <div class="sidebar-footer" :class="{ 'sidebar-footer--mini': collapsed }">
+          <div class="theme-picker" :class="{ 'theme-picker--mini': collapsed }">
             <button
               v-for="t in themes"
               :key="t.id"
@@ -44,7 +53,10 @@
               @click="applyTheme(t.id)"
             />
           </div>
-          <div class="footer-version">v{{ version }}</div>
+          <div v-if="!collapsed" class="footer-version">v{{ version }}</div>
+          <button class="collapse-btn" :title="collapsed ? 'Expand' : 'Collapse'" @click="toggleCollapse">
+            <q-icon :name="collapsed ? matChevronRight : matChevronLeft" size="16px" />
+          </button>
         </div>
       </div>
     </q-drawer>
@@ -58,13 +70,19 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { useQuasar } from 'quasar'
-import { matInventory2, matSwapHoriz, matBalance } from '@quasar/extras/material-icons'
+import { matInventory2, matSwapHoriz, matBalance, matChevronLeft, matChevronRight } from '@quasar/extras/material-icons'
 import { version } from '../../package.json'
 import { useTheme } from 'src/composables/useTheme'
 
 const drawer = ref(true)
+const collapsed = ref(localStorage.getItem('sidebar-collapsed') === 'true')
 const $q = useQuasar()
 const { current: currentTheme, themes, apply: applyTheme } = useTheme()
+
+function toggleCollapse() {
+  collapsed.value = !collapsed.value
+  localStorage.setItem('sidebar-collapsed', String(collapsed.value))
+}
 
 onMounted(() => {
   window.electronAPI.onUpdateDownloaded(() => {
@@ -112,6 +130,10 @@ const navItems = [
   padding: 22px 20px 20px;
   border-bottom: 1px solid var(--border);
 }
+.sidebar-logo--mini {
+  justify-content: center;
+  padding: 20px 0;
+}
 
 .logo-paw {
   font-size: 26px;
@@ -150,7 +172,7 @@ const navItems = [
   align-items: center;
   gap: 10px;
   width: 100%;
-  padding: 10px 12px;
+  padding: 11px 12px;
   border: none;
   border-radius: 10px;
   background: transparent;
@@ -158,6 +180,10 @@ const navItems = [
   cursor: pointer;
   transition: background 0.15s, color 0.15s;
   text-align: left;
+}
+.nav-item--mini {
+  justify-content: center;
+  padding: 11px 0;
 }
 
 .nav-item:hover {
@@ -171,7 +197,7 @@ const navItems = [
 }
 
 .nav-label {
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 700;
 }
 
@@ -191,11 +217,15 @@ const navItems = [
 
 /* Footer */
 .sidebar-footer {
-  padding: 14px 20px;
+  padding: 14px 16px;
   border-top: 1px solid var(--border);
   display: flex;
   flex-direction: column;
   gap: 10px;
+}
+.sidebar-footer--mini {
+  padding: 14px 0;
+  align-items: center;
 }
 
 .theme-picker {
@@ -203,10 +233,14 @@ const navItems = [
   gap: 7px;
   align-items: center;
 }
+.theme-picker--mini {
+  flex-direction: column;
+  gap: 6px;
+}
 
 .theme-swatch {
-  width: 16px;
-  height: 16px;
+  width: 17px;
+  height: 17px;
   border-radius: 50%;
   border: 2px solid transparent;
   cursor: pointer;
@@ -221,5 +255,27 @@ const navItems = [
   font-size: 11px;
   color: var(--text-3);
   font-weight: 600;
+}
+
+.collapse-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text-3);
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+  align-self: flex-start;
+}
+.sidebar-footer--mini .collapse-btn {
+  align-self: center;
+}
+.collapse-btn:hover {
+  background: var(--surface-2);
+  color: var(--text-1);
 }
 </style>

@@ -384,8 +384,8 @@ function deltaChipClass (delta: number) {
 }
 
 .page-head    { margin-bottom: 24px; }
-.page-title   { font-size: 22px; font-weight: 800; color: var(--text-1); letter-spacing: -0.5px; }
-.page-sub     { font-size: 12px; font-weight: 600; color: var(--text-3); margin-top: 2px; }
+.page-title   { font-size: 26px; font-weight: 800; color: var(--text-1); letter-spacing: -0.5px; }
+.page-sub     { font-size: 13px; font-weight: 600; color: var(--text-3); margin-top: 3px; }
 
 .trade-layout {
   display: grid;
@@ -474,7 +474,7 @@ function deltaChipClass (delta: number) {
 }
 
 .fairness-score {
-  font-size: 20px;
+  font-size: 24px;
   font-weight: 900;
   letter-spacing: -0.5px;
 }
@@ -591,21 +591,21 @@ function deltaChipClass (delta: number) {
   bottom: 0;
   left: 0;
   right: 0;
-  background: rgba(0,0,0,0.6);
+  background: rgba(0,0,0,0.65);
   border-radius: 0 0 9px 9px;
-  padding: 2px 5px;
+  padding: 3px 6px;
   display: flex;
   align-items: center;
   justify-content: space-between;
 }
 
 .slot-form {
-  font-size: 8px;
+  font-size: 10px;
   font-weight: 800;
 }
 
 .slot-demand {
-  font-size: 8px;
+  font-size: 10px;
   line-height: 1;
 }
 .demand--high   { color: #34d399; }
@@ -613,17 +613,17 @@ function deltaChipClass (delta: number) {
 .demand--low    { color: #f87171; }
 
 .slot-val {
-  font-size: 8px;
+  font-size: 10px;
   color: var(--gold);
   font-weight: 700;
 }
 
 .slot-remove {
   position: absolute;
-  top: -6px;
-  right: -6px;
-  width: 16px;
-  height: 16px;
+  top: -7px;
+  right: -7px;
+  width: 20px;
+  height: 20px;
   border-radius: 50%;
   background: var(--surface-1);
   border: 1px solid var(--border-hi);
