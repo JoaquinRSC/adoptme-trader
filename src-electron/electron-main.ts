@@ -414,19 +414,22 @@ async function warmElveCache (): Promise<void> {
         idPositions.push({ pos: idM.index, id: parseInt(idM[1]) })
       }
 
-      function nearestPrecedingId (namePos: number): number | null {
-        let best: IdPos | null = null
+      // Find nearest ID in either direction within 500 chars — prefer closer one
+      function nearestId (namePos: number): number | null {
+        let best: { ip: IdPos; dist: number } | null = null
         for (const ip of idPositions) {
-          if (ip.pos < namePos && namePos - ip.pos < 1000 && (!best || ip.pos > best.pos)) best = ip
+          const dist = Math.abs(ip.pos - namePos)
+          if (dist < 500 && (!best || dist < best.dist)) best = { ip, dist }
         }
-        return best?.id ?? null
+        return best?.ip.id ?? null
       }
 
       // Map name → id
       for (const np of namePositions) {
-        const id = nearestPrecedingId(np.pos)
+        const id = nearestId(np.pos)
         if (id !== null) elveIdMap.set(np.name, id)
       }
+      console.log('[Elve] ID map sample:', [...elveIdMap.entries()].slice(0, 5))
 
       // In Elvebredd's RSC payload, "name" comes AFTER the value fields in each object.
       // So look for the nearest name that FOLLOWS the field position.
