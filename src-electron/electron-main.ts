@@ -1,14 +1,29 @@
-import { app, BrowserWindow, ipcMain, Menu, net, session } from 'electron'
+import { app, BrowserWindow, ipcMain, Menu, net, session, type Session } from 'electron'
 import { autoUpdater } from 'electron-updater'
 import path from 'path'
 import fs from 'fs'
 
+// ── Auth sessions (persisted per platform) ────────────────────────────────────
+let amvggSession: Session | null = null
+let elveSession:  Session | null = null
+
+function isLoginContents (contents: Electron.WebContents): boolean {
+  return (
+    (amvggSession !== null && contents.session === amvggSession) ||
+    (elveSession  !== null && contents.session === elveSession)
+  )
+}
+
 // ── Security: refuse any new-window / navigation outside the app ─────────────
 app.on('web-contents-created', (_, contents) => {
   contents.on('will-navigate', (e, url) => {
+    if (isLoginContents(contents)) return  // login windows may navigate freely (OAuth flow)
     if (!url.startsWith('http://localhost') && !url.startsWith('app://')) e.preventDefault()
   })
-  contents.setWindowOpenHandler(() => ({ action: 'deny' }))
+  contents.setWindowOpenHandler(() => {
+    if (isLoginContents(contents)) return { action: 'allow' }
+    return { action: 'deny' }
+  })
 })
 
 // ── Value cache stored in userData (never in renderer) ───────────────────────
@@ -315,9 +330,34 @@ async function fetchPetImageAsBase64 (petName: string): Promise<string | null> {
   }
 }
 
+// ── Form → AMVGG / Elvebredd mappings ────────────────────────────────────────
+
+const FORM_TO_AMVGG_TYPE: Record<string, string> = {
+  normal: '', fly: 'f', ride: 'r', fr: 'fr',
+  n: 'n', nf: 'nf', nr: 'nr', nfr: 'nfr',
+  m: 'm', mf: 'mf', mr: 'mr', mfr: 'mfr',
+}
+
+const FORM_TO_ELVE_ATTRS: Record<string, { fly: boolean; ride: boolean; default: boolean; neon: boolean; mega: boolean }> = {
+  normal: { fly: false, ride: false, default: true,  neon: false, mega: false },
+  fly:    { fly: true,  ride: false, default: false, neon: false, mega: false },
+  ride:   { fly: false, ride: true,  default: false, neon: false, mega: false },
+  fr:     { fly: true,  ride: true,  default: false, neon: false, mega: false },
+  n:      { fly: false, ride: false, default: false, neon: true,  mega: false },
+  nf:     { fly: true,  ride: false, default: false, neon: true,  mega: false },
+  nr:     { fly: false, ride: true,  default: false, neon: true,  mega: false },
+  nfr:    { fly: true,  ride: true,  default: false, neon: true,  mega: false },
+  m:      { fly: false, ride: false, default: false, neon: false, mega: true  },
+  mf:     { fly: true,  ride: false, default: false, neon: false, mega: true  },
+  mr:     { fly: false, ride: true,  default: false, neon: false, mega: true  },
+  mfr:    { fly: true,  ride: true,  default: false, neon: false, mega: true  },
+}
+
 // ── Elvebredd value fetching ──────────────────────────────────────────────────
 
 const elveValuesCache = new Map<string, Record<string, number>>()
+const elveIdMap       = new Map<string, number>()  // pet name → Elvebredd internal ID
+let elveVersion       = 207
 let elveFetchDone = false
 let elveFetchInFlight: Promise<void> | null = null
 
@@ -352,6 +392,10 @@ async function warmElveCache (): Promise<void> {
       if (!res.ok) return
       const html = await res.text()
 
+      // Extract version
+      const verMatch = html.match(/\\"version\\":(\d+)/)
+      if (verMatch) elveVersion = parseInt(verMatch[1])
+
       type NamePos = { pos: number; name: string }
       const namePositions: NamePos[] = []
       const nameRe = /\\"name\\":\\"([^"\\]+)\\"/g
@@ -360,6 +404,29 @@ async function warmElveCache (): Promise<void> {
         namePositions.push({ pos: nm.index, name: nm[1] })
       }
       if (!namePositions.length) return
+
+      // Build position → id map for Elvebredd internal pet IDs
+      type IdPos = { pos: number; id: number }
+      const idPositions: IdPos[] = []
+      const idRe = /\\"id\\":(\d+)/g
+      let idM: RegExpExecArray | null
+      while ((idM = idRe.exec(html)) !== null) {
+        idPositions.push({ pos: idM.index, id: parseInt(idM[1]) })
+      }
+
+      function nearestPrecedingId (namePos: number): number | null {
+        let best: IdPos | null = null
+        for (const ip of idPositions) {
+          if (ip.pos < namePos && namePos - ip.pos < 1000 && (!best || ip.pos > best.pos)) best = ip
+        }
+        return best?.id ?? null
+      }
+
+      // Map name → id
+      for (const np of namePositions) {
+        const id = nearestPrecedingId(np.pos)
+        if (id !== null) elveIdMap.set(np.name, id)
+      }
 
       // In Elvebredd's RSC payload, "name" comes AFTER the value fields in each object.
       // So look for the nearest name that FOLLOWS the field position.
@@ -502,6 +569,212 @@ function registerIpcHandlers () {
     return results
   })
 
+  // ── Auth ────────────────────────────────────────────────────────────────────
+
+  ipcMain.handle('auth:login', async (_, platform: 'amvgg' | 'elvebredd') => {
+    const ses     = platform === 'amvgg' ? amvggSession! : elveSession!
+    const startUrl = platform === 'amvgg' ? 'https://amvgg.com' : 'https://elvebredd.com'
+    const domain   = platform === 'amvgg' ? 'amvgg.com' : 'elvebredd.com'
+
+    return new Promise<{ success: boolean }>((resolve) => {
+      const win = new BrowserWindow({
+        width: 960, height: 720,
+        title: `Login — ${platform === 'amvgg' ? 'AMVGG' : 'Elvebredd'}`,
+        webPreferences: { session: ses, contextIsolation: true, nodeIntegration: false, sandbox: false },
+      })
+
+      void win.loadURL(startUrl)
+
+      // Auto-detect successful login: URL lands back on platform domain outside auth pages
+      win.webContents.on('did-navigate', async (_, url) => {
+        if (!url.includes(domain)) return
+        if (url.includes('login') || url.includes('auth') || url.includes('oauth') || url.includes('roblox')) return
+        await new Promise(r => setTimeout(r, 1500))
+        resolve({ success: true })
+        if (!win.isDestroyed()) win.close()
+      })
+
+      win.on('closed', () => resolve({ success: false }))
+    })
+  })
+
+  ipcMain.handle('auth:status', async (_, platform: 'amvgg' | 'elvebredd') => {
+    const ses    = platform === 'amvgg' ? amvggSession! : elveSession!
+    const domain = platform === 'amvgg' ? 'amvgg.com' : 'elvebredd.com'
+    const cookies = await ses.cookies.get({ domain })
+    const hasSession = cookies.some(c =>
+      c.name.toLowerCase().includes('session') ||
+      c.name.toLowerCase().includes('token') ||
+      c.name.toLowerCase().includes('auth')
+    )
+    return { loggedIn: hasSession }
+  })
+
+  ipcMain.handle('auth:logout', async (_, platform: 'amvgg' | 'elvebredd') => {
+    const ses = platform === 'amvgg' ? amvggSession! : elveSession!
+    await ses.clearStorageData()
+    return { success: true }
+  })
+
+  // ── Trade creation ───────────────────────────────────────────────────────────
+
+  ipcMain.handle('trade:createAmvgg', async (_, {
+    offering,
+    lookingFor,
+  }: {
+    offering:   Array<{ name: string; form: string }>
+    lookingFor: Array<{ name: string; form: string }>
+  }) => {
+    const cookies = await amvggSession!.cookies.get({ domain: 'amvgg.com' })
+    const cookieHeader = cookies.map(c => `${c.name}=${c.value}`).join('; ')
+
+    const buildItem = async (name: string, form: string) => {
+      const details = await fetchPetDetails(name)
+      const v = details.values
+      const d = details.demands
+      const val = (f: string) => v[f] != null ? String(v[f]) : null
+      const dem = (f: string) => d[f] ?? null
+      return {
+        id:              Math.random() * 1e13,
+        name,
+        regularValue:    val('fr'),
+        npRegularValue:  val('normal'),
+        neonValue:       val('nfr'),
+        npNeonValue:     val('n'),
+        megaValue:       val('mfr'),
+        npMegaValue:     val('m'),
+        regularDemand:   dem('fr'),
+        npRegularDemand: dem('normal'),
+        neonDemand:      dem('nfr'),
+        npNeonDemand:    dem('n'),
+        megaDemand:      dem('mfr'),
+        npMegaDemand:    dem('m'),
+        category:        2,
+        rValue:          val('ride'),
+        fValue:          val('fly'),
+        nrValue:         val('nr'),
+        nfValue:         val('nf'),
+        mrValue:         val('mr'),
+        mfValue:         val('mf'),
+        fDemand:         dem('fly'),
+        rDemand:         dem('ride'),
+        nrDemand:        dem('nr'),
+        nfDemand:        dem('nf'),
+        mrDemand:        dem('mr'),
+        mfDemand:        dem('mf'),
+        type:            FORM_TO_AMVGG_TYPE[form] ?? '',
+        fg:              false,
+      }
+    }
+
+    const [leftGridItems, rightGridItems] = await Promise.all([
+      Promise.all(offering.map(p => buildItem(p.name, p.form))),
+      Promise.all(lookingFor.map(p => buildItem(p.name, p.form))),
+    ])
+
+    const res = await net.fetch('https://amvgg.com/api/createPost', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Cookie':       cookieHeader,
+        'Referer':      'https://amvgg.com/trades/create',
+        'Origin':       'https://amvgg.com',
+        'User-Agent':   'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36',
+      },
+      body: JSON.stringify({ leftGridItems, rightGridItems }),
+    })
+    if (!res.ok) throw new Error(`AMVGG ${res.status}: ${(await res.text()).slice(0, 300)}`)
+    return await res.json() as { data: { id: string } }
+  })
+
+  ipcMain.handle('trade:createElve', async (_, {
+    ownerGive,
+    ownerGet,
+  }: {
+    ownerGive: Array<{ name: string; form: string }>
+    ownerGet:  Array<{ name: string; form: string }>
+  }) => {
+    await warmElveCache()
+
+    // Open a hidden window to get Turnstile token + CSRF
+    const hidden = new BrowserWindow({
+      show: false, width: 800, height: 600,
+      webPreferences: { session: elveSession!, contextIsolation: true, nodeIntegration: false, sandbox: false },
+    })
+
+    let turnstileToken: string | null = null
+    let csrfToken: string | null = null
+
+    try {
+      await hidden.loadURL('https://elvebredd.com/create-listing')
+
+      // Poll for Turnstile auto-resolve (up to 15 seconds)
+      for (let i = 0; i < 30; i++) {
+        await new Promise(r => setTimeout(r, 500))
+        try {
+          const tok = await hidden.webContents.executeJavaScript(`
+            document.querySelector('[name="cf-turnstile-response"]')?.value || null
+          `) as string | null
+          if (tok && tok.length > 20) { turnstileToken = tok; break }
+        } catch { /* page still loading */ }
+      }
+
+      // CSRF: try cookies first, then DOM
+      const elveCookies = await elveSession!.cookies.get({ domain: 'elvebredd.com' })
+      const csrfCookie = elveCookies.find(c =>
+        c.name.toUpperCase() === 'XSRF-TOKEN' || c.name.toLowerCase().includes('csrf')
+      )
+      if (csrfCookie) {
+        csrfToken = decodeURIComponent(csrfCookie.value)
+      } else {
+        csrfToken = await hidden.webContents.executeJavaScript(`
+          document.querySelector('meta[name="csrf-token"]')?.content || null
+        `).catch(() => null) as string | null
+      }
+    } finally {
+      if (!hidden.isDestroyed()) hidden.close()
+    }
+
+    if (!turnstileToken) throw new Error('Could not get Turnstile token — try again')
+
+    const buildItem = (name: string, form: string, side: 'your' | 'their') => ({
+      id:             elveIdMap.get(name) ?? 0,
+      name,
+      image:          `/images/pets/${name}.png`,
+      value:          elveValuesCache.get(name)?.[form] ?? 0,
+      secondaryValue: 0,
+      game:           'Adopt Me',
+      attributes:     FORM_TO_ELVE_ATTRS[form] ?? FORM_TO_ELVE_ATTRS['normal']!,
+      side,
+    })
+
+    const elveCookies = await elveSession!.cookies.get({ domain: 'elvebredd.com' })
+    const cookieHeader = elveCookies.map(c => `${c.name}=${c.value}`).join('; ')
+
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+      'Cookie':       cookieHeader,
+      'Referer':      'https://elvebredd.com/create-listing',
+      'Origin':       'https://elvebredd.com',
+      'User-Agent':   'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36',
+    }
+    if (csrfToken) headers['X-Csrf-Token'] = csrfToken
+
+    const res = await net.fetch('https://elvebredd.com/api/create-listing', {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({
+        game:          'Adopt Me',
+        version:       elveVersion,
+        ownerGive:     ownerGive.map(p => buildItem(p.name, p.form, 'your')),
+        ownerGet:      ownerGet.map(p => buildItem(p.name, p.form, 'their')),
+        turnstileToken,
+      }),
+    })
+    if (!res.ok) throw new Error(`Elvebredd ${res.status}: ${(await res.text()).slice(0, 300)}`)
+    return await res.json() as { ok: boolean; id: number }
+  })
+
   // Get multiple values at once (batch)
   ipcMain.handle('pet:getBatch', async (_, requests: Array<{ name: string; form: string }>) => {
     const cache = loadCache()
@@ -575,6 +848,8 @@ function createWindow () {
 }
 
 app.whenReady().then(() => {
+  amvggSession = session.fromPartition('persist:amvgg')
+  elveSession  = session.fromPartition('persist:elvebredd')
   Menu.setApplicationMenu(null)
   registerIpcHandlers()
   createWindow()

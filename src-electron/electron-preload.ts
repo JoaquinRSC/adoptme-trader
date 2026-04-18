@@ -47,6 +47,32 @@ const api = {
   debugPetPage: (petName: string): Promise<Record<string, unknown>> =>
     ipcRenderer.invoke('debug:petPage', petName),
 
+  // Auth: open login window for a platform
+  loginPlatform: (platform: 'amvgg' | 'elvebredd'): Promise<{ success: boolean }> =>
+    ipcRenderer.invoke('auth:login', platform),
+
+  // Auth: check login status
+  authStatus: (platform: 'amvgg' | 'elvebredd'): Promise<{ loggedIn: boolean }> =>
+    ipcRenderer.invoke('auth:status', platform),
+
+  // Auth: logout (clear session)
+  logoutPlatform: (platform: 'amvgg' | 'elvebredd'): Promise<{ success: boolean }> =>
+    ipcRenderer.invoke('auth:logout', platform),
+
+  // Trade: create on AMVGG
+  createAmvggTrade: (payload: {
+    offering:   Array<{ name: string; form: string }>
+    lookingFor: Array<{ name: string; form: string }>
+  }): Promise<{ data: { id: string } }> =>
+    ipcRenderer.invoke('trade:createAmvgg', payload),
+
+  // Trade: create on Elvebredd (handles Turnstile internally)
+  createElveTrade: (payload: {
+    ownerGive: Array<{ name: string; form: string }>
+    ownerGet:  Array<{ name: string; form: string }>
+  }): Promise<{ ok: boolean; id: number }> =>
+    ipcRenderer.invoke('trade:createElve', payload),
+
   // Auto-updater: fires when a new version has been downloaded and is ready to install
   onUpdateDownloaded: (cb: () => void) => {
     ipcRenderer.on('updater:update-downloaded', () => cb())

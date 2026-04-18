@@ -119,6 +119,14 @@
           <q-icon :name="matAutoAwesome" size="16px" />
           <span>Suggestions</span>
           <span class="panel-count" v-if="suggestions.length">{{ suggestions.length }}</span>
+          <button
+            v-if="selectedSuggestion"
+            class="publish-btn"
+            @click="showPublish = true"
+          >
+            <q-icon :name="matPublish" size="14px" />
+            Publish
+          </button>
         </div>
 
         <div class="panel-body">
@@ -131,7 +139,8 @@
               class="suggestion-card"
               v-for="s in suggestions"
               :key="s.name"
-              :class="deltaCardClass(s.delta)"
+              :class="[deltaCardClass(s.delta), { 'sug-card--selected': selectedSuggestion?.name === s.name }]"
+              @click="selectedSuggestion = selectedSuggestion?.name === s.name ? null : s"
             >
               <div class="sug-thumb">
                 <img
@@ -168,6 +177,55 @@
       </div>
 
     </div>
+
+    <!-- Publish trade dialog -->
+    <q-dialog v-model="showPublish">
+      <q-card class="publish-card">
+        <div class="pub-header">
+          <div class="dialog-title">Publish Trade</div>
+          <div class="pub-summary" v-if="selectedSuggestion">
+            <span class="pub-offering">{{ offeredPets.map(o => o.pet.name).join(', ') }}</span>
+            <span class="pub-arrow">→</span>
+            <span class="pub-wanting">{{ selectedSuggestion.name }} ({{ selectedSuggestion.form.toUpperCase() }})</span>
+          </div>
+        </div>
+
+        <div class="pub-body">
+          <div class="pub-platform" v-for="p in publishPlatforms" :key="p.id">
+            <div class="pub-plat-info">
+              <span class="pub-plat-logo">{{ p.logo }}</span>
+              <span class="pub-plat-name">{{ p.label }}</span>
+              <span class="pub-plat-status" :class="p.loggedIn ? 'status--on' : 'status--off'">
+                {{ p.loggedIn ? 'Connected' : 'Not connected' }}
+              </span>
+            </div>
+            <div class="pub-plat-right">
+              <button v-if="!p.loggedIn" class="btn-sm-link" @click="goToAccounts">Connect →</button>
+              <q-toggle v-else v-model="p.selected" color="primary" />
+            </div>
+          </div>
+
+          <div class="pub-result" v-if="publishResults.length">
+            <div class="pub-result-row" v-for="r in publishResults" :key="r.platform">
+              <span class="pub-result-icon">{{ r.ok ? '✅' : '❌' }}</span>
+              <span class="pub-result-text">{{ r.platform.toUpperCase() }}: {{ r.message }}</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="pub-footer">
+          <button class="btn-ghost" @click="showPublish = false">Close</button>
+          <button
+            class="btn-primary"
+            :disabled="publishing || !anyPlatformSelected"
+            @click="publishTrade"
+          >
+            <q-spinner v-if="publishing" size="14px" />
+            <template v-else>Publish</template>
+          </button>
+        </div>
+      </q-card>
+    </q-dialog>
 
     <!-- Inventory picker dialog -->
     <q-dialog v-model="showInventoryPicker" @hide="resetPicker">
@@ -269,10 +327,11 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch } from 'vue'
+import { ref, computed, watch, onMounted } from 'vue'
+import { useRouter } from 'vue-router'
 import {
   matUpload, matAdd, matMonetizationOn, matClose, matSwapHoriz,
-  matAutoAwesome, matAddCircleOutline, matSearch, matWarning,
+  matAutoAwesome, matAddCircleOutline, matSearch, matWarning, matPublish,
 } from '@quasar/extras/material-icons'
 import { useInventoryStore } from 'src/stores/inventory'
 import { useValuesStore, type DemandLevel } from 'src/stores/values'
@@ -284,6 +343,7 @@ import {
 
 const inventory = useInventoryStore()
 const values    = useValuesStore()
+const router    = useRouter()
 
 // ── State ─────────────────────────────────────────────────────────────────────
 interface OfferedItem {
@@ -518,6 +578,90 @@ async function search () {
     searching.value = false
   }
 }
+
+// ── Publish trade ─────────────────────────────────────────────────────────────
+
+const selectedSuggestion = ref<SuggestionWithDemand | null>(null)
+const showPublish = ref(false)
+const publishing  = ref(false)
+
+interface PublishResult { platform: string; ok: boolean; message: string }
+const publishResults = ref<PublishResult[]>([])
+
+interface PlatformPublish {
+  id: 'amvgg' | 'elvebredd'
+  label: string
+  logo: string
+  loggedIn: boolean
+  selected: boolean
+}
+
+const publishPlatforms = ref<PlatformPublish[]>([
+  { id: 'amvgg',     label: 'AMVGG',     logo: '🟣', loggedIn: false, selected: false },
+  { id: 'elvebredd', label: 'Elvebredd', logo: '🟢', loggedIn: false, selected: false },
+])
+
+const anyPlatformSelected = computed(() => publishPlatforms.value.some(p => p.loggedIn && p.selected))
+
+async function refreshAuthStatus () {
+  for (const p of publishPlatforms.value) {
+    try {
+      const { loggedIn } = await window.electronAPI.authStatus(p.id)
+      p.loggedIn = loggedIn
+    } catch { /* keep false */ }
+  }
+}
+
+function goToAccounts () {
+  showPublish.value = false
+  void router.push({ name: 'my-trades' })
+}
+
+const TRADES_KEY = 'published-trades'
+
+async function publishTrade () {
+  if (!selectedSuggestion.value || !offeredPets.value.length) return
+  publishing.value  = true
+  publishResults.value = []
+
+  const offering   = offeredPets.value.map(o => ({ name: o.pet.name, form: o.pet.form }))
+  const lookingFor = [{ name: selectedSuggestion.value.name, form: selectedSuggestion.value.form }]
+
+  const selected = publishPlatforms.value.filter(p => p.loggedIn && p.selected)
+
+  for (const p of selected) {
+    try {
+      if (p.id === 'amvgg') {
+        const result = await window.electronAPI.createAmvggTrade({ offering, lookingFor })
+        const tradeId = result.data.id
+        saveLocalTrade('amvgg', tradeId, offering, lookingFor)
+        publishResults.value.push({ platform: 'amvgg', ok: true, message: `Trade #${tradeId} created` })
+      } else {
+        const result = await window.electronAPI.createElveTrade({ ownerGive: offering, ownerGet: lookingFor })
+        const tradeId = String(result.id)
+        saveLocalTrade('elvebredd', tradeId, offering, lookingFor)
+        publishResults.value.push({ platform: 'elvebredd', ok: true, message: `Listing #${tradeId} created` })
+      }
+    } catch (err) {
+      publishResults.value.push({ platform: p.id, ok: false, message: String(err).replace('Error: ', '') })
+    }
+  }
+
+  publishing.value = false
+}
+
+function saveLocalTrade (
+  platform: 'amvgg' | 'elvebredd',
+  id: string,
+  offering: Array<{ name: string; form: string }>,
+  lookingFor: Array<{ name: string; form: string }>
+) {
+  const trades = JSON.parse(localStorage.getItem(TRADES_KEY) ?? '[]')
+  trades.unshift({ id, platform, offering, lookingFor, publishedAt: new Date().toISOString() })
+  localStorage.setItem(TRADES_KEY, JSON.stringify(trades.slice(0, 100)))
+}
+
+onMounted(refreshAuthStatus)
 
 // ── Delta helpers ─────────────────────────────────────────────────────────────
 function deltaCardClass (delta: number) {
@@ -945,6 +1089,116 @@ function deltaChipClass (delta: number) {
 .chip--green { background: rgba(52, 211, 153, 0.15); color: #34d399; }
 .chip--amber { background: rgba(240, 180, 41, 0.15);  color: #f0b429; }
 .chip--red   { background: rgba(248, 113, 113, 0.15); color: #f87171; }
+
+.sug-card--selected {
+  border-color: var(--primary) !important;
+  background: var(--primary-dim) !important;
+}
+.suggestion-card { cursor: pointer; }
+
+.publish-btn {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px;
+  border: none;
+  border-radius: 8px;
+  background: var(--primary);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: opacity 0.15s;
+}
+.publish-btn:hover { opacity: 0.85; }
+
+/* Publish dialog */
+.publish-card { width: 420px; max-width: 92vw; }
+
+.pub-header {
+  padding: 18px 20px 14px;
+  border-bottom: 1px solid var(--border);
+}
+
+.pub-summary {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 6px;
+  font-size: 12px;
+  color: var(--text-2);
+  flex-wrap: wrap;
+}
+.pub-offering, .pub-wanting { font-weight: 700; color: var(--text-1); }
+.pub-arrow { color: var(--text-3); }
+
+.pub-body {
+  padding: 16px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.pub-platform {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 14px;
+  background: var(--surface-2);
+  border-radius: 10px;
+  border: 1px solid var(--border);
+}
+
+.pub-plat-info {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.pub-plat-logo { font-size: 18px; }
+.pub-plat-name { font-size: 13px; font-weight: 700; color: var(--text-1); }
+.pub-plat-status { font-size: 10px; font-weight: 700; }
+.status--on  { color: var(--positive); }
+.status--off { color: var(--text-3); }
+
+.pub-plat-right { display: flex; align-items: center; gap: 8px; }
+
+.btn-sm-link {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--primary);
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+}
+
+.pub-result {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 10px 12px;
+  background: var(--surface-3);
+  border-radius: 8px;
+  border: 1px solid var(--border);
+}
+.pub-result-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-1);
+}
+.pub-result-icon { font-size: 14px; }
+
+.pub-footer {
+  padding: 12px 20px 16px;
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+  border-top: 1px solid var(--border);
+}
 
 /* Dialog */
 .picker-card { min-width: 400px; max-width: 520px; }

@@ -228,7 +228,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch } from 'vue'
+import { ref, computed, watch, nextTick } from 'vue'
 import { matAdd, matClose, matSearch, matCheck, matBalance } from '@quasar/extras/material-icons'
 import { uid } from 'quasar'
 import { FORM_LABELS, FORM_COLOR_HEX, type PetForm } from 'src/types'
@@ -447,7 +447,11 @@ function pickFirstResult() {
 function confirmAdd() {
   if (!selectedPetName.value.trim()) return
   addPetToSide(addingTo.value, selectedPetName.value, selectedForm.value)
-  showAdd.value = false
+  selectedPetName.value = ''
+  searchQuery.value     = ''
+  searchResults.value   = []
+  dropIndex.value       = 0
+  void nextTick(() => searchInputRef.value?.focus())
 }
 </script>
 
