@@ -57,7 +57,7 @@
 
         <div class="panel-total" v-if="yourSide.length">
           <span class="total-label">Total</span>
-          <span class="total-value">{{ yourTotal.toFixed(3) }}</span>
+          <span class="total-value">{{ yourTotal.toFixed(4) }}</span>
         </div>
       </div>
 
@@ -108,7 +108,7 @@
 
         <div class="panel-total" v-if="themSide.length">
           <span class="total-label">Total</span>
-          <span class="total-value">{{ themTotal.toFixed(3) }}</span>
+          <span class="total-value">{{ themTotal.toFixed(4) }}</span>
         </div>
       </div>
 
@@ -292,7 +292,7 @@ const diffClass = computed(() => {
 const diffLabel = computed(() => {
   const d = themTotal.value - yourTotal.value
   if (d === 0) return 'Even'
-  return d > 0 ? `+${d.toFixed(3)}` : d.toFixed(3)
+  return d > 0 ? `+${d.toFixed(4)}` : d.toFixed(4)
 })
 
 // ── Pet management ────────────────────────────────────────────────────────────
