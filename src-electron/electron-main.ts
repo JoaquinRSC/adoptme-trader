@@ -448,9 +448,14 @@ function registerIpcHandlers () {
     const list = await getPetNamesList()
     const q = query.toLowerCase().trim()
     if (!q) return []
-    return list
-      .filter(name => name.toLowerCase().includes(q))
-      .slice(0, 20)
+    const matches = list.filter(name => name.toLowerCase().includes(q))
+    matches.sort((a, b) => {
+      const al = a.toLowerCase(), bl = b.toLowerCase()
+      const aStarts = al.startsWith(q), bStarts = bl.startsWith(q)
+      if (aStarts !== bStarts) return aStarts ? -1 : 1
+      return al.localeCompare(bl)
+    })
+    return matches.slice(0, 50)
   })
 
   // Get pet image as base64 data URL (proxied through main to bypass CSP)

@@ -179,29 +179,22 @@
           <div class="empty-panel" v-if="!availableInventory.length">
             No pets available — add some in My Pets first.
           </div>
-          <div class="picker-list" v-else>
+          <div class="picker-grid" v-else>
             <button
-              class="picker-item"
+              class="picker-card-item"
               v-for="pet in availableInventory"
               :key="pet.id"
               @click="addOffered(pet); showInventoryPicker = false"
             >
-              <div class="offered-thumb">
-                <img
-                  :src="`https://amvgg.com/items/${encodeURIComponent(pet.name)}.webp`"
-                  class="offered-thumb-img"
-                  @error="(e) => (e.target as HTMLImageElement).style.display='none'"
-                />
-              </div>
-              <div class="offered-info">
-                <div class="offered-name">{{ pet.name }}</div>
-                <div class="offered-meta">
-                  <span class="form-pill" :style="{ color: FORM_COLOR_HEX[pet.form] }">
-                    {{ FORM_LABELS[pet.form] }}
-                  </span>
-                </div>
-              </div>
-              <q-icon :name="matAddCircleOutline" size="18px" style="color: var(--primary)" />
+              <img
+                :src="`https://amvgg.com/items/${encodeURIComponent(pet.name)}.webp`"
+                class="picker-card-img"
+                @error="(e) => (e.target as HTMLImageElement).style.display='none'"
+              />
+              <div class="picker-card-name">{{ pet.name }}</div>
+              <span class="picker-card-form" :style="{ color: FORM_COLOR_HEX[pet.form] }">
+                {{ FORM_LABELS[pet.form] }}
+              </span>
             </button>
           </div>
         </q-card-section>
@@ -897,7 +890,7 @@ function deltaChipClass (delta: number) {
 .chip--red   { background: rgba(248, 113, 113, 0.15); color: #f87171; }
 
 /* Dialog */
-.picker-card { min-width: 360px; max-width: 480px; }
+.picker-card { min-width: 400px; max-width: 520px; }
 .dialog-title { font-size: 16px; font-weight: 800; color: var(--text-1); margin-bottom: 10px; }
 
 .picker-tabs {
@@ -927,30 +920,48 @@ function deltaChipClass (delta: number) {
 .picker-tab:hover:not(.picker-tab--active) { color: var(--text-2); }
 
 
-.picker-list {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
+.picker-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 6px;
   max-height: 340px;
   overflow-y: auto;
 }
 
-.picker-item {
+.picker-card-item {
   display: flex;
+  flex-direction: column;
   align-items: center;
-  gap: 10px;
-  width: 100%;
-  padding: 8px 10px;
-  border: none;
-  border-radius: 9px;
-  background: transparent;
+  gap: 4px;
+  padding: 8px 6px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface-3);
   cursor: pointer;
-  text-align: left;
-  transition: background 0.12s;
+  transition: border-color 0.12s, background 0.12s;
 }
-.picker-item:hover { background: var(--surface-3); }
+.picker-card-item:hover { border-color: var(--primary); background: var(--primary-dim); }
 
-.offered-name { color: var(--text-1); }
+.picker-card-img {
+  width: 56px;
+  height: 56px;
+  object-fit: contain;
+}
+
+.picker-card-name {
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--text-1);
+  text-align: center;
+  line-height: 1.2;
+  word-break: break-word;
+}
+
+.picker-card-form {
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.3px;
+}
 
 /* Other tab */
 .other-section { padding-top: 12px; }
