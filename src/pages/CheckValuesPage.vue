@@ -45,7 +45,7 @@
                 <span v-if="entry.demand" class="slot-demand" :class="`demand--${demandClass(entry.demand)}`" :title="entry.demand">{{ demandStars(entry.demand) }}</span>
                 <span class="slot-val">
                   <q-spinner v-if="entry.loading" size="8px" />
-                  <template v-else>{{ entry.value ?? '—' }}</template>
+                  <template v-else>{{ entry.value != null ? (valueSource === 'elvebredd' ? entry.value.toFixed(2) : entry.value) : '—' }}</template>
                 </span>
               </div>
             </div>
@@ -57,7 +57,7 @@
 
         <div class="panel-total" v-if="yourSide.length">
           <span class="total-label">Total</span>
-          <span class="total-value">{{ yourTotal.toFixed(4) }}</span>
+          <span class="total-value">{{ valueSource === 'elvebredd' ? yourTotal.toFixed(2) : yourTotal.toFixed(4) }}</span>
         </div>
       </div>
 
@@ -96,7 +96,7 @@
                 <span v-if="entry.demand" class="slot-demand" :class="`demand--${demandClass(entry.demand)}`" :title="entry.demand">{{ demandStars(entry.demand) }}</span>
                 <span class="slot-val">
                   <q-spinner v-if="entry.loading" size="8px" />
-                  <template v-else>{{ entry.value ?? '—' }}</template>
+                  <template v-else>{{ entry.value != null ? (valueSource === 'elvebredd' ? entry.value.toFixed(2) : entry.value) : '—' }}</template>
                 </span>
               </div>
             </div>
@@ -108,7 +108,7 @@
 
         <div class="panel-total" v-if="themSide.length">
           <span class="total-label">Total</span>
-          <span class="total-value">{{ themTotal.toFixed(4) }}</span>
+          <span class="total-value">{{ valueSource === 'elvebredd' ? themTotal.toFixed(2) : themTotal.toFixed(4) }}</span>
         </div>
       </div>
 
@@ -292,7 +292,8 @@ const diffClass = computed(() => {
 const diffLabel = computed(() => {
   const d = themTotal.value - yourTotal.value
   if (d === 0) return 'Even'
-  return d > 0 ? `+${d.toFixed(4)}` : d.toFixed(4)
+  const dec = valueSource.value === 'elvebredd' ? 2 : 4
+  return d > 0 ? `+${d.toFixed(dec)}` : d.toFixed(dec)
 })
 
 // ── Pet management ────────────────────────────────────────────────────────────

@@ -43,7 +43,7 @@
                 <span v-if="item.demand" class="slot-demand" :class="`demand--${demandClass(item.demand)}`" :title="item.demand">{{ demandStars(item.demand) }}</span>
                 <span class="slot-val">
                   <q-spinner v-if="item.loading" size="8px" />
-                  <template v-else>{{ (valueSource === 'elvebredd' ? item.elveValue : item.amvggValue) ?? '' }}</template>
+                  <template v-else>{{ valueSource === 'elvebredd' ? (item.elveValue?.toFixed(2) ?? '') : (item.amvggValue ?? '') }}</template>
                 </span>
               </div>
             </div>
@@ -67,7 +67,7 @@
               <span class="footer-src">Elve</span>
               <span class="footer-value">
                 <q-spinner v-if="anyOfferedLoading" size="11px" />
-                <template v-else>{{ totalOfferedElve.toFixed(4) }}</template>
+                <template v-else>{{ totalOfferedElve.toFixed(2) }}</template>
               </span>
             </div>
           </div>
@@ -160,7 +160,7 @@
                 </div>
                 <div class="sug-values">
                   <span class="sug-val-item"><span class="sug-src-lbl">AMV</span><span class="sug-val">{{ s.amvggValue ?? '—' }}</span></span>
-                  <span class="sug-val-item"><span class="sug-src-lbl">Elve</span><span class="sug-val">{{ s.elveValue ?? '—' }}</span></span>
+                  <span class="sug-val-item"><span class="sug-src-lbl">Elve</span><span class="sug-val">{{ s.elveValue != null ? s.elveValue.toFixed(2) : '—' }}</span></span>
                 </div>
               </div>
               <div class="delta-chip" :class="deltaChipClass(s.delta)">
