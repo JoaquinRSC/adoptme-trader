@@ -32,26 +32,28 @@
           <span class="panel-count" v-if="yourSide.length">{{ yourSide.length }}</span>
         </div>
 
-        <div class="pet-slots-grid">
-          <div class="pet-slot" v-for="entry in yourSide" :key="entry.id">
-            <img
-              :src="`https://amvgg.com/items/${encodeURIComponent(entry.name)}.webp`"
-              class="slot-img"
-              @error="(e) => (e.target as HTMLImageElement).style.display = 'none'"
-            />
-            <div class="slot-meta">
-              <span class="slot-form" :style="{ color: FORM_COLOR_HEX[entry.form] }">{{ FORM_LABELS[entry.form] }}</span>
-              <span v-if="entry.demand" class="slot-demand" :class="`demand--${demandClass(entry.demand)}`" :title="entry.demand">{{ demandStars(entry.demand) }}</span>
-              <span class="slot-val">
-                <q-spinner v-if="entry.loading" size="8px" />
-                <template v-else>{{ entry.value ?? '—' }}</template>
-              </span>
+        <div class="panel-body">
+          <div class="pet-slots-grid">
+            <div class="pet-slot" v-for="entry in yourSide" :key="entry.id">
+              <img
+                :src="`https://amvgg.com/items/${encodeURIComponent(entry.name)}.webp`"
+                class="slot-img"
+                @error="(e) => (e.target as HTMLImageElement).style.display = 'none'"
+              />
+              <div class="slot-meta">
+                <span class="slot-form" :style="{ color: FORM_COLOR_HEX[entry.form] }">{{ FORM_LABELS[entry.form] }}</span>
+                <span v-if="entry.demand" class="slot-demand" :class="`demand--${demandClass(entry.demand)}`" :title="entry.demand">{{ demandStars(entry.demand) }}</span>
+                <span class="slot-val">
+                  <q-spinner v-if="entry.loading" size="8px" />
+                  <template v-else>{{ entry.value ?? '—' }}</template>
+                </span>
+              </div>
+              <button class="slot-remove" @click="removePet('your', entry.id)">×</button>
             </div>
-            <button class="slot-remove" @click="removePet('your', entry.id)">×</button>
+            <button class="pet-slot pet-slot--add" @click="openAddDialog('your')">
+              <div class="slot-plus-circle">+</div>
+            </button>
           </div>
-          <button class="pet-slot pet-slot--add" @click="openAddDialog('your')">
-            <div class="slot-plus-circle">+</div>
-          </button>
         </div>
 
         <div class="panel-total" v-if="yourSide.length">
@@ -82,26 +84,28 @@
           <span class="panel-count" v-if="themSide.length">{{ themSide.length }}</span>
         </div>
 
-        <div class="pet-slots-grid">
-          <div class="pet-slot" v-for="entry in themSide" :key="entry.id">
-            <img
-              :src="`https://amvgg.com/items/${encodeURIComponent(entry.name)}.webp`"
-              class="slot-img"
-              @error="(e) => (e.target as HTMLImageElement).style.display = 'none'"
-            />
-            <div class="slot-meta">
-              <span class="slot-form" :style="{ color: FORM_COLOR_HEX[entry.form] }">{{ FORM_LABELS[entry.form] }}</span>
-              <span v-if="entry.demand" class="slot-demand" :class="`demand--${demandClass(entry.demand)}`" :title="entry.demand">{{ demandStars(entry.demand) }}</span>
-              <span class="slot-val">
-                <q-spinner v-if="entry.loading" size="8px" />
-                <template v-else>{{ entry.value ?? '—' }}</template>
-              </span>
+        <div class="panel-body">
+          <div class="pet-slots-grid">
+            <div class="pet-slot" v-for="entry in themSide" :key="entry.id">
+              <img
+                :src="`https://amvgg.com/items/${encodeURIComponent(entry.name)}.webp`"
+                class="slot-img"
+                @error="(e) => (e.target as HTMLImageElement).style.display = 'none'"
+              />
+              <div class="slot-meta">
+                <span class="slot-form" :style="{ color: FORM_COLOR_HEX[entry.form] }">{{ FORM_LABELS[entry.form] }}</span>
+                <span v-if="entry.demand" class="slot-demand" :class="`demand--${demandClass(entry.demand)}`" :title="entry.demand">{{ demandStars(entry.demand) }}</span>
+                <span class="slot-val">
+                  <q-spinner v-if="entry.loading" size="8px" />
+                  <template v-else>{{ entry.value ?? '—' }}</template>
+                </span>
+              </div>
+              <button class="slot-remove" @click="removePet('them', entry.id)">×</button>
             </div>
-            <button class="slot-remove" @click="removePet('them', entry.id)">×</button>
+            <button class="pet-slot pet-slot--add" @click="openAddDialog('them')">
+              <div class="slot-plus-circle">+</div>
+            </button>
           </div>
-          <button class="pet-slot pet-slot--add" @click="openAddDialog('them')">
-            <div class="slot-plus-circle">+</div>
-          </button>
         </div>
 
         <div class="panel-total" v-if="themSide.length">
@@ -450,9 +454,8 @@ function confirmAdd() {
 <style scoped>
 /* ── Page ── */
 .cv-page {
-  padding: 28px 32px;
-  max-width: 1100px;
-  margin: 0 auto;
+  padding: 28px;
+  min-height: 100vh;
 }
 
 .page-head {
@@ -520,6 +523,8 @@ function confirmAdd() {
   border: 1px solid var(--border);
   border-radius: 16px;
   overflow: hidden;
+  display: flex;
+  flex-direction: column;
 }
 
 .panel-header {
@@ -544,6 +549,12 @@ function confirmAdd() {
   color: var(--primary);
   border-radius: 20px;
   padding: 1px 8px;
+}
+
+.panel-body {
+  padding: 12px;
+  flex: 1;
+  min-height: 200px;
 }
 
 /* ── Pet slots grid ── */

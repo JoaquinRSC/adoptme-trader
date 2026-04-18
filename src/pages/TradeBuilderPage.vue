@@ -2,8 +2,22 @@
   <q-page class="trade-page">
 
     <div class="page-head">
-      <div class="page-title">Trade Builder</div>
-      <div class="page-sub">AMVGG values + demand cross-check</div>
+      <div>
+        <div class="page-title">Trade Builder</div>
+        <div class="page-sub">AMVGG values + demand cross-check</div>
+      </div>
+      <div class="source-toggle">
+        <button
+          class="source-btn"
+          :class="{ 'source-btn--active': valueSource === 'amvgg' }"
+          @click="valueSource = 'amvgg'"
+        >AMV</button>
+        <button
+          class="source-btn"
+          :class="{ 'source-btn--active': valueSource === 'elvebredd' }"
+          @click="valueSource = 'elvebredd'"
+        >Elve</button>
+      </div>
     </div>
 
     <div class="trade-layout">
@@ -141,13 +155,27 @@
     </div>
 
     <!-- Inventory picker dialog -->
-    <q-dialog v-model="showInventoryPicker">
+    <q-dialog v-model="showInventoryPicker" @hide="resetPicker">
       <q-card class="picker-card">
         <q-card-section class="q-pb-sm">
-          <div class="dialog-title">Select from inventory</div>
+          <div class="dialog-title">Add pet to offer</div>
+          <div class="picker-tabs">
+            <button
+              class="picker-tab"
+              :class="{ 'picker-tab--active': pickerTab === 'mine' }"
+              @click="pickerTab = 'mine'"
+            >My Pets</button>
+            <button
+              class="picker-tab"
+              :class="{ 'picker-tab--active': pickerTab === 'other' }"
+              @click="pickerTab = 'other'"
+            >Other</button>
+          </div>
         </q-card-section>
         <q-separator style="border-color: var(--border)" />
-        <q-card-section>
+
+        <!-- My Pets tab -->
+        <q-card-section v-if="pickerTab === 'mine'">
           <div class="empty-panel" v-if="!availableInventory.length">
             No pets available — add some in My Pets first.
           </div>
@@ -177,6 +205,56 @@
             </button>
           </div>
         </q-card-section>
+
+        <!-- Other tab -->
+        <q-card-section v-else>
+          <div class="other-controls">
+            <q-input
+              v-model="petSearch"
+              dense outlined
+              placeholder="Search pet…"
+              :debounce="250"
+              clearable
+              style="flex: 1"
+            />
+            <q-select
+              v-model="otherForm"
+              :options="formOptions"
+              outlined dense emit-value map-options
+              style="width: 110px"
+            />
+          </div>
+          <div class="picker-list" style="margin-top: 8px">
+            <div class="empty-panel" v-if="!petSearch.trim()">Type a name to search</div>
+            <div class="empty-panel" v-else-if="searchLoading"><q-spinner size="18px" /></div>
+            <div class="empty-panel" v-else-if="!searchResults.length">No pets found</div>
+            <button
+              v-else
+              class="picker-item"
+              v-for="name in searchResults"
+              :key="name"
+              @click="addOtherPet(name)"
+            >
+              <div class="offered-thumb">
+                <img
+                  :src="`https://amvgg.com/items/${encodeURIComponent(name)}.webp`"
+                  class="offered-thumb-img"
+                  @error="(e) => (e.target as HTMLImageElement).style.display='none'"
+                />
+              </div>
+              <div class="offered-info">
+                <div class="offered-name">{{ name }}</div>
+                <div class="offered-meta">
+                  <span class="form-pill" :style="{ color: FORM_COLOR_HEX[otherForm] }">
+                    {{ FORM_LABELS[otherForm] }}
+                  </span>
+                </div>
+              </div>
+              <q-icon :name="matAddCircleOutline" size="18px" style="color: var(--primary)" />
+            </button>
+          </div>
+        </q-card-section>
+
         <q-card-actions align="right">
           <button class="btn-ghost" @click="showInventoryPicker = false">Close</button>
         </q-card-actions>
@@ -187,7 +265,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, watch } from 'vue'
 import {
   matUpload, matAdd, matMonetizationOn, matClose, matSwapHoriz,
   matAutoAwesome, matAddCircleOutline, matSearch, matWarning,
@@ -221,6 +299,41 @@ const showInventoryPicker = ref(false)
 const searching           = ref(false)
 const searchDone          = ref(false)
 const loadingValues       = ref(false)
+const valueSource         = ref<'amvgg' | 'elvebredd'>('amvgg')
+
+// Picker state
+const pickerTab     = ref<'mine' | 'other'>('mine')
+const petSearch     = ref('')
+const searchResults = ref<string[]>([])
+const searchLoading = ref(false)
+const otherForm     = ref<PetForm>('fr')
+
+watch(petSearch, async (q) => {
+  if (!q.trim()) { searchResults.value = []; return }
+  searchLoading.value = true
+  try {
+    searchResults.value = await window.electronAPI.searchPets(q)
+  } finally {
+    searchLoading.value = false
+  }
+})
+
+function resetPicker () {
+  pickerTab.value     = 'mine'
+  petSearch.value     = ''
+  searchResults.value = []
+  otherForm.value     = 'fr'
+}
+
+function addOtherPet (name: string) {
+  const synthetic: InventoryPet = {
+    id:   `${name}-${otherForm.value}-${Date.now()}`,
+    name,
+    form: otherForm.value,
+  }
+  addOffered(synthetic)
+  showInventoryPicker.value = false
+}
 
 const formOptions = Object.entries(FORM_LABELS).map(([value, label]) => ({ value, label }))
 
@@ -293,15 +406,23 @@ async function addOffered (pet: InventoryPet) {
   offeredPets.value.push(item)
 
   try {
-    const details = await window.electronAPI.getPetDetails(pet.name)
+    const [detailsResult, elveResult] = await Promise.allSettled([
+      window.electronAPI.getPetDetails(pet.name),
+      valueSource.value === 'elvebredd' ? values.getElveValue(pet.name, pet.form) : Promise.resolve(null),
+    ])
     const found = offeredPets.value.find(o => o.pet.id === pet.id)
-    if (found) {
-      found.value  = details.values[pet.form] ?? null
-      found.demand = getFormDemand(details, pet.form)
+    if (!found) return
+
+    if (detailsResult.status === 'fulfilled') {
+      found.demand = getFormDemand(detailsResult.value, pet.form)
+      if (valueSource.value === 'amvgg') found.value = detailsResult.value.values[pet.form] ?? null
+    } else if (valueSource.value === 'amvgg') {
+      found.value = await values.getValue(pet.name, pet.form)
     }
-  } catch {
-    const found = offeredPets.value.find(o => o.pet.id === pet.id)
-    if (found) found.value = null
+
+    if (valueSource.value === 'elvebredd' && elveResult.status === 'fulfilled') {
+      found.value = elveResult.value
+    }
   } finally {
     const found = offeredPets.value.find(o => o.pet.id === pet.id)
     if (found) found.loading = false
@@ -316,7 +437,7 @@ function removeOffered (id: string) {
 }
 
 // ── Search ────────────────────────────────────────────────────────────────────
-const TOLERANCE = 0.20
+const TOLERANCE = 0.02
 
 async function search () {
   if (!offeredPets.value.length || totalOfferedValue.value === 0) return
@@ -334,7 +455,9 @@ async function search () {
     )
 
     const batchRequests = candidates.map(p => ({ name: p.name, form }))
-    const batchResult   = await values.getBatch(batchRequests)
+    const batchResult   = valueSource.value === 'elvebredd'
+      ? await values.getElveBatch(batchRequests)
+      : await values.getBatch(batchRequests)
 
     const results: SuggestionWithDemand[] = []
     for (const req of batchRequests) {
@@ -383,9 +506,34 @@ function deltaChipClass (delta: number) {
   min-height: 100vh;
 }
 
-.page-head    { margin-bottom: 24px; }
+.page-head    { margin-bottom: 24px; display: flex; align-items: center; justify-content: space-between; }
 .page-title   { font-size: 26px; font-weight: 800; color: var(--text-1); letter-spacing: -0.5px; }
 .page-sub     { font-size: 13px; font-weight: 600; color: var(--text-3); margin-top: 3px; }
+
+.source-toggle {
+  display: flex;
+  gap: 4px;
+  background: var(--surface-2);
+  border-radius: 8px;
+  padding: 3px;
+}
+
+.source-btn {
+  padding: 6px 16px;
+  border: none;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  background: transparent;
+  color: var(--text-2);
+  transition: background 0.15s, color 0.15s;
+}
+
+.source-btn--active {
+  background: var(--primary);
+  color: #fff;
+}
 
 .trade-layout {
   display: grid;
@@ -747,11 +895,43 @@ function deltaChipClass (delta: number) {
 
 /* Dialog */
 .picker-card { min-width: 360px; max-width: 480px; }
-.dialog-title { font-size: 16px; font-weight: 800; color: var(--text-1); }
+.dialog-title { font-size: 16px; font-weight: 800; color: var(--text-1); margin-bottom: 10px; }
+
+.picker-tabs {
+  display: flex;
+  gap: 4px;
+  background: var(--surface-3);
+  border-radius: 8px;
+  padding: 3px;
+}
+
+.picker-tab {
+  flex: 1;
+  padding: 5px 10px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text-3);
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+.picker-tab--active {
+  background: var(--surface-1);
+  color: var(--text-1);
+}
+.picker-tab:hover:not(.picker-tab--active) { color: var(--text-2); }
+
+.other-controls {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
 
 .picker-list {
-  display: flex;
-  flex-direction: column;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
   gap: 4px;
   max-height: 340px;
   overflow-y: auto;
@@ -760,8 +940,7 @@ function deltaChipClass (delta: number) {
 .picker-item {
   display: flex;
   align-items: center;
-  gap: 10px;
-  width: 100%;
+  gap: 8px;
   padding: 8px 10px;
   border: none;
   border-radius: 9px;
@@ -771,6 +950,8 @@ function deltaChipClass (delta: number) {
   transition: background 0.12s;
 }
 .picker-item:hover { background: var(--surface-3); }
+
+.offered-name { color: var(--text-1); }
 
 .btn-ghost {
   display: inline-flex;
