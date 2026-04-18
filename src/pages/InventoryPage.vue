@@ -409,13 +409,12 @@ function fetchActive (pet: InventoryPet) {
   else void fetchValue(pet)
 }
 
-async function setSource (src: 'amvgg' | 'elvebredd') {
+function setSource (src: 'amvgg' | 'elvebredd') {
   valueSource.value = src
   if (src === 'elvebredd') {
-    const missing = inventory.pets.filter(p => !(p.id in petElveValue))
-    const queue = [...missing]
-    const worker = async () => { while (queue.length) await fetchElveValue(queue.shift()!) }
-    void Promise.all([worker(), worker(), worker()])
+    for (const pet of inventory.pets) {
+      if (petElveValue[pet.id] === undefined) void fetchElveValue(pet)
+    }
   }
 }
 

@@ -207,51 +207,47 @@
         </q-card-section>
 
         <!-- Other tab -->
-        <q-card-section v-else>
-          <div class="other-controls">
-            <q-input
-              v-model="petSearch"
-              dense outlined
-              placeholder="Search pet…"
-              :debounce="250"
-              clearable
-              style="flex: 1"
-            />
-            <q-select
-              v-model="otherForm"
-              :options="formOptions"
-              outlined dense emit-value map-options
-              style="width: 110px"
-            />
+        <q-card-section v-else class="other-section">
+          <div class="form-section-label">Form</div>
+          <div class="form-grid">
+            <button class="form-chip" :class="{'form-chip--active': otherFly}" :style="otherFly ? {background: otherFlyGrad} : {}" @click="otherFly = !otherFly">F</button>
+            <button class="form-chip" :class="{'form-chip--active': otherRide}" :style="otherRide ? {background: otherRideGrad} : {}" @click="otherRide = !otherRide">R</button>
+            <button class="form-chip" :class="{'form-chip--active': otherIsNormal}" :style="otherIsNormal ? {background: otherNormGrad} : {}" @click="otherResetForm()">D</button>
+            <button class="form-chip" :class="{'form-chip--active': otherNm === 'n'}" :style="otherNm === 'n' ? {background: otherNGrad} : {}" @click="otherNm = otherNm === 'n' ? 'none' : 'n'">N</button>
+            <button class="form-chip" :class="{'form-chip--active': otherNm === 'm'}" :style="otherNm === 'm' ? {background: otherMGrad} : {}" @click="otherNm = otherNm === 'm' ? 'none' : 'm'">M</button>
           </div>
-          <div class="picker-list" style="margin-top: 8px">
-            <div class="empty-panel" v-if="!petSearch.trim()">Type a name to search</div>
-            <div class="empty-panel" v-else-if="searchLoading"><q-spinner size="18px" /></div>
-            <div class="empty-panel" v-else-if="!searchResults.length">No pets found</div>
-            <button
+          <q-input
+            v-model="petSearch"
+            dense outlined
+            placeholder="Search pet…"
+            :debounce="250"
+            clearable
+            style="margin-top: 10px"
+          >
+            <template #prepend><q-icon :name="matSearch" size="16px" style="color:var(--text-3)" /></template>
+          </q-input>
+          <div class="results-panel">
+            <div class="results-state" v-if="!petSearch.trim()">Start typing to find a pet</div>
+            <div class="results-state" v-else-if="searchLoading"><q-spinner size="14px" color="primary" /><span>Searching…</span></div>
+            <div class="results-state" v-else-if="!searchResults.length">No results for "{{ petSearch }}"</div>
+            <div
               v-else
-              class="picker-item"
+              class="result-item"
               v-for="name in searchResults"
               :key="name"
-              @click="addOtherPet(name)"
+              @mousedown.prevent="addOtherPet(name)"
             >
-              <div class="offered-thumb">
+              <div class="result-img-wrap">
                 <img
                   :src="`https://amvgg.com/items/${encodeURIComponent(name)}.webp`"
-                  class="offered-thumb-img"
+                  class="result-img"
                   @error="(e) => (e.target as HTMLImageElement).style.display='none'"
                 />
+                <div class="result-img-placeholder">🐾</div>
               </div>
-              <div class="offered-info">
-                <div class="offered-name">{{ name }}</div>
-                <div class="offered-meta">
-                  <span class="form-pill" :style="{ color: FORM_COLOR_HEX[otherForm] }">
-                    {{ FORM_LABELS[otherForm] }}
-                  </span>
-                </div>
-              </div>
-              <q-icon :name="matAddCircleOutline" size="18px" style="color: var(--primary)" />
-            </button>
+              <span class="result-name">{{ name }}</span>
+              <span class="form-pill" :style="{ color: FORM_COLOR_HEX[otherPickerForm], marginLeft: 'auto' }">{{ FORM_LABELS[otherPickerForm] }}</span>
+            </div>
           </div>
         </q-card-section>
 
@@ -272,6 +268,7 @@ import {
 } from '@quasar/extras/material-icons'
 import { useInventoryStore } from 'src/stores/inventory'
 import { useValuesStore, type DemandLevel } from 'src/stores/values'
+import { useFormPicker } from 'src/composables/useFormPicker'
 import {
   FORM_LABELS, FORM_COLOR_HEX,
   type PetForm, type InventoryPet, type PetSuggestion,
@@ -306,7 +303,13 @@ const pickerTab     = ref<'mine' | 'other'>('mine')
 const petSearch     = ref('')
 const searchResults = ref<string[]>([])
 const searchLoading = ref(false)
-const otherForm     = ref<PetForm>('fr')
+
+const {
+  flyPick: otherFly, ridePick: otherRide, nmPick: otherNm,
+  form: otherPickerForm, reset: otherResetForm, isNormal: otherIsNormal,
+  flyGrad: otherFlyGrad, rideGrad: otherRideGrad, normGrad: otherNormGrad,
+  nGrad: otherNGrad, mGrad: otherMGrad,
+} = useFormPicker()
 
 watch(petSearch, async (q) => {
   if (!q.trim()) { searchResults.value = []; return }
@@ -322,14 +325,14 @@ function resetPicker () {
   pickerTab.value     = 'mine'
   petSearch.value     = ''
   searchResults.value = []
-  otherForm.value     = 'fr'
+  otherResetForm()
 }
 
 function addOtherPet (name: string) {
   const synthetic: InventoryPet = {
-    id:   `${name}-${otherForm.value}-${Date.now()}`,
+    id:   `${name}-${otherPickerForm.value}-${Date.now()}`,
     name,
-    form: otherForm.value,
+    form: otherPickerForm.value,
   }
   addOffered(synthetic)
   showInventoryPicker.value = false
@@ -923,15 +926,10 @@ function deltaChipClass (delta: number) {
 }
 .picker-tab:hover:not(.picker-tab--active) { color: var(--text-2); }
 
-.other-controls {
-  display: flex;
-  gap: 8px;
-  align-items: center;
-}
 
 .picker-list {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
+  display: flex;
+  flex-direction: column;
   gap: 4px;
   max-height: 340px;
   overflow-y: auto;
@@ -940,7 +938,8 @@ function deltaChipClass (delta: number) {
 .picker-item {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
+  width: 100%;
   padding: 8px 10px;
   border: none;
   border-radius: 9px;
@@ -952,6 +951,83 @@ function deltaChipClass (delta: number) {
 .picker-item:hover { background: var(--surface-3); }
 
 .offered-name { color: var(--text-1); }
+
+/* Other tab */
+.other-section { padding-top: 12px; }
+
+.form-section-label {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text-3);
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  margin-bottom: 6px;
+}
+
+.form-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.form-chip {
+  padding: 7px 14px;
+  font-size: 12px;
+  font-weight: 700;
+  border-radius: 99px;
+  border: 1.5px solid rgba(255,255,255,0.12);
+  background: rgba(255,255,255,0.06);
+  color: rgba(255,255,255,0.45);
+  cursor: pointer;
+  transition: all 0.15s;
+  line-height: 1;
+}
+.form-chip:hover { border-color: rgba(255,255,255,0.3); color: rgba(255,255,255,0.85); }
+.form-chip--active { box-shadow: 0 3px 12px rgba(0,0,0,0.45); color: #fff; border-color: transparent; }
+
+.results-panel {
+  margin-top: 10px;
+  max-height: 240px;
+  overflow-y: auto;
+}
+
+.results-state {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 8px;
+  font-size: 12px;
+  color: var(--text-3);
+}
+
+.result-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 8px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background 0.1s;
+}
+.result-item:hover { background: var(--surface-2); }
+
+.result-img-wrap {
+  position: relative;
+  width: 28px;
+  height: 28px;
+  flex-shrink: 0;
+}
+.result-img { width: 100%; height: 100%; object-fit: contain; }
+.result-img-placeholder {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  z-index: -1;
+}
+.result-name { font-size: 13px; font-weight: 600; color: var(--text-1); }
 
 .btn-ghost {
   display: inline-flex;
