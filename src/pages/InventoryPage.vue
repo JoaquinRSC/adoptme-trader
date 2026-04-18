@@ -17,6 +17,19 @@
             <template v-else>{{ totalValue.toFixed(3) }}</template>
           </span>
         </div>
+        <button
+          v-if="inventory.pets.length"
+          class="sort-btn"
+          :class="{ 'sort-btn--active': sortOrder !== 'default' }"
+          :title="sortOrder === 'default' ? 'Sort by value' : sortOrder === 'desc' ? 'Sorted: high → low' : 'Sorted: low → high'"
+          @click="cycleSortOrder"
+        >
+          <q-icon
+            :name="sortOrder === 'desc' ? matArrowDownward : sortOrder === 'asc' ? matArrowUpward : matSwapVert"
+            size="15px"
+          />
+          <span>{{ sortOrder === 'desc' ? 'High → Low' : sortOrder === 'asc' ? 'Low → High' : 'Sort' }}</span>
+        </button>
         <div class="source-toggle">
           <button class="source-btn" :class="{ 'source-btn--active': valueSource === 'amvgg' }" @click="setSource('amvgg')">AMV</button>
           <button class="source-btn" :class="{ 'source-btn--active': valueSource === 'elvebredd' }" @click="setSource('elvebredd')">Elve</button>
@@ -38,7 +51,7 @@
 
     <!-- Pet grid -->
     <div class="pet-grid" v-else>
-      <div class="pet-card" v-for="pet in inventory.pets" :key="pet.id">
+      <div class="pet-card" v-for="pet in sortedPets" :key="pet.id">
 
         <!-- Thumbnail -->
         <div class="pet-thumb">
@@ -212,7 +225,7 @@
 import { ref, reactive, computed, watch, onMounted } from 'vue'
 import { useFormPicker } from 'src/composables/useFormPicker'
 import { useQuasar } from 'quasar'
-import { matAdd, matDeleteOutline, matSearch, matCheck } from '@quasar/extras/material-icons'
+import { matAdd, matDeleteOutline, matSearch, matCheck, matArrowDownward, matArrowUpward, matSwapVert } from '@quasar/extras/material-icons'
 import { useInventoryStore } from 'src/stores/inventory'
 import { useValuesStore, type DemandLevel } from 'src/stores/values'
 import { ADOPT_ME_PETS } from 'src/data/pets'
@@ -400,6 +413,22 @@ const totalValue = computed(() => {
 
 const anyLoading = computed(() => inventory.pets.some(p => loadingValue[p.id]))
 
+const sortOrder = ref<'default' | 'desc' | 'asc'>('default')
+
+const sortedPets = computed(() => {
+  if (sortOrder.value === 'default') return inventory.pets
+  const source = valueSource.value === 'elvebredd' ? petElveValue : petValue
+  return [...inventory.pets].sort((a, b) => {
+    const av = source[a.id] ?? -Infinity
+    const bv = source[b.id] ?? -Infinity
+    return sortOrder.value === 'desc' ? bv - av : av - bv
+  })
+})
+
+function cycleSortOrder () {
+  sortOrder.value = sortOrder.value === 'default' ? 'desc' : sortOrder.value === 'desc' ? 'asc' : 'default'
+}
+
 function activeValue (pet: InventoryPet): number | null | undefined {
   return valueSource.value === 'elvebredd' ? petElveValue[pet.id] : petValue[pet.id]
 }
@@ -510,6 +539,23 @@ function confirmRemove (id: string, name: string) {
 }
 .total-lbl { font-size: 10px; font-weight: 700; color: var(--text-3); text-transform: uppercase; letter-spacing: 0.8px; }
 .total-val { font-size: 18px; font-weight: 800; color: var(--gold); }
+
+.sort-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 6px 12px;
+  border: 1px solid var(--border-hi);
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text-2);
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+.sort-btn:hover { background: var(--surface-3); color: var(--text-1); }
+.sort-btn--active { border-color: var(--primary); color: var(--primary); }
 
 .source-toggle {
   display: flex;
