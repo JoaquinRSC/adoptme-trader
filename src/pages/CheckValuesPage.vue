@@ -41,6 +41,7 @@
             />
             <div class="slot-meta">
               <span class="slot-form" :style="{ color: FORM_COLOR_HEX[entry.form] }">{{ FORM_LABELS[entry.form] }}</span>
+              <span v-if="entry.demand" class="slot-demand" :class="`demand--${demandClass(entry.demand)}`" :title="entry.demand">★</span>
               <span class="slot-val">
                 <q-spinner v-if="entry.loading" size="8px" />
                 <template v-else>{{ entry.value ?? '—' }}</template>
@@ -90,6 +91,7 @@
             />
             <div class="slot-meta">
               <span class="slot-form" :style="{ color: FORM_COLOR_HEX[entry.form] }">{{ FORM_LABELS[entry.form] }}</span>
+              <span v-if="entry.demand" class="slot-demand" :class="`demand--${demandClass(entry.demand)}`" :title="entry.demand">★</span>
               <span class="slot-val">
                 <q-spinner v-if="entry.loading" size="8px" />
                 <template v-else>{{ entry.value ?? '—' }}</template>
@@ -226,7 +228,7 @@ import { ref, computed, watch } from 'vue'
 import { matAdd, matClose, matSearch, matCheck, matBalance } from '@quasar/extras/material-icons'
 import { uid } from 'quasar'
 import { FORM_LABELS, FORM_COLOR_HEX, type PetForm } from 'src/types'
-import { useValuesStore } from 'src/stores/values'
+import { useValuesStore, type DemandLevel } from 'src/stores/values'
 import { ADOPT_ME_PETS } from 'src/data/pets'
 import { useFormPicker } from 'src/composables/useFormPicker'
 
@@ -239,7 +241,14 @@ interface SideEntry {
   name: string
   form: PetForm
   value: number | null
+  demand: DemandLevel
   loading: boolean
+}
+
+function demandClass(d: DemandLevel) {
+  if (d === 'High') return 'high'
+  if (d === 'Medium') return 'medium'
+  return 'low'
 }
 
 // ── State ────────────────────────────────────────────────────────────────────
@@ -287,18 +296,31 @@ function getSide(side: 'your' | 'them') {
 
 async function addPetToSide(side: 'your' | 'them', name: string, form: PetForm) {
   const list = getSide(side)
-  const entry: SideEntry = { id: uid(), name, form, value: null, loading: true }
+  const entry: SideEntry = { id: uid(), name, form, value: null, demand: null, loading: true }
   list.value.push(entry)
 
-  const value = valueSource.value === 'elvebredd'
-    ? await valuesStore.getElveValue(name, form)
-    : await valuesStore.getValue(name, form)
+  const [detailsResult, elveResult] = await Promise.allSettled([
+    window.electronAPI.getPetDetails(name),
+    valueSource.value === 'elvebredd' ? valuesStore.getElveValue(name, form) : Promise.resolve(null),
+  ])
 
   const found = list.value.find(e => e.id === entry.id)
-  if (found) {
-    found.value = value
-    found.loading = false
+  if (!found) return
+
+  if (detailsResult.status === 'fulfilled') {
+    found.demand = detailsResult.value.demands[form] ?? null
+    if (valueSource.value === 'amvgg') {
+      found.value = detailsResult.value.values[form] ?? null
+    }
+  } else if (valueSource.value === 'amvgg') {
+    found.value = await valuesStore.getValue(name, form)
   }
+
+  if (valueSource.value === 'elvebredd' && elveResult.status === 'fulfilled') {
+    found.value = elveResult.value
+  }
+
+  found.loading = false
 }
 
 // When source changes, re-fetch values for all pets already on both sides
@@ -565,6 +587,14 @@ function confirmAdd() {
   font-size: 8px;
   font-weight: 800;
 }
+
+.slot-demand {
+  font-size: 8px;
+  line-height: 1;
+}
+.demand--high   { color: #34d399; }
+.demand--medium { color: #f0b429; }
+.demand--low    { color: #f87171; }
 
 .slot-val {
   font-size: 8px;

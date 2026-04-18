@@ -32,7 +32,20 @@
           </router-link>
         </nav>
 
-        <div class="sidebar-footer">v{{ version }}</div>
+        <div class="sidebar-footer">
+          <div class="theme-picker">
+            <button
+              v-for="t in themes"
+              :key="t.id"
+              class="theme-swatch"
+              :class="{ 'theme-swatch--active': currentTheme === t.id }"
+              :style="{ background: t.accent }"
+              :title="t.label"
+              @click="applyTheme(t.id)"
+            />
+          </div>
+          <div class="footer-version">v{{ version }}</div>
+        </div>
       </div>
     </q-drawer>
 
@@ -47,9 +60,11 @@ import { ref, onMounted } from 'vue'
 import { useQuasar } from 'quasar'
 import { matInventory2, matSwapHoriz, matBalance } from '@quasar/extras/material-icons'
 import { version } from '../../package.json'
+import { useTheme } from 'src/composables/useTheme'
 
 const drawer = ref(true)
 const $q = useQuasar()
+const { current: currentTheme, themes, apply: applyTheme } = useTheme()
 
 onMounted(() => {
   window.electronAPI.onUpdateDownloaded(() => {
@@ -178,6 +193,31 @@ const navItems = [
 .sidebar-footer {
   padding: 14px 20px;
   border-top: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.theme-picker {
+  display: flex;
+  gap: 7px;
+  align-items: center;
+}
+
+.theme-swatch {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  border: 2px solid transparent;
+  cursor: pointer;
+  padding: 0;
+  transition: transform 0.15s, border-color 0.15s;
+  flex-shrink: 0;
+}
+.theme-swatch:hover { transform: scale(1.2); }
+.theme-swatch--active { border-color: var(--text-1); }
+
+.footer-version {
   font-size: 11px;
   color: var(--text-3);
   font-weight: 600;
