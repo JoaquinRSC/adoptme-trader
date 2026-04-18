@@ -26,6 +26,7 @@
               />
               <div class="slot-meta">
                 <span class="slot-form" :style="{ color: FORM_COLOR_HEX[item.pet.form] }">{{ FORM_LABELS[item.pet.form] }}</span>
+                <span v-if="item.demand" class="slot-demand" :class="`demand--${demandClass(item.demand)}`" :title="item.demand">★</span>
                 <span class="slot-val">
                   <q-spinner v-if="item.loading" size="8px" />
                   <template v-else>{{ item.value ?? '' }}</template>
@@ -602,6 +603,14 @@ function deltaChipClass (delta: number) {
   font-size: 8px;
   font-weight: 800;
 }
+
+.slot-demand {
+  font-size: 8px;
+  line-height: 1;
+}
+.demand--high   { color: #34d399; }
+.demand--medium { color: #f0b429; }
+.demand--low    { color: #f87171; }
 
 .slot-val {
   font-size: 8px;
