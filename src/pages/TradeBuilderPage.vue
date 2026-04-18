@@ -660,7 +660,17 @@ function saveLocalTrade (
   localStorage.setItem(TRADES_KEY, JSON.stringify(trades.slice(0, 100)))
 }
 
-onMounted(refreshAuthStatus)
+onMounted(() => {
+  refreshAuthStatus()
+  window.electronAPI.onPetValuesUpdated((petName, details) => {
+    for (const item of offeredPets.value) {
+      if (item.pet.name === petName && !item.loading) {
+        const updated = details.values[item.pet.form] ?? null
+        if (updated !== null) item.amvggValue = updated
+      }
+    }
+  })
+})
 
 // ── Delta helpers ─────────────────────────────────────────────────────────────
 function deltaCardClass (delta: number) {

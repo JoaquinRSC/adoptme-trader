@@ -226,7 +226,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch, nextTick } from 'vue'
+import { ref, computed, watch, nextTick, onMounted } from 'vue'
 import { matAdd, matClose, matSearch, matCheck, matBalance } from '@quasar/extras/material-icons'
 import { uid } from 'quasar'
 import { FORM_LABELS, FORM_COLOR_HEX, type PetForm } from 'src/types'
@@ -441,6 +441,18 @@ function selectPet(name: string) {
 function pickFirstResult() {
   if (searchResults.value[dropIndex.value]) selectPet(searchResults.value[dropIndex.value])
 }
+
+onMounted(() => {
+  window.electronAPI.onPetValuesUpdated((petName, details) => {
+    if (valueSource.value !== 'amvgg') return
+    for (const entry of [...yourSide.value, ...themSide.value]) {
+      if (entry.name === petName && !entry.loading) {
+        const updated = details.values[entry.form] ?? null
+        if (updated !== null) entry.value = updated
+      }
+    }
+  })
+})
 
 function confirmAdd() {
   if (!selectedPetName.value.trim()) return

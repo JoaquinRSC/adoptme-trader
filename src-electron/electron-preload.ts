@@ -73,6 +73,11 @@ const api = {
   }): Promise<{ ok: boolean; id: number }> =>
     ipcRenderer.invoke('trade:createElve', payload),
 
+  // Push from main: fires when background browser-fetch gets precise per-form values
+  onPetValuesUpdated: (cb: (petName: string, details: import('./electron-main').PetDetails) => void) => {
+    ipcRenderer.on('pet:values-updated', (_, petName, details) => cb(petName as string, details as import('./electron-main').PetDetails))
+  },
+
   // Auto-updater: fires when a new version has been downloaded and is ready to install
   onUpdateDownloaded: (cb: () => void) => {
     ipcRenderer.on('updater:update-downloaded', () => cb())
