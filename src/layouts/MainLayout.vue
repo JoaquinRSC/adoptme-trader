@@ -70,7 +70,7 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { useQuasar } from 'quasar'
-import { matInventory2, matSwapHoriz, matBalance, matChevronLeft, matChevronRight } from '@quasar/extras/material-icons'
+import { matInventory2, matSwapHoriz, matBalance, matChevronLeft, matChevronRight, matReceipt } from '@quasar/extras/material-icons'
 import { version } from '../../package.json'
 import { useTheme } from 'src/composables/useTheme'
 
@@ -103,6 +103,7 @@ const navItems = [
   { name: 'inventory',     icon: matInventory2, label: 'My Pets'       },
   { name: 'check-values',  icon: matBalance,    label: 'Check Values'  },
   { name: 'trade-builder', icon: matSwapHoriz,  label: 'Trade Builder' },
+  { name: 'my-trades',     icon: matReceipt,    label: 'My Trades'     },
 ]
 </script>
 

@@ -6,9 +6,10 @@ const routes: RouteRecordRaw[] = [
     component: () => import('layouts/MainLayout.vue'),
     children: [
       { path: '', redirect: '/inventory' },
-      { name: 'inventory', path: 'inventory', component: () => import('pages/InventoryPage.vue') },
+      { name: 'inventory',     path: 'inventory',     component: () => import('pages/InventoryPage.vue')    },
+      { name: 'check-values',  path: 'check-values',  component: () => import('pages/CheckValuesPage.vue')  },
       { name: 'trade-builder', path: 'trade-builder', component: () => import('pages/TradeBuilderPage.vue') },
-      { name: 'check-values', path: 'check-values', component: () => import('pages/CheckValuesPage.vue') },
+      { name: 'my-trades',     path: 'my-trades',     component: () => import('pages/MyTradesPage.vue')     },
     ],
   },
   { path: '/:catchAll(.*)*', component: () => import('pages/InventoryPage.vue') },

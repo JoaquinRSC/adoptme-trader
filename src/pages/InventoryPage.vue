@@ -222,7 +222,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, computed, watch, onMounted } from 'vue'
+import { ref, reactive, computed, watch, onMounted, nextTick } from 'vue'
 import { useFormPicker } from 'src/composables/useFormPicker'
 import { useQuasar } from 'quasar'
 import { matAdd, matDeleteOutline, matSearch, matCheck, matArrowDownward, matArrowUpward, matSwapVert } from '@quasar/extras/material-icons'
@@ -259,12 +259,16 @@ function confirmAdd () {
   if (!newPetName.value.trim()) return
   const count = Math.max(1, newPetQty.value)
   inventory.addPet(newPetName.value.trim(), newPetForm.value, count)
-  showAdd.value = false
   const added = inventory.pets.slice(-count)
   for (const pet of added) {
     void fetchValue(pet)
     void fetchImage(pet.id, pet.name)
   }
+  newPetName.value    = ''
+  newPetQty.value     = 1
+  searchQuery.value   = ''
+  searchResults.value = []
+  void nextTick(() => searchInputRef.value?.focus())
 }
 
 // ── Pet search autocomplete ───────────────────────────────────────────────────
