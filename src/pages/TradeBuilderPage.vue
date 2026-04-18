@@ -17,44 +17,25 @@
         </div>
 
         <div class="panel-body">
-          <button class="btn-add-inventory" @click="showInventoryPicker = true">
-            <q-icon :name="matAdd" size="15px" />
-            Add from inventory
-          </button>
-
-          <div class="empty-panel" v-if="!offeredPets.length">
-            Pick pets from your inventory to offer
-          </div>
-
-          <div class="offered-list" v-else>
-            <div class="offered-item" v-for="item in offeredPets" :key="item.pet.id">
-              <div class="offered-thumb">
-                <img
-                  :src="`https://amvgg.com/items/${encodeURIComponent(item.pet.name)}.webp`"
-                  class="offered-thumb-img"
-                  @error="(e) => (e.target as HTMLImageElement).style.display='none'"
-                />
+          <div class="pet-slots-grid">
+            <div class="pet-slot" v-for="item in offeredPets" :key="item.pet.id">
+              <img
+                :src="`https://amvgg.com/items/${encodeURIComponent(item.pet.name)}.webp`"
+                class="slot-img"
+                @error="(e) => (e.target as HTMLImageElement).style.display='none'"
+              />
+              <div class="slot-meta">
+                <span class="slot-form" :style="{ color: FORM_COLOR_HEX[item.pet.form] }">{{ FORM_LABELS[item.pet.form] }}</span>
+                <span class="slot-val">
+                  <q-spinner v-if="item.loading" size="8px" />
+                  <template v-else>{{ item.value ?? '' }}</template>
+                </span>
               </div>
-              <div class="offered-info">
-                <div class="offered-name">{{ item.pet.name }}</div>
-                <div class="offered-meta">
-                  <span class="form-pill" :style="{ color: FORM_COLOR_HEX[item.pet.form] }">
-                    {{ FORM_LABELS[item.pet.form] }}
-                  </span>
-                  <q-spinner v-if="item.loading" size="11px" />
-                  <template v-else-if="item.value !== null">
-                    <span class="offered-val">{{ item.value }}</span>
-                    <span class="demand-stars" :class="`stars--${demandClass(item.demand)}`" :title="item.demand ?? ''">
-                      {{ demandStars(item.demand) }}
-                    </span>
-                  </template>
-                  <span v-else class="no-data">no data</span>
-                </div>
-              </div>
-              <button class="remove-btn" @click="removeOffered(item.pet.id)">
-                <q-icon :name="matClose" size="13px" />
-              </button>
+              <button class="slot-remove" @click="removeOffered(item.pet.id)">×</button>
             </div>
+            <button class="pet-slot pet-slot--add" @click="showInventoryPicker = true">
+              <div class="slot-plus-circle">+</div>
+            </button>
           </div>
         </div>
 
@@ -558,29 +539,7 @@ function deltaChipClass (delta: number) {
 .stars--medium { color: #f0b429; }
 .stars--low    { color: #f87171; }
 
-/* Offered pets */
-.btn-add-inventory {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  width: 100%;
-  padding: 9px 12px;
-  border: 1px dashed var(--border-hi);
-  border-radius: 10px;
-  background: transparent;
-  color: var(--text-2);
-  font-size: 12px;
-  font-weight: 700;
-  cursor: pointer;
-  margin-bottom: 10px;
-  transition: border-color 0.15s, color 0.15s, background 0.15s;
-}
-.btn-add-inventory:hover {
-  border-color: var(--primary);
-  color: var(--primary);
-  background: var(--primary-dim);
-}
-
+/* Offered pets – slot grid */
 .empty-panel {
   font-size: 12px;
   color: var(--text-3);
@@ -589,63 +548,6 @@ function deltaChipClass (delta: number) {
   padding: 20px 0;
 }
 
-.offered-list {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.offered-item {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 6px 8px;
-  border-radius: 9px;
-  background: var(--surface-2);
-}
-
-.offered-thumb {
-  position: relative;
-  width: 36px;
-  height: 36px;
-  border-radius: 8px;
-  background: var(--surface-3);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-  overflow: hidden;
-}
-
-.offered-thumb-img {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  object-fit: contain;
-}
-
-.offered-info { flex: 1; min-width: 0; }
-.offered-name {
-  font-size: 12px;
-  font-weight: 700;
-  color: var(--text-1);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-.offered-meta {
-  display: flex;
-  align-items: center;
-  gap: 5px;
-  margin-top: 2px;
-  flex-wrap: wrap;
-}
-.offered-val {
-  font-size: 11px;
-  font-weight: 700;
-  color: var(--gold);
-}
 .no-data { font-size: 11px; color: var(--text-3); }
 
 .form-pill {
@@ -654,41 +556,124 @@ function deltaChipClass (delta: number) {
   letter-spacing: 0.3px;
 }
 
-.qty-text {
-  font-size: 10px;
-  color: var(--text-3);
-  font-weight: 600;
+/* Pet slot grid (shared with CheckValues) */
+.pet-slots-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 6px;
+  padding: 10px;
+  background: rgba(255,255,255,0.02);
+  border-radius: 14px;
+  border: 1px solid var(--border);
 }
 
-.remove-btn {
-  width: 22px;
-  height: 22px;
-  border: none;
-  border-radius: 6px;
-  background: transparent;
-  color: var(--text-3);
-  cursor: pointer;
+.pet-slot {
+  position: relative;
+  aspect-ratio: 1;
+  border-radius: 10px;
+  background: var(--surface-3);
+  border: 1px solid var(--border);
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: background 0.12s, color 0.12s;
-  flex-shrink: 0;
+  overflow: visible;
 }
-.remove-btn:hover { background: rgba(248, 113, 113, 0.15); color: var(--negative); }
+
+.slot-img {
+  width: 80%;
+  height: 80%;
+  object-fit: contain;
+}
+
+.slot-meta {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: rgba(0,0,0,0.6);
+  border-radius: 0 0 9px 9px;
+  padding: 2px 5px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.slot-form {
+  font-size: 8px;
+  font-weight: 800;
+}
+
+.slot-val {
+  font-size: 8px;
+  color: var(--gold);
+  font-weight: 700;
+}
+
+.slot-remove {
+  position: absolute;
+  top: -6px;
+  right: -6px;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--surface-1);
+  border: 1px solid var(--border-hi);
+  color: var(--text-2);
+  font-size: 12px;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transition: opacity 0.15s;
+  cursor: pointer;
+  z-index: 5;
+}
+.pet-slot:hover .slot-remove { opacity: 1; }
+
+.pet-slot--add {
+  background: transparent;
+  border: 1.5px dashed var(--border-hi);
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+}
+.pet-slot--add:hover {
+  background: var(--primary-dim);
+  border-color: var(--primary);
+}
+
+.slot-plus-circle {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: var(--surface-3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 22px;
+  color: var(--text-3);
+  font-weight: 300;
+  line-height: 1;
+  transition: background 0.15s, color 0.15s;
+}
+.pet-slot--add:hover .slot-plus-circle {
+  background: var(--primary-dim);
+  color: var(--primary);
+}
 
 /* Suggestions */
 .suggestions-grid {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 3px;
 }
 
 .suggestion-card {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 8px 10px;
-  border-radius: 10px;
+  gap: 7px;
+  padding: 5px 8px;
+  border-radius: 8px;
   border: 1px solid transparent;
   transition: border-color 0.15s;
 }
@@ -700,9 +685,9 @@ function deltaChipClass (delta: number) {
 
 .sug-thumb {
   position: relative;
-  width: 36px;
-  height: 36px;
-  border-radius: 8px;
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
   background: var(--surface-3);
   display: flex;
   align-items: center;
@@ -721,7 +706,7 @@ function deltaChipClass (delta: number) {
 
 .sug-body { flex: 1; min-width: 0; }
 .sug-name {
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 700;
   color: var(--text-1);
   white-space: nowrap;
@@ -731,20 +716,19 @@ function deltaChipClass (delta: number) {
 .sug-meta {
   display: flex;
   align-items: center;
-  gap: 5px;
-  margin-top: 2px;
-  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 1px;
 }
 .sug-val {
-  font-size: 11px;
+  font-size: 10px;
   font-weight: 700;
   color: var(--gold);
 }
 
 .delta-chip {
-  font-size: 11px;
+  font-size: 10px;
   font-weight: 800;
-  padding: 2px 8px;
+  padding: 1px 6px;
   border-radius: 20px;
   flex-shrink: 0;
 }

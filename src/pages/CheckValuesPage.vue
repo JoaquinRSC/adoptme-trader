@@ -32,39 +32,24 @@
           <span class="panel-count" v-if="yourSide.length">{{ yourSide.length }}</span>
         </div>
 
-        <div class="pet-list">
-          <div
-            v-for="entry in yourSide"
-            :key="entry.id"
-            class="pet-row"
-          >
-            <div class="pet-row-thumb">
-              <img
-                :src="`https://amvgg.com/items/${encodeURIComponent(entry.name)}.webp`"
-                class="row-img"
-                @error="(e) => (e.target as HTMLImageElement).style.display = 'none'"
-              />
-              <span class="row-img-ph">🐾</span>
+        <div class="pet-slots-grid">
+          <div class="pet-slot" v-for="entry in yourSide" :key="entry.id">
+            <img
+              :src="`https://amvgg.com/items/${encodeURIComponent(entry.name)}.webp`"
+              class="slot-img"
+              @error="(e) => (e.target as HTMLImageElement).style.display = 'none'"
+            />
+            <div class="slot-meta">
+              <span class="slot-form" :style="{ color: FORM_COLOR_HEX[entry.form] }">{{ FORM_LABELS[entry.form] }}</span>
+              <span class="slot-val">
+                <q-spinner v-if="entry.loading" size="8px" />
+                <template v-else>{{ entry.value ?? '—' }}</template>
+              </span>
             </div>
-            <div class="pet-row-info">
-              <div class="pet-row-name">{{ entry.name }}</div>
-              <div class="pet-row-form" :style="{ color: FORM_COLOR_HEX[entry.form] }">
-                {{ FORM_LABELS[entry.form] }}
-              </div>
-            </div>
-            <div class="pet-row-value">
-              <q-spinner v-if="entry.loading" size="12px" />
-              <span v-else-if="entry.value !== null">{{ entry.value }}</span>
-              <span v-else class="no-data">—</span>
-            </div>
-            <button class="remove-btn" @click="removePet('your', entry.id)">
-              <q-icon :name="matClose" size="12px" />
-            </button>
+            <button class="slot-remove" @click="removePet('your', entry.id)">×</button>
           </div>
-
-          <button class="btn-add-pet" @click="openAddDialog('your')">
-            <q-icon :name="matAdd" size="15px" />
-            Add pet
+          <button class="pet-slot pet-slot--add" @click="openAddDialog('your')">
+            <div class="slot-plus-circle">+</div>
           </button>
         </div>
 
@@ -96,39 +81,24 @@
           <span class="panel-count" v-if="themSide.length">{{ themSide.length }}</span>
         </div>
 
-        <div class="pet-list">
-          <div
-            v-for="entry in themSide"
-            :key="entry.id"
-            class="pet-row"
-          >
-            <div class="pet-row-thumb">
-              <img
-                :src="`https://amvgg.com/items/${encodeURIComponent(entry.name)}.webp`"
-                class="row-img"
-                @error="(e) => (e.target as HTMLImageElement).style.display = 'none'"
-              />
-              <span class="row-img-ph">🐾</span>
+        <div class="pet-slots-grid">
+          <div class="pet-slot" v-for="entry in themSide" :key="entry.id">
+            <img
+              :src="`https://amvgg.com/items/${encodeURIComponent(entry.name)}.webp`"
+              class="slot-img"
+              @error="(e) => (e.target as HTMLImageElement).style.display = 'none'"
+            />
+            <div class="slot-meta">
+              <span class="slot-form" :style="{ color: FORM_COLOR_HEX[entry.form] }">{{ FORM_LABELS[entry.form] }}</span>
+              <span class="slot-val">
+                <q-spinner v-if="entry.loading" size="8px" />
+                <template v-else>{{ entry.value ?? '—' }}</template>
+              </span>
             </div>
-            <div class="pet-row-info">
-              <div class="pet-row-name">{{ entry.name }}</div>
-              <div class="pet-row-form" :style="{ color: FORM_COLOR_HEX[entry.form] }">
-                {{ FORM_LABELS[entry.form] }}
-              </div>
-            </div>
-            <div class="pet-row-value">
-              <q-spinner v-if="entry.loading" size="12px" />
-              <span v-else-if="entry.value !== null">{{ entry.value }}</span>
-              <span v-else class="no-data">—</span>
-            </div>
-            <button class="remove-btn" @click="removePet('them', entry.id)">
-              <q-icon :name="matClose" size="12px" />
-            </button>
+            <button class="slot-remove" @click="removePet('them', entry.id)">×</button>
           </div>
-
-          <button class="btn-add-pet" @click="openAddDialog('them')">
-            <q-icon :name="matAdd" size="15px" />
-            Add pet
+          <button class="pet-slot pet-slot--add" @click="openAddDialog('them')">
+            <div class="slot-plus-circle">+</div>
           </button>
         </div>
 
@@ -549,124 +519,108 @@ function confirmAdd() {
   padding: 1px 8px;
 }
 
-/* ── Pet list ── */
-.pet-list {
-  padding: 10px 12px;
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  min-height: 80px;
+/* ── Pet slots grid ── */
+.pet-slots-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 6px;
+  padding: 10px;
+  background: rgba(255,255,255,0.02);
+  border-radius: 14px;
+  border: 1px solid var(--border);
 }
 
-.pet-row {
+.pet-slot {
+  position: relative;
+  aspect-ratio: 1;
+  border-radius: 10px;
+  background: var(--surface-3);
+  border: 1px solid var(--border);
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 6px 8px;
-  border-radius: 8px;
-  background: var(--surface-2);
-  transition: background 0.12s;
+  justify-content: center;
+  overflow: visible;
 }
 
-.pet-row:hover {
-  background: var(--surface-3, var(--surface-2));
+.slot-img {
+  width: 80%;
+  height: 80%;
+  object-fit: contain;
 }
 
-.pet-row-thumb {
-  position: relative;
+.slot-meta {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: rgba(0,0,0,0.6);
+  border-radius: 0 0 9px 9px;
+  padding: 2px 5px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.slot-form {
+  font-size: 8px;
+  font-weight: 800;
+}
+
+.slot-val {
+  font-size: 8px;
+  color: var(--gold);
+  font-weight: 700;
+}
+
+.slot-remove {
+  position: absolute;
+  top: -6px;
+  right: -6px;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--surface-1);
+  border: 1px solid var(--border-hi);
+  color: var(--text-2);
+  font-size: 12px;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transition: opacity 0.15s;
+  cursor: pointer;
+  z-index: 5;
+}
+.pet-slot:hover .slot-remove { opacity: 1; }
+
+.pet-slot--add {
+  background: transparent;
+  border: 1.5px dashed var(--border-hi);
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+}
+.pet-slot--add:hover {
+  background: var(--primary-dim);
+  border-color: var(--primary);
+}
+
+.slot-plus-circle {
   width: 32px;
   height: 32px;
-  flex-shrink: 0;
-}
-
-.row-img {
-  width: 100%;
-  height: 100%;
-  object-fit: contain;
-  border-radius: 6px;
-}
-
-.row-img-ph {
-  position: absolute;
-  inset: 0;
+  border-radius: 50%;
+  background: var(--surface-3);
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 16px;
-  z-index: -1;
-}
-
-.pet-row-info {
-  flex: 1;
-  min-width: 0;
-}
-
-.pet-row-name {
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--text-1);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.pet-row-form {
-  font-size: 11px;
-  font-weight: 700;
-}
-
-.pet-row-value {
-  font-size: 13px;
-  font-weight: 700;
-  color: var(--text-1);
-  min-width: 48px;
-  text-align: right;
-}
-
-.no-data {
+  font-size: 22px;
   color: var(--text-3);
-  font-weight: 400;
+  font-weight: 300;
+  line-height: 1;
+  transition: background 0.15s, color 0.15s;
 }
-
-.remove-btn {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 22px;
-  height: 22px;
-  border: none;
-  border-radius: 6px;
-  background: transparent;
-  color: var(--text-3);
-  cursor: pointer;
-  transition: background 0.12s, color 0.12s;
-  flex-shrink: 0;
-}
-
-.remove-btn:hover {
-  background: rgba(239, 68, 68, 0.12);
-  color: #ef4444;
-}
-
-.btn-add-pet {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 7px 10px;
-  border: 1.5px dashed var(--border);
-  border-radius: 8px;
-  background: transparent;
-  color: var(--text-3);
-  font-size: 12px;
-  font-weight: 600;
-  cursor: pointer;
-  width: 100%;
-  transition: border-color 0.12s, color 0.12s;
-  margin-top: 4px;
-}
-
-.btn-add-pet:hover {
-  border-color: var(--primary);
+.pet-slot--add:hover .slot-plus-circle {
+  background: var(--primary-dim);
   color: var(--primary);
 }
 
