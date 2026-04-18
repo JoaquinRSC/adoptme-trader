@@ -417,7 +417,7 @@ const totalValue = computed(() => {
 
 const anyLoading = computed(() => inventory.pets.some(p => loadingValue[p.id]))
 
-const sortOrder = ref<'default' | 'desc' | 'asc'>('default')
+const sortOrder = ref<'default' | 'desc' | 'asc'>('desc')
 
 const sortedPets = computed(() => {
   if (sortOrder.value === 'default') return inventory.pets
