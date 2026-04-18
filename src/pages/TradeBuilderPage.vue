@@ -43,7 +43,7 @@
                 <span v-if="item.demand" class="slot-demand" :class="`demand--${demandClass(item.demand)}`" :title="item.demand">{{ demandStars(item.demand) }}</span>
                 <span class="slot-val">
                   <q-spinner v-if="item.loading" size="8px" />
-                  <template v-else>{{ item.value ?? '' }}</template>
+                  <template v-else>{{ (valueSource === 'elvebredd' ? item.elveValue : item.amvggValue) ?? '' }}</template>
                 </span>
               </div>
               <button class="slot-remove" @click="removeOffered(item.pet.id)">×</button>
@@ -55,11 +55,23 @@
         </div>
 
         <div class="panel-footer" v-if="offeredPets.length">
-          <span class="footer-label">Total value</span>
-          <span class="footer-value">
-            <q-spinner v-if="loadingValues" size="14px" />
-            <template v-else>{{ totalOfferedValue.toFixed(3) }}</template>
-          </span>
+          <span class="footer-label">Total</span>
+          <div class="footer-totals">
+            <div class="footer-total-row">
+              <span class="footer-src">AMV</span>
+              <span class="footer-value">
+                <q-spinner v-if="anyOfferedLoading" size="11px" />
+                <template v-else>{{ totalOfferedAmvgg.toFixed(3) }}</template>
+              </span>
+            </div>
+            <div class="footer-total-row">
+              <span class="footer-src">Elve</span>
+              <span class="footer-value">
+                <q-spinner v-if="anyOfferedLoading" size="11px" />
+                <template v-else>{{ totalOfferedElve.toFixed(3) }}</template>
+              </span>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -92,7 +104,7 @@
 
         <button
           class="btn-search"
-          :disabled="!offeredPets.length || loadingValues || totalOfferedValue === 0"
+          :disabled="!offeredPets.length || anyOfferedLoading || totalOfferedValue === 0"
           @click="search"
         >
           <q-spinner v-if="searching" size="16px" color="white" />
@@ -134,10 +146,13 @@
                   <span class="form-pill" :style="{ color: FORM_COLOR_HEX[s.form] }">
                     {{ FORM_LABELS[s.form] }}
                   </span>
-                  <span class="sug-val">{{ s.amvggValue }}</span>
                   <span v-if="s.demand" class="demand-stars" :class="`stars--${demandClass(s.demand)}`" :title="s.demand">
                     {{ demandStars(s.demand) }}
                   </span>
+                </div>
+                <div class="sug-values">
+                  <span class="sug-val-item"><span class="sug-src-lbl">AMV</span><span class="sug-val">{{ s.amvggValue ?? '—' }}</span></span>
+                  <span class="sug-val-item"><span class="sug-src-lbl">Elve</span><span class="sug-val">{{ s.elveValue ?? '—' }}</span></span>
                 </div>
               </div>
               <div class="delta-chip" :class="deltaChipClass(s.delta)">
@@ -273,13 +288,15 @@ const values    = useValuesStore()
 // ── State ─────────────────────────────────────────────────────────────────────
 interface OfferedItem {
   pet: InventoryPet
-  value: number | null
+  amvggValue: number | null
+  elveValue: number | null
   demand: DemandLevel
   loading: boolean
 }
 
 interface SuggestionWithDemand extends PetSuggestion {
   demand: DemandLevel
+  elveValue: number | null
 }
 
 const offeredPets         = ref<OfferedItem[]>([])
@@ -288,7 +305,7 @@ const suggestions         = ref<SuggestionWithDemand[]>([])
 const showInventoryPicker = ref(false)
 const searching           = ref(false)
 const searchDone          = ref(false)
-const loadingValues       = ref(false)
+
 const valueSource         = ref<'amvgg' | 'elvebredd'>('amvgg')
 
 // Picker state
@@ -337,9 +354,19 @@ const availableInventory = computed(() =>
   inventory.pets.filter(p => !offeredPets.value.some(o => o.pet.id === p.id))
 )
 
-const totalOfferedValue = computed(() =>
-  offeredPets.value.reduce((acc, item) => acc + (item.value ?? 0), 0)
+const totalOfferedAmvgg = computed(() =>
+  offeredPets.value.reduce((acc, item) => acc + (item.amvggValue ?? 0), 0)
 )
+
+const totalOfferedElve = computed(() =>
+  offeredPets.value.reduce((acc, item) => acc + (item.elveValue ?? 0), 0)
+)
+
+const totalOfferedValue = computed(() =>
+  valueSource.value === 'elvebredd' ? totalOfferedElve.value : totalOfferedAmvgg.value
+)
+
+const anyOfferedLoading = computed(() => offeredPets.value.some(o => o.loading))
 
 // ── Demand helpers ─────────────────────────────────────────────────────────────
 const DEMAND_MULT: Record<string, number> = {
@@ -372,7 +399,7 @@ const fairness = computed<number | null>(() => {
   const top = suggestions.value[0]
   if (top.value === null) return null
   const offeredAdjusted = offeredPets.value.reduce((acc, item) => {
-    return acc + (item.value ?? 0) * demandMult(item.demand)
+    return acc + (item.amvggValue ?? 0) * demandMult(item.demand)
   }, 0)
   const receivedAdjusted = (top.amvggValue ?? 0) * demandMult(top.demand)
   if (receivedAdjusted === 0) return null
@@ -398,27 +425,25 @@ const demandWarning = computed(() => {
 
 // ── Actions ───────────────────────────────────────────────────────────────────
 async function addOffered (pet: InventoryPet) {
-  const item: OfferedItem = { pet, value: null, demand: null, loading: true }
+  const item: OfferedItem = { pet, amvggValue: null, elveValue: null, demand: null, loading: true }
   offeredPets.value.push(item)
 
   try {
     const [detailsResult, elveResult] = await Promise.allSettled([
       window.electronAPI.getPetDetails(pet.name),
-      valueSource.value === 'elvebredd' ? values.getElveValue(pet.name, pet.form) : Promise.resolve(null),
+      values.getElveValue(pet.name, pet.form),
     ])
     const found = offeredPets.value.find(o => o.pet.id === pet.id)
     if (!found) return
 
     if (detailsResult.status === 'fulfilled') {
       found.demand = getFormDemand(detailsResult.value, pet.form)
-      if (valueSource.value === 'amvgg') found.value = detailsResult.value.values[pet.form] ?? null
-    } else if (valueSource.value === 'amvgg') {
-      found.value = await values.getValue(pet.name, pet.form)
+      found.amvggValue = detailsResult.value.values[pet.form] ?? null
+    } else {
+      found.amvggValue = await values.getValue(pet.name, pet.form)
     }
 
-    if (valueSource.value === 'elvebredd' && elveResult.status === 'fulfilled') {
-      found.value = elveResult.value
-    }
+    if (elveResult.status === 'fulfilled') found.elveValue = elveResult.value
   } finally {
     const found = offeredPets.value.find(o => o.pet.id === pet.id)
     if (found) found.loading = false
@@ -451,17 +476,29 @@ async function search () {
     )
 
     const batchRequests = candidates.map(p => ({ name: p.name, form }))
-    const batchResult   = valueSource.value === 'elvebredd'
-      ? await values.getElveBatch(batchRequests)
-      : await values.getBatch(batchRequests)
+    const [amvBatch, elveBatch] = await Promise.all([
+      values.getBatch(batchRequests),
+      values.getElveBatch(batchRequests),
+    ])
+
+    const elveMap = new Map(elveBatch.map(r => [`${r.name}|${r.form}`, r.value]))
+    const primaryBatch = valueSource.value === 'elvebredd' ? elveBatch : amvBatch
 
     const results: SuggestionWithDemand[] = []
     for (const req of batchRequests) {
-      const val = batchResult.find(r => r.name === req.name && r.form === req.form)?.value
+      const val = primaryBatch.find(r => r.name === req.name && r.form === req.form)?.value
       if (val === null || val === undefined) continue
       const delta = ((val - target) / target) * 100
       if (Math.abs(delta) <= TOLERANCE * 100) {
-        results.push({ name: req.name, form, amvggValue: val, delta, demand: null })
+        const amvEntry = amvBatch.find(r => r.name === req.name && r.form === req.form)
+        results.push({
+          name: req.name,
+          form,
+          amvggValue: amvEntry?.value ?? null,
+          elveValue: elveMap.get(`${req.name}|${req.form}`) ?? null,
+          delta,
+          demand: null,
+        })
       }
     }
 
@@ -586,7 +623,10 @@ function deltaChipClass (delta: number) {
 }
 
 .footer-label { font-size: 11px; font-weight: 700; color: var(--text-3); text-transform: uppercase; letter-spacing: 0.8px; }
-.footer-value { font-size: 16px; font-weight: 800; color: var(--gold); }
+.footer-totals { display: flex; flex-direction: column; align-items: flex-end; gap: 2px; }
+.footer-total-row { display: flex; align-items: baseline; gap: 5px; }
+.footer-src { font-size: 10px; font-weight: 700; color: var(--text-3); text-transform: uppercase; letter-spacing: 0.5px; }
+.footer-value { font-size: 14px; font-weight: 800; color: var(--gold); }
 
 /* Controls */
 .trade-controls {
@@ -871,6 +911,23 @@ function deltaChipClass (delta: number) {
   align-items: center;
   gap: 4px;
   margin-top: 1px;
+}
+.sug-values {
+  display: flex;
+  gap: 8px;
+  margin-top: 2px;
+}
+.sug-val-item {
+  display: flex;
+  align-items: baseline;
+  gap: 3px;
+}
+.sug-src-lbl {
+  font-size: 9px;
+  font-weight: 700;
+  color: var(--text-3);
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
 }
 .sug-val {
   font-size: 10px;
