@@ -347,7 +347,6 @@ async function warmElveCache (): Promise<void> {
   if (elveFetchInFlight) return elveFetchInFlight
 
   elveFetchInFlight = (async () => {
-    elveFetchDone = true
     try {
       const res = await fetchWithTimeout('https://www.elvebredd.com/adopt-me-calculator', 15000)
       if (!res.ok) return
@@ -383,6 +382,7 @@ async function warmElveCache (): Promise<void> {
         }
       }
     } catch { /* silently fail — caller handles null */ }
+    finally { elveFetchDone = true }
   })()
 
   return elveFetchInFlight
