@@ -574,7 +574,7 @@ function registerIpcHandlers () {
   ipcMain.handle('auth:login', async (_, platform: 'amvgg' | 'elvebredd') => {
     const ses      = platform === 'amvgg' ? amvggSession! : elveSession!
     const loginUrl = platform === 'amvgg'
-      ? 'https://amvgg.com/api/auth/signin'
+      ? 'https://amvgg.com/login'
       : 'https://elvebredd.com/login'
     const homeUrl  = platform === 'amvgg' ? 'https://amvgg.com/' : 'https://elvebredd.com/'
     const domain   = platform === 'amvgg' ? 'amvgg.com' : 'elvebredd.com'
