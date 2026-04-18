@@ -145,6 +145,16 @@ function parseDetailsFromBlock (html: string): PetDetails {
     const d = extractStrField(html, field)
     if (d !== null) demands[form] = d as DemandLevel
   }
+
+  // If no values found (App Router individual page — numbers not quoted), try unquoted
+  if (Object.keys(values).length === 0) {
+    for (const [field, form] of AMVGG_VALUE_FIELDS) {
+      const re = new RegExp(`\\\\"${field}\\\\":([\\d.]+)`)
+      const m  = html.match(re)
+      if (m) values[form] = parseFloat(m[1])
+    }
+  }
+
   return { values, demands, rarity: extractStrField(html, 'rarity') }
 }
 
