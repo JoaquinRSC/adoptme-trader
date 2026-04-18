@@ -746,16 +746,28 @@ function registerIpcHandlers () {
     if (!turnstileToken) throw new Error('Could not get Turnstile token — try again')
     if (!csrfToken)      throw new Error('Could not get CSRF token — try again')
 
-    const buildItem = (name: string, form: string, side: 'your' | 'their') => ({
-      id:             elveIdMap.get(name) ?? 0,
-      name,
-      image:          `/images/pets/${name}.png`,
-      value:          elveValuesCache.get(name)?.[form] ?? 0,
-      secondaryValue: 0,
-      game:           'Adopt Me',
-      attributes:     FORM_TO_ELVE_ATTRS[form] ?? FORM_TO_ELVE_ATTRS['normal']!,
-      side,
-    })
+    const buildItem = (name: string, form: string) => {
+      const id = elveIdMap.get(name)
+      if (!id) throw new Error(`Pet "${name}" not found in Elvebredd ID map — cache may be stale`)
+      return {
+        id,
+        name,
+        image:          `/images/pets/${name}.png`,
+        value:          elveValuesCache.get(name)?.[form] ?? 0,
+        secondaryValue: 0,
+        game:           'Adopt Me',
+        attributes:     FORM_TO_ELVE_ATTRS[form] ?? FORM_TO_ELVE_ATTRS['normal']!,
+      }
+    }
+
+    const payload = {
+      game:          'Adopt Me',
+      version:       elveVersion,
+      ownerGive:     ownerGive.map(p => buildItem(p.name, p.form)),
+      ownerGet:      ownerGet.map(p => buildItem(p.name, p.form)),
+      turnstileToken,
+    }
+    console.log('[Elve] create-listing payload:', JSON.stringify(payload, null, 2))
 
     const res = await elveSession!.fetch('https://elvebredd.com/api/create-listing', {
       method: 'POST',
@@ -766,13 +778,7 @@ function registerIpcHandlers () {
         'Origin':       'https://elvebredd.com',
         'User-Agent':   'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36',
       },
-      body: JSON.stringify({
-        game:          'Adopt Me',
-        version:       elveVersion,
-        ownerGive:     ownerGive.map(p => buildItem(p.name, p.form, 'your')),
-        ownerGet:      ownerGet.map(p => buildItem(p.name, p.form, 'their')),
-        turnstileToken,
-      }),
+      body: JSON.stringify(payload),
     })
     if (!res.ok) throw new Error(`Elvebredd ${res.status}: ${(await res.text()).slice(0, 300)}`)
     return await res.json() as { ok: boolean; id: number }
