@@ -41,7 +41,7 @@
             />
             <div class="slot-meta">
               <span class="slot-form" :style="{ color: FORM_COLOR_HEX[entry.form] }">{{ FORM_LABELS[entry.form] }}</span>
-              <span v-if="entry.demand" class="slot-demand" :class="`demand--${demandClass(entry.demand)}`" :title="entry.demand">★</span>
+              <span v-if="entry.demand" class="slot-demand" :class="`demand--${demandClass(entry.demand)}`" :title="entry.demand">{{ demandStars(entry.demand) }}</span>
               <span class="slot-val">
                 <q-spinner v-if="entry.loading" size="8px" />
                 <template v-else>{{ entry.value ?? '—' }}</template>
@@ -91,7 +91,7 @@
             />
             <div class="slot-meta">
               <span class="slot-form" :style="{ color: FORM_COLOR_HEX[entry.form] }">{{ FORM_LABELS[entry.form] }}</span>
-              <span v-if="entry.demand" class="slot-demand" :class="`demand--${demandClass(entry.demand)}`" :title="entry.demand">★</span>
+              <span v-if="entry.demand" class="slot-demand" :class="`demand--${demandClass(entry.demand)}`" :title="entry.demand">{{ demandStars(entry.demand) }}</span>
               <span class="slot-val">
                 <q-spinner v-if="entry.loading" size="8px" />
                 <template v-else>{{ entry.value ?? '—' }}</template>
@@ -249,6 +249,11 @@ function demandClass(d: DemandLevel) {
   if (d === 'High') return 'high'
   if (d === 'Medium') return 'medium'
   return 'low'
+}
+
+function demandStars(d: DemandLevel): string {
+  const n = d === 'High' ? 3 : d === 'Medium' ? 2 : d === 'Low' ? 1 : 0
+  return '★'.repeat(n) + '☆'.repeat(3 - n)
 }
 
 // ── State ────────────────────────────────────────────────────────────────────

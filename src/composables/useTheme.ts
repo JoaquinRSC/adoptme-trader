@@ -1,6 +1,6 @@
 import { ref } from 'vue'
 
-export type ThemeId = 'purple' | 'ocean' | 'forest' | 'crimson' | 'dusk'
+export type ThemeId = 'purple' | 'ocean' | 'forest' | 'crimson' | 'dusk' | 'rose'
 
 export interface ThemeDef {
   id: ThemeId
@@ -14,6 +14,7 @@ export const THEMES: ThemeDef[] = [
   { id: 'forest',  label: 'Forest',   accent: '#4ade80' },
   { id: 'crimson', label: 'Crimson',  accent: '#f87171' },
   { id: 'dusk',    label: 'Dusk',     accent: '#f0b429' },
+  { id: 'rose',    label: 'Rose',     accent: '#f472b6' },
 ]
 
 const STORAGE_KEY = 'app-theme'
