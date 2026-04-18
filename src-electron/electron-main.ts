@@ -94,10 +94,8 @@ const AMVGG_DEMAND_FIELDS: Array<[string, string]> = [
 ]
 
 function extractNumField (text: string, field: string): number | null {
-  // Try quoted value first ("field":"123.45"), then unquoted ("field":123.45)
-  const quoted   = new RegExp(`\\\\"${field}\\\\":\\\\"([\\d.]+)\\\\"`)
-  const unquoted = new RegExp(`\\\\"${field}\\\\":([\\d.]+)`)
-  const m = text.match(quoted) ?? text.match(unquoted)
+  const re = new RegExp(`\\\\"${field}\\\\":\\\\"([\\d.]+)\\\\"`)
+  const m  = text.match(re)
   return m ? parseFloat(m[1]) : null
 }
 
