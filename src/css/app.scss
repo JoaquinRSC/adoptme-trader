@@ -83,6 +83,22 @@
   --text-3:       #5c4a30;
 }
 
+[data-theme="rose"] {
+  --bg:           #140a10;
+  --surface:      #1f1019;
+  --surface-2:    #2c1524;
+  --surface-3:    #3a1d30;
+  --border:       rgba(244, 114, 182, 0.08);
+  --border-hi:    rgba(244, 114, 182, 0.15);
+  --primary:      #f472b6;
+  --primary-glow: rgba(244, 114, 182, 0.22);
+  --primary-dim:  rgba(244, 114, 182, 0.1);
+  --gold:         #fda4cf;
+  --text-1:       #f4e8ef;
+  --text-2:       #b07a98;
+  --text-3:       #5c3a4e;
+}
+
 // ── Base ──────────────────────────────────────────────────────────────────────
 *,
 *::before,

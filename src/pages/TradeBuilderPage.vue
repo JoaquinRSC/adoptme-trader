@@ -26,7 +26,7 @@
               />
               <div class="slot-meta">
                 <span class="slot-form" :style="{ color: FORM_COLOR_HEX[item.pet.form] }">{{ FORM_LABELS[item.pet.form] }}</span>
-                <span v-if="item.demand" class="slot-demand" :class="`demand--${demandClass(item.demand)}`" :title="item.demand">★</span>
+                <span v-if="item.demand" class="slot-demand" :class="`demand--${demandClass(item.demand)}`" :title="item.demand">{{ demandStars(item.demand) }}</span>
                 <span class="slot-val">
                   <q-spinner v-if="item.loading" size="8px" />
                   <template v-else>{{ item.value ?? '' }}</template>
