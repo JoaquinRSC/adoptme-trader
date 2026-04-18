@@ -209,7 +209,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, watch, onMounted } from 'vue'
+import { ref, reactive, computed, watch, onMounted } from 'vue'
 import { useFormPicker } from 'src/composables/useFormPicker'
 import { useQuasar } from 'quasar'
 import { matAdd, matDeleteOutline, matSearch, matCheck } from '@quasar/extras/material-icons'
