@@ -49,7 +49,7 @@
                 </span>
               </div>
             </div>
-            <button class="pet-slot pet-slot--add" @click="openAddDialog('your')">
+            <button class="pet-slot pet-slot--add" @click="showYourPicker = true">
               <div class="slot-plus-circle">+</div>
             </button>
           </div>
@@ -113,6 +113,102 @@
       </div>
 
     </div>
+
+    <!-- YOUR side picker (tabs: My Pets / Other) -->
+    <q-dialog v-model="showYourPicker" @hide="resetYourPicker">
+      <q-card class="picker-card">
+        <q-card-section class="q-pb-sm">
+          <div class="dialog-title">Add pet — YOU</div>
+          <div class="picker-tabs">
+            <button
+              class="picker-tab"
+              :class="{ 'picker-tab--active': yourPickerTab === 'mine' }"
+              @click="yourPickerTab = 'mine'"
+            >My Pets</button>
+            <button
+              class="picker-tab"
+              :class="{ 'picker-tab--active': yourPickerTab === 'other' }"
+              @click="yourPickerTab = 'other'"
+            >Other</button>
+          </div>
+        </q-card-section>
+        <q-separator style="border-color: var(--border)" />
+
+        <!-- My Pets tab -->
+        <q-card-section v-if="yourPickerTab === 'mine'">
+          <div class="empty-panel" v-if="!inventoryPets.length">
+            No pets in inventory — add some in My Pets first.
+          </div>
+          <div class="picker-grid" v-else>
+            <button
+              class="picker-card-item"
+              v-for="pet in inventoryPets"
+              :key="pet.id"
+              @click="addInventoryPetToYour(pet)"
+            >
+              <img
+                :src="`https://amvgg.com/items/${encodeURIComponent(pet.name)}.webp`"
+                class="picker-card-img"
+                @error="(e) => (e.target as HTMLImageElement).style.display='none'"
+              />
+              <div class="picker-card-name">{{ pet.name }}</div>
+              <span class="picker-card-form" :style="{ color: FORM_COLOR_HEX[pet.form] }">
+                {{ FORM_LABELS[pet.form] }}
+              </span>
+            </button>
+          </div>
+        </q-card-section>
+
+        <!-- Other tab -->
+        <q-card-section v-else class="other-section">
+          <div class="form-section-label">Form</div>
+          <div class="form-grid">
+            <button class="form-chip" :class="{'form-chip--active': yourOtherFly}" :style="yourOtherFly ? {background: yourOtherFlyGrad} : {}" @click="yourOtherFly = !yourOtherFly">F</button>
+            <button class="form-chip" :class="{'form-chip--active': yourOtherRide}" :style="yourOtherRide ? {background: yourOtherRideGrad} : {}" @click="yourOtherRide = !yourOtherRide">R</button>
+            <button class="form-chip" :class="{'form-chip--active': yourOtherIsNormal}" :style="yourOtherIsNormal ? {background: yourOtherNormGrad} : {}" @click="yourOtherResetForm()">D</button>
+            <button class="form-chip" :class="{'form-chip--active': yourOtherNm === 'n'}" :style="yourOtherNm === 'n' ? {background: yourOtherNGrad} : {}" @click="yourOtherNm = yourOtherNm === 'n' ? 'none' : 'n'">N</button>
+            <button class="form-chip" :class="{'form-chip--active': yourOtherNm === 'm'}" :style="yourOtherNm === 'm' ? {background: yourOtherMGrad} : {}" @click="yourOtherNm = yourOtherNm === 'm' ? 'none' : 'm'">M</button>
+          </div>
+          <q-input
+            v-model="yourPetSearch"
+            dense outlined
+            placeholder="Search pet…"
+            :debounce="250"
+            clearable
+            style="margin-top: 10px"
+          >
+            <template #prepend><q-icon :name="matSearch" size="16px" style="color:var(--text-3)" /></template>
+          </q-input>
+          <div class="results-panel">
+            <div class="results-state" v-if="!yourPetSearch.trim()">Start typing to find a pet</div>
+            <div class="results-state" v-else-if="yourSearchLoading"><q-spinner size="14px" color="primary" /><span>Searching…</span></div>
+            <div class="results-state" v-else-if="!yourPickerResults.length">No results for "{{ yourPetSearch }}"</div>
+            <div
+              v-else
+              class="result-item"
+              v-for="name in yourPickerResults"
+              :key="name"
+              @mousedown.prevent="addOtherPetToYour(name)"
+            >
+              <div class="result-img-wrap">
+                <img
+                  :src="`https://amvgg.com/items/${encodeURIComponent(name)}.webp`"
+                  class="result-img"
+                  @error="(e) => (e.target as HTMLImageElement).style.display='none'"
+                />
+                <div class="result-img-placeholder">🐾</div>
+              </div>
+              <span class="result-name">{{ name }}</span>
+              <span class="form-pill" :style="{ color: FORM_COLOR_HEX[yourOtherPickerForm], marginLeft: 'auto' }">{{ FORM_LABELS[yourOtherPickerForm] }}</span>
+            </div>
+          </div>
+        </q-card-section>
+
+        <q-card-actions align="right">
+          <button class="btn-ghost" @click="showYourPicker = false">Close</button>
+        </q-card-actions>
+      </q-card>
+    </q-dialog>
 
     <!-- Add pet dialog -->
     <q-dialog v-model="showAdd" persistent @hide="resetDialog">
@@ -229,12 +325,16 @@
 import { ref, computed, watch, nextTick, onMounted } from 'vue'
 import { matAdd, matClose, matSearch, matCheck, matBalance } from '@quasar/extras/material-icons'
 import { uid } from 'quasar'
-import { FORM_LABELS, FORM_COLOR_HEX, type PetForm } from 'src/types'
+import { FORM_LABELS, FORM_COLOR_HEX, type PetForm, type InventoryPet } from 'src/types'
 import { useValuesStore, type DemandLevel } from 'src/stores/values'
+import { useInventoryStore } from 'src/stores/inventory'
 import { ADOPT_ME_PETS } from 'src/data/pets'
 import { useFormPicker } from 'src/composables/useFormPicker'
 
 const valuesStore = useValuesStore()
+const inventory   = useInventoryStore()
+
+const inventoryPets = computed(() => inventory.pets)
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -350,6 +450,48 @@ async function refreshValues() {
 function removePet(side: 'your' | 'them', id: string) {
   const list = getSide(side)
   list.value = list.value.filter(e => e.id !== id)
+}
+
+// ── YOUR side picker ──────────────────────────────────────────────────────────
+
+const showYourPicker  = ref(false)
+const yourPickerTab   = ref<'mine' | 'other'>('mine')
+const yourPetSearch   = ref('')
+const yourPickerResults = ref<string[]>([])
+const yourSearchLoading = ref(false)
+
+const {
+  flyPick: yourOtherFly, ridePick: yourOtherRide, nmPick: yourOtherNm,
+  form: yourOtherPickerForm, reset: yourOtherResetForm, isNormal: yourOtherIsNormal,
+  flyGrad: yourOtherFlyGrad, rideGrad: yourOtherRideGrad, normGrad: yourOtherNormGrad,
+  nGrad: yourOtherNGrad, mGrad: yourOtherMGrad,
+} = useFormPicker()
+
+watch(yourPetSearch, async (q) => {
+  if (!q.trim()) { yourPickerResults.value = []; return }
+  yourSearchLoading.value = true
+  try {
+    yourPickerResults.value = await window.electronAPI.searchPets(q)
+  } finally {
+    yourSearchLoading.value = false
+  }
+})
+
+function resetYourPicker() {
+  yourPickerTab.value     = 'mine'
+  yourPetSearch.value     = ''
+  yourPickerResults.value = []
+  yourOtherResetForm()
+}
+
+function addInventoryPetToYour(pet: InventoryPet) {
+  addPetToSide('your', pet.name, pet.form)
+  showYourPicker.value = false
+}
+
+function addOtherPetToYour(name: string) {
+  addPetToSide('your', name, yourOtherPickerForm.value)
+  showYourPicker.value = false
 }
 
 // ── Add dialog ────────────────────────────────────────────────────────────────
@@ -983,4 +1125,77 @@ function confirmAdd() {
   opacity: 0.4;
   cursor: not-allowed;
 }
+
+/* ── YOUR side picker ── */
+.picker-card { min-width: 400px; max-width: 520px; }
+
+.picker-tabs {
+  display: flex;
+  gap: 4px;
+  background: var(--surface-3);
+  border-radius: 8px;
+  padding: 3px;
+}
+
+.picker-tab {
+  flex: 1;
+  padding: 5px 10px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text-3);
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+.picker-tab--active { background: var(--surface-1); color: var(--text-1); }
+.picker-tab:hover:not(.picker-tab--active) { color: var(--text-2); }
+
+.picker-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 6px;
+  max-height: 340px;
+  overflow-y: auto;
+}
+
+.picker-card-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 8px 6px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface-3);
+  cursor: pointer;
+  transition: border-color 0.12s, background 0.12s;
+}
+.picker-card-item:hover { border-color: var(--primary); background: var(--primary-dim); }
+
+.picker-card-img { width: 56px; height: 56px; object-fit: contain; }
+
+.picker-card-name {
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--text-1);
+  text-align: center;
+  line-height: 1.2;
+  word-break: break-word;
+}
+
+.picker-card-form { font-size: 10px; font-weight: 800; letter-spacing: 0.3px; }
+
+.other-section { padding-top: 12px; }
+
+.empty-panel {
+  font-size: 12px;
+  color: var(--text-3);
+  font-weight: 600;
+  text-align: center;
+  padding: 20px 0;
+}
+
+.form-pill { font-size: 10px; font-weight: 800; letter-spacing: 0.3px; }
 </style>
