@@ -146,10 +146,20 @@ function parseDetailsFromBlock (html: string): PetDetails {
     if (d !== null) demands[form] = d as DemandLevel
   }
 
-  // If no values found (App Router individual page — numbers not quoted), try unquoted
+  // Try alternative encodings if nothing found yet
   if (Object.keys(values).length === 0) {
+    // RSC double-escaped number (App Router __next_f): \"field\":VALUE
     for (const [field, form] of AMVGG_VALUE_FIELDS) {
       const re = new RegExp(`\\\\"${field}\\\\":([\\d.]+)`)
+      const m  = html.match(re)
+      if (m) values[form] = parseFloat(m[1])
+    }
+  }
+
+  if (Object.keys(values).length === 0) {
+    // Clean JSON in inline script (unescaped): "field":VALUE
+    for (const [field, form] of AMVGG_VALUE_FIELDS) {
+      const re = new RegExp(`"${field}":\\s*([\\d.]+)`)
       const m  = html.match(re)
       if (m) values[form] = parseFloat(m[1])
     }
@@ -296,7 +306,19 @@ async function fetchPetDetails (petName: string): Promise<PetDetails> {
       if (!pet) {
         const htmlRes = await fetchFn(`https://amvgg.com/pet/${slug}`)
         if (htmlRes.ok) {
-          const indiv = parseDetailsFromBlock(await htmlRes.text())
+          const rawHtml = await htmlRes.text()
+          const indiv = parseDetailsFromBlock(rawHtml)
+          // Write debug snapshot so we can diagnose extraction issues
+          try {
+            const dbg = {
+              pet: petName, hasNextData: rawHtml.includes('__NEXT_DATA__'),
+              hasNextF: rawHtml.includes('__next_f'), htmlLen: rawHtml.length,
+              extracted: indiv.values,
+              mrSnippet: (() => { const i = rawHtml.indexOf('mrValue'); return i >= 0 ? rawHtml.substring(i - 2, i + 40) : 'NOT FOUND' })(),
+              frSnippet: (() => { const i = rawHtml.indexOf('regularValue'); return i >= 0 ? rawHtml.substring(i - 2, i + 40) : 'NOT FOUND' })(),
+            }
+            fs.writeFileSync(path.join(app.getPath('userData'), 'debug-pet-fetch.json'), JSON.stringify(dbg, null, 2), 'utf8')
+          } catch { /* ignore */ }
           pet = Object.keys(indiv.values).length > 0 ? indiv.values as Record<string, unknown> : null
           if (pet) {
             const cached = detailsCache.get(petName) ?? { values: {}, demands: {}, rarity: null }
