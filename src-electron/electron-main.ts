@@ -94,8 +94,10 @@ const AMVGG_DEMAND_FIELDS: Array<[string, string]> = [
 ]
 
 function extractNumField (text: string, field: string): number | null {
-  const re = new RegExp(`\\\\"${field}\\\\":\\\\"([\\d.]+)\\\\"`)
-  const m  = text.match(re)
+  // Try quoted value first ("field":"123.45"), then unquoted ("field":123.45)
+  const quoted   = new RegExp(`\\\\"${field}\\\\":\\\\"([\\d.]+)\\\\"`)
+  const unquoted = new RegExp(`\\\\"${field}\\\\":([\\d.]+)`)
+  const m = text.match(quoted) ?? text.match(unquoted)
   return m ? parseFloat(m[1]) : null
 }
 
@@ -133,7 +135,10 @@ function applyFormFallbacks (details: PetDetails): PetDetails {
     ['fly', 'fr'], ['ride', 'fr'], ['normal', 'fr'],
   ]
   for (const [form, base] of fallbacks) {
-    if (v[form] == null && v[base] != null) v[form] = v[base]
+    if (v[form] == null && v[base] != null) {
+      console.log(`[AMVGG] fallback: ${form} → ${base} (val=${v[base]})`)
+      v[form] = v[base]
+    }
     if (d[form] == null && d[base] != null) d[form] = d[base]
   }
   return details
