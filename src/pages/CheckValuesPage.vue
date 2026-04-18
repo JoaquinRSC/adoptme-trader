@@ -34,7 +34,7 @@
 
         <div class="panel-body">
           <div class="pet-slots-grid">
-            <div class="pet-slot" v-for="entry in yourSide" :key="entry.id">
+            <div class="pet-slot pet-slot--filled" v-for="entry in yourSide" :key="entry.id" @click="removePet('your', entry.id)" title="Click to remove">
               <img
                 :src="`https://amvgg.com/items/${encodeURIComponent(entry.name)}.webp`"
                 class="slot-img"
@@ -48,7 +48,6 @@
                   <template v-else>{{ entry.value ?? '—' }}</template>
                 </span>
               </div>
-              <button class="slot-remove" @click="removePet('your', entry.id)">×</button>
             </div>
             <button class="pet-slot pet-slot--add" @click="openAddDialog('your')">
               <div class="slot-plus-circle">+</div>
@@ -86,7 +85,7 @@
 
         <div class="panel-body">
           <div class="pet-slots-grid">
-            <div class="pet-slot" v-for="entry in themSide" :key="entry.id">
+            <div class="pet-slot pet-slot--filled" v-for="entry in themSide" :key="entry.id" @click="removePet('them', entry.id)" title="Click to remove">
               <img
                 :src="`https://amvgg.com/items/${encodeURIComponent(entry.name)}.webp`"
                 class="slot-img"
@@ -100,7 +99,6 @@
                   <template v-else>{{ entry.value ?? '—' }}</template>
                 </span>
               </div>
-              <button class="slot-remove" @click="removePet('them', entry.id)">×</button>
             </div>
             <button class="pet-slot pet-slot--add" @click="openAddDialog('them')">
               <div class="slot-plus-circle">+</div>
@@ -622,27 +620,29 @@ function confirmAdd() {
   font-weight: 700;
 }
 
-.slot-remove {
+.pet-slot--filled {
+  cursor: pointer;
+}
+.pet-slot--filled::after {
+  content: '✕';
   position: absolute;
-  top: -7px;
-  right: -7px;
-  width: 20px;
-  height: 20px;
-  border-radius: 50%;
-  background: var(--surface-1);
-  border: 1px solid var(--border-hi);
-  color: var(--text-2);
-  font-size: 14px;
-  line-height: 1;
+  inset: 0;
+  border-radius: 9px;
+  background: rgba(239, 68, 68, 0.0);
+  color: #fff;
+  font-size: 22px;
+  font-weight: 700;
   display: flex;
   align-items: center;
   justify-content: center;
   opacity: 0;
-  transition: opacity 0.15s;
-  cursor: pointer;
+  transition: opacity 0.15s, background 0.15s;
   z-index: 5;
 }
-.pet-slot:hover .slot-remove { opacity: 1; }
+.pet-slot--filled:hover::after {
+  opacity: 1;
+  background: rgba(239, 68, 68, 0.72);
+}
 
 .pet-slot--add {
   background: transparent;
