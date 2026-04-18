@@ -105,18 +105,47 @@ function extractStrField (text: string, field: string): string | null {
   return m ? m[1] : null
 }
 
-function parseDetailsFromBlock (block: string): PetDetails {
+function parseDetailsFromBlock (html: string): PetDetails {
   const values:  Record<string, number | null> = {}
   const demands: Record<string, DemandLevel>   = {}
+
+  // Prefer __NEXT_DATA__ JSON (clean, no escaping issues, no false positives from related pets)
+  const nextDataMatch = html.match(/<script id="__NEXT_DATA__"[^>]*>([^<]+)<\/script>/)
+  if (nextDataMatch) {
+    try {
+      const data = JSON.parse(nextDataMatch[1]) as Record<string, unknown>
+      // Navigate to the pet object — try common pageProps shapes
+      const pet = (
+        (data?.props as Record<string, unknown>)?.pageProps as Record<string, unknown>
+      )?.pet as Record<string, unknown> | undefined
+
+      if (pet && typeof pet === 'object') {
+        for (const [field, form] of AMVGG_VALUE_FIELDS) {
+          const raw = pet[field]
+          if (raw !== null && raw !== undefined) {
+            const n = typeof raw === 'number' ? raw : parseFloat(String(raw))
+            if (!isNaN(n)) values[form] = n
+          }
+        }
+        for (const [field, form] of AMVGG_DEMAND_FIELDS) {
+          const raw = pet[field]
+          if (typeof raw === 'string' && raw) demands[form] = raw as DemandLevel
+        }
+        return { values, demands, rarity: typeof pet['rarity'] === 'string' ? pet['rarity'] as string : null }
+      }
+    } catch { /* fall through to regex */ }
+  }
+
+  // Fallback: RSC-escaped regex (used by bulk /values/pets page)
   for (const [field, form] of AMVGG_VALUE_FIELDS) {
-    const v = extractNumField(block, field)
+    const v = extractNumField(html, field)
     if (v !== null) values[form] = v
   }
   for (const [field, form] of AMVGG_DEMAND_FIELDS) {
-    const d = extractStrField(block, field)
+    const d = extractStrField(html, field)
     if (d !== null) demands[form] = d as DemandLevel
   }
-  return { values, demands, rarity: extractStrField(block, 'rarity') }
+  return { values, demands, rarity: extractStrField(html, 'rarity') }
 }
 
 const detailsCache          = new Map<string, PetDetails>()
