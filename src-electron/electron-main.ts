@@ -119,8 +119,9 @@ function parseDetailsFromBlock (block: string): PetDetails {
   return { values, demands, rarity: extractStrField(block, 'rarity') }
 }
 
-const detailsCache      = new Map<string, PetDetails>()
-let   allPetsCacheFilled = false
+const detailsCache          = new Map<string, PetDetails>()
+const individualFetchDone   = new Set<string>()   // pets whose individual page was fetched
+let   allPetsCacheFilled    = false
 
 // If AMVGG omits a partial-form field (e.g. mfValue) when it equals the full form,
 // fall back to the nearest fully-equipped variant so the field is never null.
@@ -216,28 +217,34 @@ async function warmDetailsCache (): Promise<void> {
 }
 
 async function fetchPetDetails (petName: string): Promise<PetDetails> {
+  if (!allPetsCacheFilled) await warmDetailsCache()
+
+  // Always fetch individual page once to get all 12 form values (bulk page only has fr/nfr/mfr)
+  if (!individualFetchDone.has(petName)) {
+    individualFetchDone.add(petName)
+    const slug = petName.replace(/ /g, '_')
+    try {
+      const res = await fetchWithTimeout(`https://amvgg.com/pet/${slug}`)
+      if (res.ok) {
+        const indiv = parseDetailsFromBlock(await res.text())
+        const cached = detailsCache.get(petName) ?? { values: {}, demands: {}, rarity: null }
+        // Merge: individual page values take priority (they're form-specific)
+        for (const [form, val] of Object.entries(indiv.values)) {
+          if (val !== null) cached.values[form] = val
+        }
+        for (const [form, val] of Object.entries(indiv.demands)) {
+          if (val !== null) cached.demands[form] = val
+        }
+        if (!cached.rarity && indiv.rarity) cached.rarity = indiv.rarity
+        const merged = applyFormFallbacks(cached)
+        detailsCache.set(petName, merged)
+        return merged
+      }
+    } catch { /* fall through to cached */ }
+  }
+
   if (detailsCache.has(petName)) return detailsCache.get(petName)!
-
-  if (!allPetsCacheFilled) {
-    await warmDetailsCache()
-    if (detailsCache.has(petName)) return detailsCache.get(petName)!
-  }
-
-  // Fallback: individual pet page (only has 3 field groups but better than nothing)
-  const slug  = petName.replace(/ /g, '_')
-  const empty: PetDetails = { values: {}, demands: {}, rarity: null }
-  try {
-    const res = await fetchWithTimeout(`https://amvgg.com/pet/${slug}`)
-    if (!res.ok) return empty
-    const details = applyFormFallbacks(parseDetailsFromBlock(await res.text()))
-    if (Object.keys(details.values).length > 0) {
-      detailsCache.set(petName, details)
-      return details
-    }
-    return empty
-  } catch {
-    return empty
-  }
+  return { values: {}, demands: {}, rarity: null }
 }
 
 async function fetchAmvggValue (petName: string, form: string): Promise<number | null> {
