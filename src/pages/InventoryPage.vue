@@ -9,10 +9,23 @@
           {{ inventory.pets.length }} {{ inventory.pets.length === 1 ? 'pet' : 'pets' }} in inventory
         </div>
       </div>
-      <button class="btn-primary" @click="openAdd">
-        <q-icon :name="matAdd" size="16px" />
-        Add Pet
-      </button>
+      <div class="head-right">
+        <div class="total-stat" v-if="inventory.pets.length">
+          <span class="total-lbl">Total</span>
+          <span class="total-val">
+            <q-spinner v-if="anyLoading" size="13px" />
+            <template v-else>{{ totalValue.toFixed(3) }}</template>
+          </span>
+        </div>
+        <div class="source-toggle">
+          <button class="source-btn" :class="{ 'source-btn--active': valueSource === 'amvgg' }" @click="setSource('amvgg')">AMV</button>
+          <button class="source-btn" :class="{ 'source-btn--active': valueSource === 'elvebredd' }" @click="setSource('elvebredd')">Elve</button>
+        </div>
+        <button class="btn-primary" @click="openAdd">
+          <q-icon :name="matAdd" size="16px" />
+          Add Pet
+        </button>
+      </div>
     </div>
 
     <!-- Empty state -->
@@ -34,7 +47,7 @@
             :src="petImageUrl[pet.id]!"
             class="thumb-img"
           />
-          <span class="thumb-emoji">🐾</span>
+          <span v-else class="thumb-emoji">🐾</span>
           <span
             class="thumb-badge"
             :style="{ color: FORM_COLOR_HEX[pet.form], borderColor: FORM_COLOR_HEX[pet.form] + '44' }"
@@ -47,14 +60,14 @@
         <div class="pet-body">
           <div class="pet-name" :title="pet.name">{{ pet.name }}</div>
 
-          <!-- AMVGG value + demand stars -->
+          <!-- Value + demand stars -->
           <div class="value-row">
-            <span class="value-lbl">AMVGG</span>
+            <span class="value-lbl">{{ valueSource === 'amvgg' ? 'AMVGG' : 'Elve' }}</span>
             <q-spinner v-if="loadingValue[pet.id]" size="13px" />
-            <template v-else-if="petValue[pet.id] !== null && petValue[pet.id] !== undefined">
-              <span class="value-num">{{ petValue[pet.id] }}</span>
+            <template v-else-if="activeValue(pet) !== null && activeValue(pet) !== undefined">
+              <span class="value-num">{{ activeValue(pet) }}</span>
             </template>
-            <button v-else class="value-fetch" @click="fetchValue(pet)">Fetch</button>
+            <button v-else class="value-fetch" @click="fetchActive(pet)">Fetch</button>
           </div>
           <div class="demand-row" v-if="petDemand[pet.id]">
             <span class="demand-stars" :class="demandStarClass(petDemand[pet.id])">
@@ -374,9 +387,37 @@ watch(() => newPetName.value, async (name) => {
 })
 
 // ── Value + demand fetching ───────────────────────────────────────────────────
-const petValue    = reactive<Record<string, number | null>>({})
-const petDemand   = reactive<Record<string, DemandLevel>>({})
+const valueSource  = ref<'amvgg' | 'elvebredd'>('amvgg')
+const petValue     = reactive<Record<string, number | null>>({})
+const petElveValue = reactive<Record<string, number | null>>({})
+const petDemand    = reactive<Record<string, DemandLevel>>({})
 const loadingValue = reactive<Record<string, boolean>>({})
+
+const totalValue = computed(() => {
+  const source = valueSource.value === 'elvebredd' ? petElveValue : petValue
+  return inventory.pets.reduce((sum, p) => sum + (source[p.id] ?? 0), 0)
+})
+
+const anyLoading = computed(() => inventory.pets.some(p => loadingValue[p.id]))
+
+function activeValue (pet: InventoryPet): number | null | undefined {
+  return valueSource.value === 'elvebredd' ? petElveValue[pet.id] : petValue[pet.id]
+}
+
+function fetchActive (pet: InventoryPet) {
+  if (valueSource.value === 'elvebredd') void fetchElveValue(pet)
+  else void fetchValue(pet)
+}
+
+async function setSource (src: 'amvgg' | 'elvebredd') {
+  valueSource.value = src
+  if (src === 'elvebredd') {
+    const missing = inventory.pets.filter(p => !(p.id in petElveValue))
+    const queue = [...missing]
+    const worker = async () => { while (queue.length) await fetchElveValue(queue.shift()!) }
+    void Promise.all([worker(), worker(), worker()])
+  }
+}
 
 function demandStars (d: DemandLevel): string {
   const n = d === 'High' ? 3 : d === 'Medium' ? 2 : d === 'Low' ? 1 : d === 'Very Low' ? 1 : 0
@@ -397,6 +438,17 @@ async function fetchValue (pet: InventoryPet) {
     petDemand[pet.id] = details.demands[pet.form] ?? null
   } catch {
     petValue[pet.id] = null
+  } finally {
+    loadingValue[pet.id] = false
+  }
+}
+
+async function fetchElveValue (pet: InventoryPet) {
+  loadingValue[pet.id] = true
+  try {
+    petElveValue[pet.id] = await values.getElveValue(pet.name, pet.form)
+  } catch {
+    petElveValue[pet.id] = null
   } finally {
     loadingValue[pet.id] = false
   }
@@ -440,10 +492,45 @@ function confirmRemove (id: string, name: string) {
 /* Page header */
 .page-head {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   justify-content: space-between;
   margin-bottom: 24px;
 }
+
+.head-right {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.total-stat {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  line-height: 1.2;
+}
+.total-lbl { font-size: 10px; font-weight: 700; color: var(--text-3); text-transform: uppercase; letter-spacing: 0.8px; }
+.total-val { font-size: 18px; font-weight: 800; color: var(--gold); }
+
+.source-toggle {
+  display: flex;
+  gap: 4px;
+  background: var(--surface-2);
+  border-radius: 8px;
+  padding: 3px;
+}
+.source-btn {
+  padding: 6px 14px;
+  border: none;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  background: transparent;
+  color: var(--text-2);
+  transition: background 0.15s, color 0.15s;
+}
+.source-btn--active { background: var(--primary); color: #fff; }
 
 .page-title {
   font-size: 26px;
