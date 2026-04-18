@@ -249,13 +249,19 @@ async function fetchPetDetails (petName: string): Promise<PetDetails> {
   if (!allPetsCacheFilled) await warmDetailsCache()
 
   // Always fetch individual page once to get all 12 form values (bulk page only has fr/nfr/mfr)
+  // Use amvggSession (real browser session with cookies) to bypass bot protection
   if (!individualFetchDone.has(petName)) {
     individualFetchDone.add(petName)
     const slug = petName.replace(/ /g, '_')
     try {
-      const res = await fetchWithTimeout(`https://amvgg.com/pet/${slug}`)
+      const fetchFn = amvggSession
+        ? (url: string) => amvggSession!.fetch(url)
+        : (url: string) => net.fetch(url, { headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36' } })
+      const res = await fetchFn(`https://amvgg.com/pet/${slug}`)
+      console.log(`[AMVGG] individual fetch ${petName}: ${res.status}`)
       if (res.ok) {
         const indiv = parseDetailsFromBlock(await res.text())
+        console.log(`[AMVGG] individual values for ${petName}:`, indiv.values)
         const cached = detailsCache.get(petName) ?? { values: {}, demands: {}, rarity: null }
         // Merge: individual page values take priority (they're form-specific)
         for (const [form, val] of Object.entries(indiv.values)) {
