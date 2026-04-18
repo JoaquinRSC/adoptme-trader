@@ -60,14 +60,14 @@
               <span class="footer-src">AMV</span>
               <span class="footer-value">
                 <q-spinner v-if="anyOfferedLoading" size="11px" />
-                <template v-else>{{ totalOfferedAmvgg.toFixed(3) }}</template>
+                <template v-else>{{ totalOfferedAmvgg.toFixed(4) }}</template>
               </span>
             </div>
             <div class="footer-total-row">
               <span class="footer-src">Elve</span>
               <span class="footer-value">
                 <q-spinner v-if="anyOfferedLoading" size="11px" />
-                <template v-else>{{ totalOfferedElve.toFixed(3) }}</template>
+                <template v-else>{{ totalOfferedElve.toFixed(4) }}</template>
               </span>
             </div>
           </div>
