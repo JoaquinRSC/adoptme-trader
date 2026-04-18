@@ -149,8 +149,24 @@ function parseDetailsFromBlock (html: string): PetDetails {
 }
 
 const detailsCache          = new Map<string, PetDetails>()
-const individualFetchDone   = new Set<string>()   // pets whose individual page was fetched
+const individualFetchDone   = new Set<string>()
 let   allPetsCacheFilled    = false
+let   amvggBuildId: string | null = null
+
+async function getAmvggBuildId (): Promise<string | null> {
+  if (amvggBuildId) return amvggBuildId
+  try {
+    const fetchFn = amvggSession
+      ? (url: string) => amvggSession!.fetch(url)
+      : (url: string) => net.fetch(url, { headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36' } })
+    const res = await fetchFn('https://amvgg.com/')
+    if (!res.ok) return null
+    const html = await res.text()
+    const m = html.match(/"buildId"\s*:\s*"([^"]+)"/)
+    if (m) { amvggBuildId = m[1]; console.log('[AMVGG] buildId:', amvggBuildId) }
+  } catch { /* ignore */ }
+  return amvggBuildId
+}
 
 // If AMVGG omits a partial-form field (e.g. mfValue) when it equals the full form,
 // fall back to the nearest fully-equipped variant so the field is never null.
@@ -248,32 +264,55 @@ async function warmDetailsCache (): Promise<void> {
 async function fetchPetDetails (petName: string): Promise<PetDetails> {
   if (!allPetsCacheFilled) await warmDetailsCache()
 
-  // Always fetch individual page once to get all 12 form values (bulk page only has fr/nfr/mfr)
-  // Use amvggSession (real browser session with cookies) to bypass bot protection
+  // Fetch individual pet via Next.js JSON endpoint (clean data, all 12 form values)
   if (!individualFetchDone.has(petName)) {
     individualFetchDone.add(petName)
     const slug = petName.replace(/ /g, '_')
+    const fetchFn = amvggSession
+      ? (url: string) => amvggSession!.fetch(url)
+      : (url: string) => net.fetch(url, { headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36' } })
     try {
-      const fetchFn = amvggSession
-        ? (url: string) => amvggSession!.fetch(url)
-        : (url: string) => net.fetch(url, { headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36' } })
-      const res = await fetchFn(`https://amvgg.com/pet/${slug}`)
-      console.log(`[AMVGG] individual fetch ${petName}: ${res.status}`)
-      if (res.ok) {
-        const indiv = parseDetailsFromBlock(await res.text())
-        console.log(`[AMVGG] individual values for ${petName}:`, indiv.values)
+      // Try /_next/data/{buildId}/pet/{slug}.json first (clean JSON, no HTML parsing)
+      const buildId = await getAmvggBuildId()
+      let pet: Record<string, unknown> | null = null
+      if (buildId) {
+        const jsonRes = await fetchFn(`https://amvgg.com/_next/data/${buildId}/pet/${slug}.json`)
+        if (jsonRes.ok) {
+          const data = await jsonRes.json() as Record<string, unknown>
+          pet = ((data?.pageProps as Record<string, unknown>)?.pet as Record<string, unknown>) ?? null
+        }
+      }
+      // Fallback to HTML page if JSON endpoint failed
+      if (!pet) {
+        const htmlRes = await fetchFn(`https://amvgg.com/pet/${slug}`)
+        if (htmlRes.ok) {
+          const indiv = parseDetailsFromBlock(await htmlRes.text())
+          pet = Object.keys(indiv.values).length > 0 ? indiv.values as Record<string, unknown> : null
+          if (pet) {
+            const cached = detailsCache.get(petName) ?? { values: {}, demands: {}, rarity: null }
+            for (const [form, val] of Object.entries(indiv.values)) {
+              if (val !== null) (cached.values as Record<string, unknown>)[form] = val
+            }
+            detailsCache.set(petName, applyFormFallbacks(cached))
+            return detailsCache.get(petName)!
+          }
+        }
+      }
+      if (pet) {
         const cached = detailsCache.get(petName) ?? { values: {}, demands: {}, rarity: null }
-        // Merge: individual page values take priority (they're form-specific)
-        for (const [form, val] of Object.entries(indiv.values)) {
-          if (val !== null) cached.values[form] = val
+        for (const [field, form] of AMVGG_VALUE_FIELDS) {
+          const raw = pet[field]
+          if (raw !== null && raw !== undefined) {
+            const n = typeof raw === 'number' ? raw : parseFloat(String(raw))
+            if (!isNaN(n)) cached.values[form] = n
+          }
         }
-        for (const [form, val] of Object.entries(indiv.demands)) {
-          if (val !== null) cached.demands[form] = val
+        for (const [field, form] of AMVGG_DEMAND_FIELDS) {
+          const raw = pet[field]
+          if (typeof raw === 'string' && raw) cached.demands[form] = raw as DemandLevel
         }
-        if (!cached.rarity && indiv.rarity) cached.rarity = indiv.rarity
-        const merged = applyFormFallbacks(cached)
-        detailsCache.set(petName, merged)
-        return merged
+        detailsCache.set(petName, applyFormFallbacks(cached))
+        return detailsCache.get(petName)!
       }
     } catch { /* fall through to cached */ }
   }
