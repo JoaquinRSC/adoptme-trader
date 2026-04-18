@@ -168,26 +168,9 @@ function parseDetailsFromBlock (html: string): PetDetails {
   return { values, demands, rarity: extractStrField(html, 'rarity') }
 }
 
-const detailsCache          = new Map<string, PetDetails>()
-const individualFetchDone   = new Set<string>()
-const browserFetchDone      = new Set<string>()
-let   allPetsCacheFilled    = false
-let   amvggBuildId: string | null = null
-
-async function getAmvggBuildId (): Promise<string | null> {
-  if (amvggBuildId) return amvggBuildId
-  try {
-    const fetchFn = amvggSession
-      ? (url: string) => amvggSession!.fetch(url)
-      : (url: string) => net.fetch(url, { headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36' } })
-    const res = await fetchFn('https://amvgg.com/')
-    if (!res.ok) return null
-    const html = await res.text()
-    const m = html.match(/"buildId"\s*:\s*"([^"]+)"/)
-    if (m) { amvggBuildId = m[1]; console.log('[AMVGG] buildId:', amvggBuildId) }
-  } catch { /* ignore */ }
-  return amvggBuildId
-}
+const detailsCache        = new Map<string, PetDetails>()
+const individualFetchDone = new Set<string>()
+let   allPetsCacheFilled  = false
 
 // If AMVGG omits a partial-form field (e.g. mfValue) when it equals the full form,
 // fall back to the nearest fully-equipped variant so the field is never null.
@@ -282,181 +265,31 @@ async function warmDetailsCache (): Promise<void> {
   } catch { /* fallback to individual-page fetch handles misses */ }
 }
 
-// Opens a hidden BrowserWindow, intercepts AMVGG's client-side API calls via CDP,
-// and extracts full-precision per-form values (mr, fly, ride, etc.) that aren't
-// present in the server-rendered HTML.
-function fetchPetDetailsViaBrowser (petName: string): void {
-  if (browserFetchDone.has(petName) || !amvggSession) return
-  browserFetchDone.add(petName)
-
-  const slug = petName.replace(/ /g, '_')
-
-  const win = new BrowserWindow({
-    show: false, width: 1200, height: 800,
-    webPreferences: {
-      session: amvggSession,
-      contextIsolation: true, nodeIntegration: false, sandbox: false,
-    },
-  })
-
-  let settled = false
-  const done = () => {
-    if (settled) return; settled = true
-    clearTimeout(timer)
-    try { win.webContents.debugger.detach() } catch { /* ignore */ }
-    if (!win.isDestroyed()) win.close()
-  }
-  const timer = setTimeout(done, 15000)
-
-  try {
-    win.webContents.debugger.attach('1.3')
-    win.webContents.debugger.sendCommand('Network.enable').catch(() => {})
-
-    win.webContents.debugger.on('message', async (_, method, params: Record<string, unknown>) => {
-      if (method !== 'Network.responseReceived') return
-      const url  = ((params.response as Record<string, unknown>)?.url as string) ?? ''
-      if (!url.includes('amvgg.com')) return
-
-      try {
-        const bodyRes = await win.webContents.debugger.sendCommand('Network.getResponseBody', { requestId: params.requestId }) as { body: string; base64Encoded: boolean }
-        const text    = bodyRes.base64Encoded ? Buffer.from(bodyRes.body, 'base64').toString('utf8') : bodyRes.body
-        if (!text) return
-
-        // Check if response contains any known pet value field
-        const hasValues = AMVGG_VALUE_FIELDS.some(([f]) => text.includes(f))
-        if (!hasValues) return
-
-        console.log('[AMVGG browser] pet data in response from:', url)
-
-        const values:  Record<string, number | null> = {}
-        const demands: Record<string, DemandLevel>   = {}
-
-        // Try clean JSON parse
-        try {
-          const data = JSON.parse(text) as Record<string, unknown>
-          const petData = (
-            ((data.props as Record<string, unknown>)?.pageProps as Record<string, unknown>)?.pet
-            ?? (data as Record<string, unknown>).pet
-            ?? data
-          ) as Record<string, unknown>
-          for (const [field, form] of AMVGG_VALUE_FIELDS) {
-            const raw = petData[field]
-            if (raw != null) {
-              const n = typeof raw === 'number' ? raw : parseFloat(String(raw))
-              if (!isNaN(n)) values[form] = n
-            }
-          }
-          for (const [field, form] of AMVGG_DEMAND_FIELDS) {
-            const raw = petData[field]
-            if (typeof raw === 'string' && raw) demands[form] = raw as DemandLevel
-          }
-        } catch {
-          // Regex fallback for non-standard JSON
-          for (const [field, form] of AMVGG_VALUE_FIELDS) {
-            const m = text.match(new RegExp(`"${field}"\\s*:\\s*([\\d.]+)`))
-            if (m) values[form] = parseFloat(m[1])
-          }
-        }
-
-        if (Object.keys(values).length < 3) return  // too few values — probably not the right response
-
-        const cached = detailsCache.get(petName) ?? { values: {}, demands: {}, rarity: null }
-        for (const [form, val] of Object.entries(values)) { if (val != null) cached.values[form] = val }
-        for (const [form, val] of Object.entries(demands)) { cached.demands[form] = val }
-        detailsCache.set(petName, applyFormFallbacks(cached))
-        console.log(`[AMVGG browser] ${petName}: mr=${cached.values.mr} fr=${cached.values.fr}`)
-
-        try {
-          fs.writeFileSync(
-            path.join(app.getPath('userData'), 'debug-browser-fetch.json'),
-            JSON.stringify({ petName, url, values: cached.values }, null, 2), 'utf8'
-          )
-        } catch { /* ignore */ }
-
-        // Push updated values to the renderer
-        mainWindow?.webContents.send('pet:values-updated', petName, detailsCache.get(petName))
-        done()
-      } catch { /* ignore response errors */ }
-    })
-  } catch { done(); return }
-
-  win.webContents.on('did-finish-load', () => setTimeout(done, 10000))
-  void win.loadURL(`https://amvgg.com/pet/${slug}`)
-}
-
 async function fetchPetDetails (petName: string): Promise<PetDetails> {
   if (!allPetsCacheFilled) await warmDetailsCache()
 
-  // Fetch individual pet via Next.js JSON endpoint (clean data, all 12 form values)
   if (!individualFetchDone.has(petName)) {
     individualFetchDone.add(petName)
-    const slug = petName.replace(/ /g, '_')
+    const slug    = petName.replace(/ /g, '_')
     const fetchFn = amvggSession
       ? (url: string) => amvggSession!.fetch(url)
       : (url: string) => net.fetch(url, { headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36' } })
     try {
-      // Try /_next/data/{buildId}/pet/{slug}.json first (clean JSON, no HTML parsing)
-      const buildId = await getAmvggBuildId()
-      let pet: Record<string, unknown> | null = null
-      if (buildId) {
-        const jsonRes = await fetchFn(`https://amvgg.com/_next/data/${buildId}/pet/${slug}.json`)
-        if (jsonRes.ok) {
-          const data = await jsonRes.json() as Record<string, unknown>
-          pet = ((data?.pageProps as Record<string, unknown>)?.pet as Record<string, unknown>) ?? null
-        }
-      }
-      // Fallback to HTML page if JSON endpoint failed
-      if (!pet) {
-        const htmlRes = await fetchFn(`https://amvgg.com/pet/${slug}`)
-        if (htmlRes.ok) {
-          const rawHtml = await htmlRes.text()
-          const indiv = parseDetailsFromBlock(rawHtml)
-          // Write debug snapshot so we can diagnose extraction issues
-          try {
-            const dbg = {
-              pet: petName, hasNextData: rawHtml.includes('__NEXT_DATA__'),
-              hasNextF: rawHtml.includes('__next_f'), htmlLen: rawHtml.length,
-              extracted: indiv.values,
-              mrSnippet: (() => { const i = rawHtml.indexOf('mrValue'); return i >= 0 ? rawHtml.substring(i - 2, i + 40) : 'NOT FOUND' })(),
-              frSnippet: (() => { const i = rawHtml.indexOf('regularValue'); return i >= 0 ? rawHtml.substring(i - 2, i + 40) : 'NOT FOUND' })(),
-            }
-            fs.writeFileSync(path.join(app.getPath('userData'), 'debug-pet-fetch.json'), JSON.stringify(dbg, null, 2), 'utf8')
-          } catch { /* ignore */ }
-          pet = Object.keys(indiv.values).length > 0 ? indiv.values as Record<string, unknown> : null
-          if (pet) {
-            const cached = detailsCache.get(petName) ?? { values: {}, demands: {}, rarity: null }
-            for (const [form, val] of Object.entries(indiv.values)) {
-              if (val !== null) (cached.values as Record<string, unknown>)[form] = val
-            }
-            detailsCache.set(petName, applyFormFallbacks(cached))
-            return detailsCache.get(petName)!
+      const res = await fetchFn(`https://amvgg.com/pet/${slug}`)
+      if (res.ok) {
+        const indiv = parseDetailsFromBlock(await res.text())
+        if (Object.keys(indiv.values).length > 0) {
+          const cached = detailsCache.get(petName) ?? { values: {}, demands: {}, rarity: null }
+          for (const [form, val] of Object.entries(indiv.values)) {
+            if (val !== null) (cached.values as Record<string, unknown>)[form] = val
           }
+          detailsCache.set(petName, applyFormFallbacks(cached))
         }
       }
-      if (pet) {
-        const cached = detailsCache.get(petName) ?? { values: {}, demands: {}, rarity: null }
-        for (const [field, form] of AMVGG_VALUE_FIELDS) {
-          const raw = pet[field]
-          if (raw !== null && raw !== undefined) {
-            const n = typeof raw === 'number' ? raw : parseFloat(String(raw))
-            if (!isNaN(n)) cached.values[form] = n
-          }
-        }
-        for (const [field, form] of AMVGG_DEMAND_FIELDS) {
-          const raw = pet[field]
-          if (typeof raw === 'string' && raw) cached.demands[form] = raw as DemandLevel
-        }
-        detailsCache.set(petName, applyFormFallbacks(cached))
-        return detailsCache.get(petName)!
-      }
-    } catch { /* fall through to cached */ }
+    } catch { /* use bulk-page cached value */ }
   }
 
-  // Kick off browser-based fetch in background to get client-side-loaded per-form values
-  fetchPetDetailsViaBrowser(petName)
-
-  if (detailsCache.has(petName)) return detailsCache.get(petName)!
-  return { values: {}, demands: {}, rarity: null }
+  return detailsCache.get(petName) ?? { values: {}, demands: {}, rarity: null }
 }
 
 async function fetchAmvggValue (petName: string, form: string): Promise<number | null> {
