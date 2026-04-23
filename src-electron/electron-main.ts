@@ -105,7 +105,7 @@ function extractStrField (text: string, field: string): string | null {
   return m ? m[1] : null
 }
 
-function parseDetailsFromBlock (html: string): PetDetails {
+function parseDetailsFromBlock (html: string, petName?: string): PetDetails {
   const values:  Record<string, number | null> = {}
   const demands: Record<string, DemandLevel>   = {}
 
@@ -113,11 +113,15 @@ function parseDetailsFromBlock (html: string): PetDetails {
   const nextDataMatch = html.match(/<script id="__NEXT_DATA__"[^>]*>([^<]+)<\/script>/)
   if (nextDataMatch) {
     try {
-      const data = JSON.parse(nextDataMatch[1]) as Record<string, unknown>
-      // Navigate to the pet object — try common pageProps shapes
+      const data      = JSON.parse(nextDataMatch[1]) as Record<string, unknown>
+      const pageProps = ((data?.props as Record<string, unknown>)?.pageProps ?? {}) as Record<string, unknown>
+      // Try multiple known pageProps shapes
       const pet = (
-        (data?.props as Record<string, unknown>)?.pageProps as Record<string, unknown>
-      )?.pet as Record<string, unknown> | undefined
+        pageProps['pet'] ??
+        (pageProps['data'] as Record<string, unknown> | undefined)?.['pet'] ??
+        pageProps['petData'] ??
+        pageProps['petDetails']
+      ) as Record<string, unknown> | undefined
 
       if (pet && typeof pet === 'object') {
         for (const [field, form] of AMVGG_VALUE_FIELDS) {
@@ -136,13 +140,29 @@ function parseDetailsFromBlock (html: string): PetDetails {
     } catch { /* fall through to regex */ }
   }
 
+  // Restrict regex search to a window around the target pet's name to avoid picking up
+  // values from related/similar pets that appear elsewhere in the RSC payload.
+  let block = html
+  if (petName) {
+    const escaped  = petName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+    const nameRe   = new RegExp(`\\\\"name\\\\":\\\\"${escaped}\\\\"`)
+    const nameMatch = nameRe.exec(html)
+    if (nameMatch) {
+      const center = nameMatch.index
+      // Name may come before OR after the value fields in the RSC payload — use a wide window in both directions
+      const start = Math.max(0, center - 10000)
+      const end   = Math.min(html.length, center + 15000)
+      block = html.slice(start, end)
+    }
+  }
+
   // Fallback: RSC-escaped regex (used by bulk /values/pets page)
   for (const [field, form] of AMVGG_VALUE_FIELDS) {
-    const v = extractNumField(html, field)
+    const v = extractNumField(block, field)
     if (v !== null) values[form] = v
   }
   for (const [field, form] of AMVGG_DEMAND_FIELDS) {
-    const d = extractStrField(html, field)
+    const d = extractStrField(block, field)
     if (d !== null) demands[form] = d as DemandLevel
   }
 
@@ -151,7 +171,7 @@ function parseDetailsFromBlock (html: string): PetDetails {
     // RSC double-escaped number (App Router __next_f): \"field\":VALUE
     for (const [field, form] of AMVGG_VALUE_FIELDS) {
       const re = new RegExp(`\\\\"${field}\\\\":([\\d.]+)`)
-      const m  = html.match(re)
+      const m  = block.match(re)
       if (m) values[form] = parseFloat(m[1])
     }
   }
@@ -160,12 +180,12 @@ function parseDetailsFromBlock (html: string): PetDetails {
     // Clean JSON in inline script (unescaped): "field":VALUE
     for (const [field, form] of AMVGG_VALUE_FIELDS) {
       const re = new RegExp(`"${field}":\\s*([\\d.]+)`)
-      const m  = html.match(re)
+      const m  = block.match(re)
       if (m) values[form] = parseFloat(m[1])
     }
   }
 
-  return { values, demands, rarity: extractStrField(html, 'rarity') }
+  return { values, demands, rarity: extractStrField(block, 'rarity') }
 }
 
 const detailsCache        = new Map<string, PetDetails>()
@@ -277,7 +297,7 @@ async function fetchPetDetails (petName: string): Promise<PetDetails> {
     try {
       const res = await fetchFn(`https://amvgg.com/pet/${slug}`)
       if (res.ok) {
-        const indiv = parseDetailsFromBlock(await res.text())
+        const indiv = parseDetailsFromBlock(await res.text(), petName)
         if (Object.keys(indiv.values).length > 0) {
           const cached = detailsCache.get(petName) ?? { values: {}, demands: {}, rarity: null }
           for (const [form, val] of Object.entries(indiv.values)) {
