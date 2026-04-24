@@ -109,6 +109,22 @@ function parseDetailsFromBlock (html: string, petName?: string): PetDetails {
   const values:  Record<string, number | null> = {}
   const demands: Record<string, DemandLevel>   = {}
 
+  // Restrict regex search to a window around the target pet's name — set up first so it
+  // can also supplement __NEXT_DATA__ results for any fields missing from that JSON.
+  let block = html
+  if (petName) {
+    const escaped  = petName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+    const nameRe   = new RegExp(`\\\\"name\\\\":\\\\"${escaped}\\\\"`)
+    const nameMatch = nameRe.exec(html)
+    if (nameMatch) {
+      const center = nameMatch.index
+      // Name may come before OR after the value fields in the RSC payload — use a wide window in both directions
+      const start = Math.max(0, center - 10000)
+      const end   = Math.min(html.length, center + 15000)
+      block = html.slice(start, end)
+    }
+  }
+
   // Prefer __NEXT_DATA__ JSON (clean, no escaping issues, no false positives from related pets)
   const nextDataMatch = html.match(/<script id="__NEXT_DATA__"[^>]*>([^<]+)<\/script>/)
   if (nextDataMatch) {
@@ -135,25 +151,23 @@ function parseDetailsFromBlock (html: string, petName?: string): PetDetails {
           const raw = pet[field]
           if (typeof raw === 'string' && raw) demands[form] = raw as DemandLevel
         }
+        // __NEXT_DATA__ may omit partial-form fields (e.g. nrValue) that are only in the RSC
+        // payload — supplement any gaps with the RSC regex so we don't fall back to nfr/mfr.
+        for (const [field, form] of AMVGG_VALUE_FIELDS) {
+          if (values[form] == null) {
+            const v = extractNumField(block, field)
+            if (v !== null) values[form] = v
+          }
+        }
+        for (const [field, form] of AMVGG_DEMAND_FIELDS) {
+          if (demands[form] == null) {
+            const d = extractStrField(block, field)
+            if (d !== null) demands[form] = d as DemandLevel
+          }
+        }
         return { values, demands, rarity: typeof pet['rarity'] === 'string' ? pet['rarity'] as string : null }
       }
     } catch { /* fall through to regex */ }
-  }
-
-  // Restrict regex search to a window around the target pet's name to avoid picking up
-  // values from related/similar pets that appear elsewhere in the RSC payload.
-  let block = html
-  if (petName) {
-    const escaped  = petName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
-    const nameRe   = new RegExp(`\\\\"name\\\\":\\\\"${escaped}\\\\"`)
-    const nameMatch = nameRe.exec(html)
-    if (nameMatch) {
-      const center = nameMatch.index
-      // Name may come before OR after the value fields in the RSC payload — use a wide window in both directions
-      const start = Math.max(0, center - 10000)
-      const end   = Math.min(html.length, center + 15000)
-      block = html.slice(start, end)
-    }
   }
 
   // Fallback: RSC-escaped regex (used by bulk /values/pets page)
@@ -255,13 +269,18 @@ async function warmDetailsCache (): Promise<void> {
     const petDemands = new Map<string, Record<string, DemandLevel>>()
 
     for (const [field, form] of AMVGG_VALUE_FIELDS) {
-      const re = new RegExp(`\\\\"${field}\\\\":\\\\"([\\d.]+)\\\\"`, 'g')
-      let m: RegExpExecArray | null
-      while ((m = re.exec(html)) !== null) {
-        const name = nearestPrecedingName(m.index)
-        if (!name) continue
-        if (!petValues.has(name)) petValues.set(name, {})
-        if (!(form in petValues.get(name)!)) petValues.get(name)![form] = parseFloat(m[1])
+      // Try both RSC-escaped string ("field":"VALUE") and bare number ("field":VALUE) formats
+      for (const re of [
+        new RegExp(`\\\\"${field}\\\\":\\\\"([\\d.]+)\\\\"`, 'g'),
+        new RegExp(`\\\\"${field}\\\\":([\\d.]+)(?![\\d."\\\\])`, 'g'),
+      ]) {
+        let m: RegExpExecArray | null
+        while ((m = re.exec(html)) !== null) {
+          const name = nearestPrecedingName(m.index)
+          if (!name) continue
+          if (!petValues.has(name)) petValues.set(name, {})
+          if (!(form in petValues.get(name)!)) petValues.get(name)![form] = parseFloat(m[1])
+        }
       }
     }
 
