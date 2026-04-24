@@ -279,7 +279,7 @@ async function warmDetailsCache (): Promise<void> {
           const name = nearestPrecedingName(m.index)
           if (!name) continue
           if (!petValues.has(name)) petValues.set(name, {})
-          if (!(form in petValues.get(name)!)) petValues.get(name)![form] = parseFloat(m[1])
+          petValues.get(name)![form] = parseFloat(m[1])
         }
       }
     }
@@ -291,7 +291,7 @@ async function warmDetailsCache (): Promise<void> {
         const name = nearestPrecedingName(m.index)
         if (!name) continue
         if (!petDemands.has(name)) petDemands.set(name, {})
-        if (!(form in petDemands.get(name)!)) petDemands.get(name)![form] = m[1] as DemandLevel
+        petDemands.get(name)![form] = m[1] as DemandLevel
       }
     }
 
