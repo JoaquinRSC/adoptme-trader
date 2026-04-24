@@ -301,6 +301,7 @@ async function warmDetailsCache (): Promise<void> {
       const entry: PetDetails = { values, demands: petDemands.get(name) ?? {}, rarity: null }
       detailsCache.set(name, applyFormFallbacks(entry))
     }
+
   } catch { /* fallback to individual-page fetch handles misses */ }
 }
 
