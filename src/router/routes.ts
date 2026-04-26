@@ -13,6 +13,7 @@ const routes: RouteRecordRaw[] = [
       { name: 'browse-market', path: 'browse-market', component: () => import('pages/BrowseMarketPage.vue')  },
     ],
   },
+  { path: '/login', component: () => import('pages/LoginPage.vue') },
   { path: '/:catchAll(.*)*', component: () => import('pages/InventoryPage.vue') },
 ]
 
