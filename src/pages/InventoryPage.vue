@@ -736,7 +736,13 @@ async function fetchValue (pet: InventoryPet) {
 
 async function fetchElveValue (pet: InventoryPet) {
   if (pet.category && pet.category !== 'pet') {
-    petElveValue[pet.id] = null
+    try {
+      const res  = await fetch(`/api/item/details?name=${encodeURIComponent(pet.name)}&category=${pet.category}`)
+      const data = await res.json() as { elveValue: number | null }
+      petElveValue[pet.id] = data.elveValue
+    } catch {
+      petElveValue[pet.id] = null
+    }
     return
   }
   loadingValue[pet.id] = true

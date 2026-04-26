@@ -223,8 +223,29 @@ async function fetchElve () {
     }
   }
 
-  console.log(`${Object.keys(result).length} pets`)
-  return result
+  // Extract non-pet item values (single numeric `value` field + `type` field)
+  const ELVE_ITEM_TYPE_MAP = {
+    'pet wear': 'petWear', 'toys': 'toy', 'stickers': 'sticker',
+    'vehicles': 'vehicle', 'strollers': 'stroller', 'food': 'food',
+    'gifts': 'gift', 'eggs': 'egg',
+  }
+  const elveItems = {}
+  const typeRe = /\\"type\\":\\"([^"\\]+)\\"/g
+  let tm
+  while ((tm = typeRe.exec(html)) !== null) {
+    const catKey = ELVE_ITEM_TYPE_MAP[tm[1]]
+    if (!catKey) continue
+    const before = html.slice(Math.max(0, tm.index - 250), tm.index)
+    const after  = html.slice(tm.index, Math.min(html.length, tm.index + 250))
+    const valMatch  = before.match(/\\"value\\":([\d.]+)(?![\d.])/)
+    const nameMatch = after.match(/\\"name\\":\\"([^"\\]+)\\"/)
+    if (!valMatch || !nameMatch) continue
+    if (!elveItems[catKey]) elveItems[catKey] = {}
+    elveItems[catKey][nameMatch[1]] = parseFloat(valMatch[1])
+  }
+  const itemCount = Object.values(elveItems).reduce((s, c) => s + Object.keys(c).length, 0)
+  console.log(`${Object.keys(result).length} pets, ${itemCount} items`)
+  return { pets: result, items: elveItems }
 }
 
 // ── Non-pet categories ────────────────────────────────────────────────────────
@@ -295,8 +316,10 @@ async function main () {
     console.error('  ✗ AMVGG failed:', e.message)
   }
 
+  let elveItems = {}
   try {
-    const elve = await fetchElve()
+    const { pets: elve, items } = await fetchElve()
+    elveItems = items
     writeFileSync(join(DATA_DIR, 'elve-cache.json'), JSON.stringify(elve))
     console.log('  ✓ src/data/elve-cache.json saved')
     ok = true
@@ -306,6 +329,13 @@ async function main () {
 
   try {
     const items = await fetchAmvggItems()
+    // Merge Elvebredd item values
+    for (const [cat, catItems] of Object.entries(elveItems)) {
+      if (!items[cat]) continue
+      for (const [name, elveValue] of Object.entries(catItems)) {
+        if (items[cat][name]) items[cat][name].elveValue = elveValue
+      }
+    }
     writeFileSync(join(DATA_DIR, 'items-cache.json'), JSON.stringify(items))
     console.log('  ✓ src/data/items-cache.json saved')
     ok = true
@@ -313,7 +343,7 @@ async function main () {
     console.error('  ✗ Items failed:', e.message)
   }
 
-  if (ok) console.log('\nDone. Commit the JSON files and deploy to update Railway.')
+  if (ok) console.log('\nDone. Commit the JSON files and deploy.')
   else process.exit(1)
 }
 

@@ -505,9 +505,9 @@ async function addOffered (pet: InventoryPet) {
   try {
     if (pet.category && pet.category !== 'pet') {
       const res  = await fetch(`/api/item/details?name=${encodeURIComponent(pet.name)}&category=${pet.category}`)
-      const data = await res.json() as { value: number | null; demand: string | null }
+      const data = await res.json() as { value: number | null; demand: string | null; elveValue: number | null }
       const found = offeredPets.value.find(o => o.pet.id === pet.id)
-      if (found) { found.amvggValue = data.value; found.elveValue = data.value; found.demand = data.demand as DemandLevel }
+      if (found) { found.amvggValue = data.value; found.elveValue = data.elveValue; found.demand = data.demand as DemandLevel }
       return
     }
 
