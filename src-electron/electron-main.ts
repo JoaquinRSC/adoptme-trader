@@ -949,7 +949,7 @@ function registerIpcHandlers () {
       return pets.reduce((s, p) => s + (p.value ?? 0), 0)
     }
 
-    // ── AMVGG ──────────────────────────────────────────────────────────────────
+    // ── AMVGG (server-side filter by pet + form) ──────────────────────────────
     if (sources.includes('amvgg')) {
       interface AmvggItem  { id: number; name: string; type: string; fg: boolean }
       interface AmvggTrade { id: string; authorName: string; lookingFor: AmvggItem[]; offering: AmvggItem[]; publishedAt: string }
@@ -959,23 +959,18 @@ function registerIpcHandlers () {
         ? (u: string) => amvggSession!.fetch(u)
         : (u: string) => net.fetch(u, { headers: { 'User-Agent': USER_AGENT } })
 
+      const amvggType = FORM_TO_AMVGG_TYPE[form] ?? ''
+      const baseUrl   = `https://amvgg.com/api/trades?limit=100&lookingForItem=${encodeURIComponent(petName)}&lookingForType=${amvggType}`
+
       let cursor: string | undefined
       for (let p = 0; p < pages; p++) {
-        const url = `https://amvgg.com/api/trades?limit=100${cursor ? `&cursor=${encodeURIComponent(cursor)}` : ''}`
-        const res = await doFetch(url)
+        const url = cursor ? `${baseUrl}&cursor=${encodeURIComponent(cursor)}` : baseUrl
+        const res  = await doFetch(url)
         if (!res.ok) break
         const data = await res.json() as AmvggResp
 
         for (const trade of data.trades) {
-          const match = trade.lookingFor.some(item =>
-            item.name.toLowerCase() === nameLower &&
-            // type='' means unspecified form — treat as wildcard and show for any form search
-            (item.type === '' || (AMVGG_TYPE_TO_FORM[item.type] ?? 'normal') === form)
-          )
-          if (!match) continue
-
           const mapItem = (item: AmvggItem): BrowsedTradePet => {
-            // type='' in lookingFor means poster didn't specify form; use searched form for value lookup
             const petForm = item.type === '' ? form : (AMVGG_TYPE_TO_FORM[item.type] ?? 'normal')
             return { name: item.name, form: petForm, value: cachedValue(item.name, petForm, 'amvgg') }
           }
@@ -998,7 +993,7 @@ function registerIpcHandlers () {
       }
     }
 
-    // ── Elvebredd (parallel offset fetching) ──────────────────────────────────
+    // ── Elvebredd (server-side filter, parallel offset fetching) ──────────────
     if (sources.includes('elvebredd')) {
       interface ElvePet     { id: number; name: string; attributes: { fly: boolean; ride: boolean; default: boolean; neon: boolean; mega: boolean } }
       interface ElveListing { id: number; ownerUsername: string; ownerRobloxUsername: string; ownerGive: ElvePet[]; ownerGet: ElvePet[]; timeCreated: string }
@@ -1008,10 +1003,19 @@ function registerIpcHandlers () {
         ? (u: string) => elveSession!.fetch(u)
         : (u: string) => net.fetch(u, { headers: { 'User-Agent': USER_AGENT } })
 
-      // Offset pagination is independent per page — fetch all simultaneously
+      const petId = elveIdMap.get(petName)
+      let elveBaseUrl = `https://elvebredd.com/api/recent-listings?limit=50&game=Adopt+Me`
+
+      if (petId !== undefined) {
+        const a = FORM_TO_ELVE_ATTRS[form]
+        const filterAttrs = { fly: a.fly, ride: a.ride, neon: a.neon, mega: a.mega }
+        const filterPets  = JSON.stringify([{ id: petId, attributes: filterAttrs }])
+        elveBaseUrl += `&filterYour=${petId}&filterYourPets=${encodeURIComponent(filterPets)}`
+      }
+
       const pageResponses = await Promise.all(
         Array.from({ length: pages }, (_, p) =>
-          doFetch(`https://elvebredd.com/api/recent-listings?limit=50&offset=${p * 50}&game=Adopt+Me`)
+          doFetch(`${elveBaseUrl}&offset=${p * 50}`)
             .then(r => r.ok ? r.json() as Promise<ElveResp> : null)
             .catch(() => null)
         )
@@ -1020,12 +1024,6 @@ function registerIpcHandlers () {
       for (const data of pageResponses) {
         if (!data) continue
         for (const listing of data.listings) {
-          const match = listing.ownerGet.some(item =>
-            item.name.toLowerCase() === nameLower &&
-            elveAttrsToForm(item.attributes) === form
-          )
-          if (!match) continue
-
           const mapItem = (item: ElvePet): BrowsedTradePet => {
             const petForm = elveAttrsToForm(item.attributes)
             return { name: item.name, form: petForm, value: cachedValue(item.name, petForm, 'elvebredd') }
