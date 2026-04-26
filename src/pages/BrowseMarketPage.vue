@@ -320,7 +320,7 @@ const filteredTrades = computed(() => {
 })
 
 // ── Search ────────────────────────────────────────────────────────────────────
-const pages   = 4
+const pages   = 8
 const loading  = ref(false)
 const hasSearched = ref(false)
 const trades   = ref<BrowsedTrade[]>([])
