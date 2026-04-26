@@ -46,13 +46,49 @@ const AMV_DEMAND_FIELDS = [
   ['mfDemand','mf'],['mrDemand','mr'],['megaDemand','mfr'],
 ]
 
-function applyFallbacks (v) {
-  const pairs = [
-    ['mf','mfr'],['mr','mfr'],['m','mfr'],
-    ['nf','nfr'],['nr','nfr'],['n','nfr'],
-    ['fly','fr'],['ride','fr'],['normal','fr'],
-  ]
-  for (const [from, to] of pairs) if (v[from] == null && v[to] != null) v[from] = v[to]
+// Multipliers per pet category — extracted from amvgg.com/calculator JS bundle.
+// AMVGG uses these to compute fly/ride/nr/nf/mr/mf from the base fr/nfr/mfr values.
+// Category 13 is the exception: it uses stored per-form values directly.
+const AMVGG_MULTIPLIERS = {"0":{"NP":0.08,"R":0.5,"F":0.6,"NNP":0.21,"NR":0.675,"NF":0.75,"MNP":0.475,"MR":0.75,"MF":0.8},"1":{"NP":0.08,"R":0.5,"F":0.6,"NNP":0.39,"NR":0.725,"NF":0.79,"MNP":0.625,"MR":0.825,"MF":0.85},"2":{"NP":0.1,"R":0.525,"F":0.6,"NNP":0.425,"NR":0.75,"NF":0.8,"MNP":0.75,"MR":0.875,"MF":0.9},"3":{"NP":0.125,"R":0.6,"F":0.65,"NNP":0.6,"NR":0.8,"NF":0.81,"MNP":0.825,"MR":0.88,"MF":0.9},"4":{"NP":0.166,"R":0.65,"F":0.7,"NNP":0.65,"NR":0.81,"NF":0.82,"MNP":0.84,"MR":0.89,"MF":0.91},"5":{"NP":0.2,"R":0.675,"F":0.725,"NNP":0.675,"NR":0.82,"NF":0.83,"MNP":0.86,"MR":0.91,"MF":0.925},"6":{"NP":0.3,"R":0.7,"F":0.75,"NNP":0.725,"NR":0.85,"NF":0.87,"MNP":0.89,"MR":0.94,"MF":0.95},"7":{"NP":0.45,"R":0.725,"F":0.775,"NNP":0.75,"NR":0.9,"NF":0.91,"MNP":0.91,"MR":0.95,"MF":0.96},"8":{"NP":0.55,"R":0.75,"F":0.8,"NNP":0.77,"NR":0.9,"NF":0.915,"MNP":0.94,"MR":0.975,"MF":0.98},"9":{"NP":0.65,"R":0.825,"F":0.85,"NNP":0.85,"NR":0.925,"NF":0.94,"MNP":0.96,"MR":0.98,"MF":0.985},"10":{"NP":0.8,"R":0.9,"F":0.92,"NNP":0.925,"NR":0.96,"NF":0.97,"MNP":1.05,"MR":0.98,"MF":0.99},"11":{"NP":0.9,"R":0.95,"F":0.975,"NNP":1,"NR":0.98,"NF":0.985,"MNP":1.05,"MR":1,"MF":1},"12":{"NP":0.9,"R":0.95,"F":0.975,"NNP":1.03,"NR":0.98,"NF":0.985,"MNP":1.1,"MR":1,"MF":1},"22":{"NP":0.75,"R":0.86,"F":0.875,"NNP":0.88,"NR":0.93,"NF":0.95,"MNP":0.97,"MR":0.98,"MF":0.99},"33":{"NP":0.15,"R":0.6,"F":0.65,"NNP":0.375,"NR":0.75,"NF":0.8,"MNP":0.5,"MR":0.7,"MF":0.8},"44":{"NP":0.97,"R":0.98,"F":0.985,"NNP":1,"NR":1,"NF":1,"MNP":1.025,"MR":1,"MF":1},"45":{"NP":0.97,"R":0.98,"F":0.985,"NNP":1,"NR":1,"NF":1,"MNP":1,"MR":1,"MF":1},"55":{"NP":0.9,"R":0.95,"F":0.975,"NNP":1,"NR":0.98,"NF":0.985,"MNP":1.075,"MR":1,"MF":1},"66":{"NP":0.9,"R":0.95,"F":0.975,"NNP":1,"NR":0.98,"NF":0.985,"MNP":1.125,"MR":1,"MF":1},"69":{"NP":0.9,"R":0.95,"F":0.975,"NNP":0.96,"NR":0.98,"NF":0.985,"MNP":1,"MR":1,"MF":1},"79":{"NP":0.97,"R":0.98,"F":0.985,"NNP":1,"NR":1,"NF":1,"MNP":1.05,"MR":1,"MF":1},"99":{"NP":0.8,"R":0.9,"F":0.92,"NNP":0.95,"NR":0.975,"NF":0.98,"MNP":1,"MR":1,"MF":1},"111":{"NP":0.04,"R":0.5,"F":0.6,"NNP":0.125,"NR":0.6,"NF":0.75,"MNP":0.33,"MR":0.65,"MF":0.75}}
+
+function round (n, decimals) {
+  const f = Math.pow(10, decimals)
+  return Math.round(n * f) / f
+}
+
+function applyAmvggFormula (v, category) {
+  const mult = AMVGG_MULTIPLIERS[String(category)]
+
+  if (!mult || category === 13) {
+    // Category 13 or unknown: stored values are authoritative, simple fallback for nulls
+    const pairs = [
+      ['mf','mfr'],['mr','mfr'],['m','mfr'],
+      ['nf','nfr'],['nr','nfr'],['n','nfr'],
+      ['fly','fr'],['ride','fr'],['normal','fr'],
+    ]
+    for (const [from, to] of pairs) if (v[from] == null && v[to] != null) v[from] = v[to]
+    return v
+  }
+
+  const fr = v.fr, nfr = v.nfr, mfr = v.mfr
+  const r0 = (fr != null && fr >= 0.0175) ? 3 : 4
+
+  if (fr != null) {
+    v.normal = category === 11 && fr > 0.08 ? round(fr * 0.95,  r0) : round(fr * mult.NP, r0)
+    v.ride   = category === 11 && fr > 0.08 ? round(fr * 0.975, r0) : round(fr * mult.R,  r0)
+    v.fly    = category === 11 && fr > 0.08 ? round(fr * 0.975, r0) : round(fr * mult.F,  r0)
+  }
+  if (nfr != null) {
+    v.n  = round(nfr * mult.NNP, 4)
+    v.nr = category === 11 && nfr > 0.2 ? nfr : round(nfr * mult.NR, 4)
+    v.nf = category === 11 && nfr > 0.2 ? nfr : round(nfr * mult.NF, 4)
+  }
+  if (mfr != null) {
+    v.m  = round(mfr * mult.MNP, 4)
+    v.mr = category === 11 && mfr > 0.9 ? mfr : round(mfr * mult.MR, 4)
+    v.mf = category === 11 && mfr > 0.9 ? mfr : round(mfr * mult.MF, 4)
+  }
+
   return v
 }
 
@@ -67,6 +103,13 @@ async function fetchAmvgg () {
   let m
   while ((m = nameRe.exec(html)) !== null) namePositions.push({ pos: m.index, name: m[1] })
   if (!namePositions.length) throw new Error('No pet names found in AMVGG response')
+
+  // category appears after the name in the same JSON object
+  const categoryByName = new Map()
+  for (const { pos, name } of namePositions) {
+    const catMatch = /\\"category\\":(\d+)/.exec(html.slice(pos, pos + 3000))
+    if (catMatch) categoryByName.set(name, parseInt(catMatch[1]))
+  }
 
   function precedingName (pos) {
     let best = null
@@ -89,7 +132,8 @@ async function fetchAmvgg () {
         const name = precedingName(match.index)
         if (!name) continue
         if (!values.has(name)) values.set(name, {})
-        values.get(name)[form] = parseFloat(match[1])
+        const val = parseFloat(match[1])
+        if (val > 0) values.get(name)[form] = val
       }
     }
   }
@@ -108,7 +152,8 @@ async function fetchAmvgg () {
   const result = {}
   for (const [name, v] of values) {
     if (!('fr' in v)) continue
-    result[name] = { values: applyFallbacks(v), demands: demands.get(name) ?? {}, rarity: null }
+    const category = categoryByName.get(name) ?? null
+    result[name] = { values: applyAmvggFormula(v, category), demands: demands.get(name) ?? {}, rarity: null }
   }
 
   console.log(`${Object.keys(result).length} pets`)
