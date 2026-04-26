@@ -151,10 +151,51 @@
             <span class="score-badge" :class="`score-badge--${trade.score}`">
               {{ scoreLabel(trade) }}
             </span>
+            <a
+              :href="tradeUrl(trade)"
+              target="_blank"
+              rel="noopener noreferrer"
+              class="view-btn"
+            >View ↗</a>
           </div>
 
           <!-- Card body: two columns -->
           <div class="card-body">
+
+            <!-- You give (your searched pet) -->
+            <div class="trade-side">
+              <div class="side-label">You give</div>
+              <div class="pets-row">
+                <div
+                  v-for="(pet, i) in trade.lookingFor"
+                  :key="i"
+                  class="mini-pet"
+                  :class="{ 'mini-pet--highlight': isSearchedPet(pet) }"
+                >
+                  <div class="mini-img-wrap">
+                    <img
+                      :src="`https://amvgg.com/items/${encodeURIComponent(pet.name)}.webp`"
+                      class="mini-img"
+                      @error="(e) => (e.target as HTMLImageElement).style.display = 'none'"
+                    />
+                  </div>
+                  <div class="mini-meta">
+                    <span class="mini-name">{{ pet.name }}</span>
+                    <span class="mini-form" :style="{ color: FORM_COLOR_HEX[pet.form as PetForm] }">{{ FORM_LABELS[pet.form as PetForm] }}</span>
+                    <span class="mini-val" v-if="pet.value !== null">{{ formatVal(pet.value, trade.platform) }}</span>
+                    <span class="mini-val mini-val--unknown" v-else>—</span>
+                  </div>
+                </div>
+              </div>
+              <div class="side-total" v-if="trade.wantTotal !== null">
+                Total: <strong>{{ formatVal(trade.wantTotal, trade.platform) }}</strong>
+              </div>
+            </div>
+
+            <!-- Divider -->
+            <div class="card-divider">
+              <q-icon :name="matSwapHoriz" size="20px" style="color:var(--text-3)" />
+            </div>
 
             <!-- They offer (what you'd receive) -->
             <div class="trade-side">
@@ -182,41 +223,6 @@
               </div>
               <div class="side-total" v-if="trade.offerTotal !== null">
                 Total: <strong>{{ formatVal(trade.offerTotal, trade.platform) }}</strong>
-              </div>
-            </div>
-
-            <!-- Divider -->
-            <div class="card-divider">
-              <q-icon :name="matSwapHoriz" size="20px" style="color:var(--text-3)" />
-            </div>
-
-            <!-- They want (what you'd give) -->
-            <div class="trade-side">
-              <div class="side-label">They want</div>
-              <div class="pets-row">
-                <div
-                  v-for="(pet, i) in trade.lookingFor"
-                  :key="i"
-                  class="mini-pet"
-                  :class="{ 'mini-pet--highlight': isSearchedPet(pet) }"
-                >
-                  <div class="mini-img-wrap">
-                    <img
-                      :src="`https://amvgg.com/items/${encodeURIComponent(pet.name)}.webp`"
-                      class="mini-img"
-                      @error="(e) => (e.target as HTMLImageElement).style.display = 'none'"
-                    />
-                  </div>
-                  <div class="mini-meta">
-                    <span class="mini-name">{{ pet.name }}</span>
-                    <span class="mini-form" :style="{ color: FORM_COLOR_HEX[pet.form as PetForm] }">{{ FORM_LABELS[pet.form as PetForm] }}</span>
-                    <span class="mini-val" v-if="pet.value !== null">{{ formatVal(pet.value, trade.platform) }}</span>
-                    <span class="mini-val mini-val--unknown" v-else>—</span>
-                  </div>
-                </div>
-              </div>
-              <div class="side-total" v-if="trade.wantTotal !== null">
-                Total: <strong>{{ formatVal(trade.wantTotal, trade.platform) }}</strong>
               </div>
             </div>
 
@@ -395,6 +401,11 @@ function timeAgo (iso: string): string {
   const h = Math.floor(m / 60)
   if (h < 24) return `${h}h ago`
   return `${Math.floor(h / 24)}d ago`
+}
+
+function tradeUrl (trade: BrowsedTrade): string {
+  if (trade.platform === 'amvgg') return `https://amvgg.com/user/${encodeURIComponent(trade.authorName)}`
+  return `https://www.elvebredd.com/adopt-me-listings`
 }
 
 const _ = computed(() => selectedForm.value) // keep selectedForm reactive
@@ -817,6 +828,25 @@ const _ = computed(() => selectedForm.value) // keep selectedForm reactive
   margin-top: 8px;
 }
 .side-total strong { color: var(--text-1); }
+
+/* ── View button ── */
+.view-btn {
+  margin-left: 6px;
+  padding: 3px 9px;
+  font-size: 11px;
+  font-weight: 700;
+  border-radius: 6px;
+  background: var(--surface-3);
+  color: var(--primary);
+  border: 1px solid var(--border);
+  text-decoration: none;
+  transition: background 0.12s, color 0.12s;
+  white-space: nowrap;
+}
+.view-btn:hover {
+  background: var(--primary-dim);
+  border-color: var(--primary);
+}
 
 /* ── Results area ── */
 .results-area {
