@@ -1,5 +1,7 @@
 import { defineSsrMiddleware } from '#q-app/wrappers'
 import { json as parseJson } from 'express'
+import { existsSync, readFileSync } from 'node:fs'
+import { join } from 'node:path'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -92,6 +94,14 @@ const FORM_TO_ELVE_ATTRS: Record<string, { fly: boolean; ride: boolean; default:
 }
 
 const ELVE_FORMS = ['normal', 'fly', 'ride', 'fr', 'n', 'nf', 'nr', 'nfr', 'm', 'mf', 'mr', 'mfr'] as const
+
+// ── Static file cache loader ──────────────────────────────────────────────────
+
+function loadStaticCache<T> (filename: string): T | null {
+  const path = join(process.cwd(), 'src/data', filename)
+  if (!existsSync(path)) return null
+  try { return JSON.parse(readFileSync(path, 'utf-8')) as T } catch { return null }
+}
 
 // ── In-memory caches ──────────────────────────────────────────────────────────
 
@@ -237,6 +247,14 @@ function applyFormFallbacks (details: PetDetails): PetDetails {
 async function warmDetailsCache (): Promise<void> {
   if (allPetsCacheFilled) return
   allPetsCacheFilled = true
+
+  const staticAmv = loadStaticCache<Record<string, PetDetails>>('amv-cache.json')
+  if (staticAmv) {
+    for (const [name, data] of Object.entries(staticAmv)) detailsCache.set(name, data)
+    console.log(`Loaded ${detailsCache.size} pets from static AMV cache`)
+    return
+  }
+
   try {
     const res = await fetchWithTimeout('https://amvgg.com/values/pets')
     if (!res.ok) return
@@ -420,6 +438,14 @@ async function warmElveCache (): Promise<void> {
   if (elveFetchInFlight) return elveFetchInFlight
 
   elveFetchInFlight = (async () => {
+    const staticElve = loadStaticCache<Record<string, Record<string, number>>>('elve-cache.json')
+    if (staticElve) {
+      for (const [name, vals] of Object.entries(staticElve)) elveValuesCache.set(name, vals)
+      console.log(`Loaded ${elveValuesCache.size} pets from static Elve cache`)
+      elveFetchDone = true
+      return
+    }
+
     try {
       const res = await fetchWithTimeout('https://www.elvebredd.com/adopt-me-calculator', 15000)
       if (!res.ok) return
