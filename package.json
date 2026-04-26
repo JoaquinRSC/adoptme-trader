@@ -7,7 +7,7 @@
   "private": true,
   "scripts": {
     "dev": "quasar dev -m ssr",
-    "build": "quasar build -m ssr",
+    "build": "quasar build -m ssr && node -e \"try{require('fs').renameSync('dist/ssr/server/server-entry.mjs','dist/ssr/server/server-entry.js')}catch(e){}\"",
     "start": "node dist/ssr/index.js",
     "lint": "eslint --ext .js,.ts,.vue src src-ssr"
   },
