@@ -998,7 +998,7 @@ function registerIpcHandlers () {
       }
     }
 
-    // ── Elvebredd ──────────────────────────────────────────────────────────────
+    // ── Elvebredd (parallel offset fetching) ──────────────────────────────────
     if (sources.includes('elvebredd')) {
       interface ElvePet     { id: number; name: string; attributes: { fly: boolean; ride: boolean; default: boolean; neon: boolean; mega: boolean } }
       interface ElveListing { id: number; ownerUsername: string; ownerRobloxUsername: string; ownerGive: ElvePet[]; ownerGet: ElvePet[]; timeCreated: string }
@@ -1008,12 +1008,17 @@ function registerIpcHandlers () {
         ? (u: string) => elveSession!.fetch(u)
         : (u: string) => net.fetch(u, { headers: { 'User-Agent': USER_AGENT } })
 
-      for (let p = 0; p < pages; p++) {
-        const url = `https://elvebredd.com/api/recent-listings?limit=50&offset=${p * 50}&game=Adopt+Me`
-        const res = await doFetch(url)
-        if (!res.ok) break
-        const data = await res.json() as ElveResp
+      // Offset pagination is independent per page — fetch all simultaneously
+      const pageResponses = await Promise.all(
+        Array.from({ length: pages }, (_, p) =>
+          doFetch(`https://elvebredd.com/api/recent-listings?limit=50&offset=${p * 50}&game=Adopt+Me`)
+            .then(r => r.ok ? r.json() as Promise<ElveResp> : null)
+            .catch(() => null)
+        )
+      )
 
+      for (const data of pageResponses) {
+        if (!data) continue
         for (const listing of data.listings) {
           const match = listing.ownerGet.some(item =>
             item.name.toLowerCase() === nameLower &&
@@ -1039,8 +1044,6 @@ function registerIpcHandlers () {
             score: scoreRatio(ratio), ratio,
           })
         }
-
-        if (!data.hasMore) break
       }
     }
 
