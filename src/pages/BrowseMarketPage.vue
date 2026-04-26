@@ -414,7 +414,7 @@ function timeAgo (iso: string): string {
 }
 
 function tradeUrl (trade: BrowsedTrade): string {
-  if (trade.platform === 'amvgg') return `https://amvgg.com/user/${encodeURIComponent(trade.authorName)}`
+  if (trade.platform === 'amvgg') return `https://amvgg.com/trade/${trade.id}`
   return `https://www.elvebredd.com/adopt-me-listings`
 }
 
