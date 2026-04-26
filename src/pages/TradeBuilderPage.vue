@@ -220,7 +220,7 @@
           <div class="picker-grid" v-else>
             <button
               class="picker-card-item"
-              v-for="pet in availableInventory"
+              v-for="pet in sortedAvailableInventory"
               :key="pet.id"
               @click="addOffered(pet); showInventoryPicker = false"
             >
@@ -379,6 +379,20 @@ const formOptions = Object.entries(FORM_LABELS).map(([value, label]) => ({ value
 const availableInventory = computed(() =>
   inventory.pets.filter(p => !offeredPets.value.some(o => o.pet.id === p.id))
 )
+
+const sortedAvailableInventory = computed(() =>
+  [...availableInventory.value].sort((a, b) => {
+    const va = values.getCached(a.name, a.form) ?? -1
+    const vb = values.getCached(b.name, b.form) ?? -1
+    return vb - va
+  })
+)
+
+watch(showInventoryPicker, async (open) => {
+  if (open && inventory.pets.length) {
+    await values.getBatch(inventory.pets.map(p => ({ name: p.name, form: p.form })))
+  }
+})
 
 const totalOfferedAmvgg = computed(() =>
   offeredPets.value.reduce((acc, item) => acc + (item.amvggValue ?? 0), 0)

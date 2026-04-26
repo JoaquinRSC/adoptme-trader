@@ -142,7 +142,7 @@
           <div class="picker-grid" v-else>
             <button
               class="picker-card-item"
-              v-for="pet in inventoryPets"
+              v-for="pet in sortedInventoryPets"
               :key="pet.id"
               @click="addInventoryPetToYour(pet)"
             >
@@ -238,7 +238,7 @@
           <div class="picker-grid" v-else>
             <button
               class="picker-card-item"
-              v-for="pet in inventoryPets"
+              v-for="pet in sortedInventoryPets"
               :key="pet.id"
               @click="addInventoryPetToThem(pet)"
             >
@@ -439,6 +439,16 @@ function removePet(side: 'your' | 'them', id: string) {
   list.value = list.value.filter(e => e.id !== id)
 }
 
+// ── Sorted inventory (for pickers) ───────────────────────────────────────────
+
+const sortedInventoryPets = computed(() => {
+  return [...inventoryPets.value].sort((a, b) => {
+    const va = valuesStore.getCached(a.name, a.form) ?? -1
+    const vb = valuesStore.getCached(b.name, b.form) ?? -1
+    return vb - va
+  })
+})
+
 // ── YOUR side picker ──────────────────────────────────────────────────────────
 
 const showYourPicker  = ref(false)
@@ -471,6 +481,12 @@ function resetYourPicker() {
   yourPickerResults.value = []
   yourOtherResetForm()
 }
+
+watch([showYourPicker, showThemPicker], async ([yourOpen, themOpen]) => {
+  if ((yourOpen || themOpen) && inventoryPets.value.length) {
+    await valuesStore.getBatch(inventoryPets.value.map(p => ({ name: p.name, form: p.form })))
+  }
+})
 
 function addInventoryPetToYour(pet: InventoryPet) {
   addPetToSide('your', pet.name, pet.form)
