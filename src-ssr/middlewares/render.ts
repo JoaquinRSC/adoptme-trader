@@ -1,8 +1,6 @@
 import { defineSsrMiddleware } from '#q-app/wrappers'
 
-export default defineSsrMiddleware(({ app, resolve, render, serve }) => {
-  app.use(resolve.urlPath('*'), serve.static({ fallback: true }))
-
+export default defineSsrMiddleware(({ app, resolve, render }) => {
   app.get(resolve.urlPath('*'), (req, res) => {
     res.setHeader('Content-Type', 'text/html')
 
