@@ -58,12 +58,6 @@
         <button class="form-chip" :class="{'form-chip--active': nmPick === 'm'}" :style="nmPick === 'm' ? {background: mGrad} : {}" @click="nmPick = nmPick === 'm' ? 'none' : 'm'">M</button>
       </div>
 
-      <!-- Source toggle -->
-      <div class="source-toggle">
-        <button class="source-btn" :class="{'source-btn--active': sources.includes('amvgg')}" @click="toggleSource('amvgg')">AMV</button>
-        <button class="source-btn" :class="{'source-btn--active': sources.includes('elvebredd')}" @click="toggleSource('elvebredd')">Elve</button>
-      </div>
-
       <!-- Search button -->
       <button
         class="btn-search"
@@ -98,7 +92,7 @@
       <div v-if="!hasSearched && !loading" class="empty-state">
         <q-icon :name="matSearch" size="48px" style="opacity:.15;margin-bottom:12px" />
         <div class="empty-title">Pick a pet and hit Search</div>
-        <div class="empty-sub">We'll scan the latest {{ pages * 100 }} AMVGG trades and {{ pages * 50 }} Elvebredd listings</div>
+        <div class="empty-sub">We'll scan the latest {{ pages * 100 }} AMVGG trades</div>
         <div class="empty-sub" style="margin-top:4px;font-style:italic">Trades where the poster didn't specify form are also included</div>
       </div>
 
@@ -129,10 +123,15 @@
             <span v-if="scoreCount('unknown')" class="score-pill score-pill--unknown">{{ scoreCount('unknown') }} unknown</span>
           </div>
           <div class="score-filter">
-            <button class="filter-btn" :class="{ 'filter-btn--active': minScore === 'all' }"  @click="minScore = 'all'">All</button>
             <button class="filter-btn" :class="{ 'filter-btn--active': minScore === 'fair' }" @click="minScore = 'fair'">Good & Fair</button>
             <button class="filter-btn" :class="{ 'filter-btn--active': minScore === 'good' }" @click="minScore = 'good'">Good only</button>
           </div>
+          <button
+            class="filter-btn my-pet-btn"
+            :class="{ 'filter-btn--active': myPetOnly }"
+            @click="myPetOnly = !myPetOnly"
+            title="Show only trades where they want nothing else besides your pet"
+          >My pet only</button>
         </div>
 
         <div
@@ -320,25 +319,15 @@ function clearSelection () {
   petResults.value  = []
 }
 
-// ── Sources ───────────────────────────────────────────────────────────────────
-const sources = ref<Array<'amvgg' | 'elvebredd'>>(['amvgg', 'elvebredd'])
-
-function toggleSource (s: 'amvgg' | 'elvebredd') {
-  if (sources.value.includes(s)) {
-    if (sources.value.length === 1) return // keep at least one
-    sources.value = sources.value.filter(x => x !== s)
-  } else {
-    sources.value = [...sources.value, s]
-  }
-}
-
-// ── Score filter ─────────────────────────────────────────────────────────────
-const minScore = ref<'all' | 'fair' | 'good'>('fair')
+// ── Score + pet filter ───────────────────────────────────────────────────────
+const minScore  = ref<'fair' | 'good'>('fair')
+const myPetOnly = ref(false)
 
 const filteredTrades = computed(() => {
-  if (minScore.value === 'all') return trades.value
-  if (minScore.value === 'good') return trades.value.filter(t => t.score === 'good')
-  return trades.value.filter(t => t.score === 'good' || t.score === 'fair')
+  let result = trades.value.filter(t => t.score === 'good' || t.score === 'fair')
+  if (minScore.value === 'good') result = result.filter(t => t.score === 'good')
+  if (myPetOnly.value) result = result.filter(t => t.lookingFor.length === 1)
+  return result
 })
 
 // ── Search ────────────────────────────────────────────────────────────────────
@@ -362,7 +351,7 @@ async function runSearch () {
     const res    = await fetch('/api/trade/browse', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ petName: selectedPet.value, form: selectedForm.value, sources: sources.value, pages }),
+      body: JSON.stringify({ petName: selectedPet.value, form: selectedForm.value, sources: ['amvgg'], pages }),
     })
     const result = await res.json() as { trades: BrowsedTrade[]; errors: string[] }
     trades.value = result.trades
@@ -511,28 +500,6 @@ const _ = computed(() => selectedForm.value) // keep selectedForm reactive
 }
 .form-chip:hover { border-color: rgba(255,255,255,0.3); color: rgba(255,255,255,0.85); }
 .form-chip--active { box-shadow: 0 3px 12px rgba(0,0,0,0.45); color: #fff; border-color: transparent; }
-
-/* ── Source toggle ── */
-.source-toggle {
-  display: flex;
-  gap: 4px;
-  background: var(--surface-2);
-  border-radius: 8px;
-  padding: 3px;
-}
-
-.source-btn {
-  padding: 6px 14px;
-  border: none;
-  border-radius: 6px;
-  font-size: 12px;
-  font-weight: 700;
-  cursor: pointer;
-  background: transparent;
-  color: var(--text-2);
-  transition: background 0.15s, color 0.15s;
-}
-.source-btn--active { background: var(--primary); color: #fff; }
 
 /* ── Search button ── */
 .btn-search {
@@ -877,4 +844,11 @@ const _ = computed(() => selectedForm.value) // keep selectedForm reactive
 }
 .filter-btn--active { background: var(--primary); color: #fff; }
 .filter-btn:not(.filter-btn--active):hover { color: var(--text-1); }
+
+.my-pet-btn {
+  margin-left: 6px;
+  background: var(--surface-2);
+  border-radius: 6px;
+  padding: 5px 12px;
+}
 </style>
