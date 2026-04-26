@@ -969,12 +969,14 @@ function registerIpcHandlers () {
         for (const trade of data.trades) {
           const match = trade.lookingFor.some(item =>
             item.name.toLowerCase() === nameLower &&
-            (AMVGG_TYPE_TO_FORM[item.type ?? ''] ?? 'normal') === form
+            // type='' means unspecified form — treat as wildcard and show for any form search
+            (item.type === '' || (AMVGG_TYPE_TO_FORM[item.type] ?? 'normal') === form)
           )
           if (!match) continue
 
           const mapItem = (item: AmvggItem): BrowsedTradePet => {
-            const petForm = AMVGG_TYPE_TO_FORM[item.type ?? ''] ?? 'normal'
+            // type='' in lookingFor means poster didn't specify form; use searched form for value lookup
+            const petForm = item.type === '' ? form : (AMVGG_TYPE_TO_FORM[item.type] ?? 'normal')
             return { name: item.name, form: petForm, value: cachedValue(item.name, petForm, 'amvgg') }
           }
           const offering   = trade.offering.map(mapItem)

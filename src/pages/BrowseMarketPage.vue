@@ -99,6 +99,7 @@
         <q-icon :name="matSearch" size="48px" style="opacity:.15;margin-bottom:12px" />
         <div class="empty-title">Pick a pet and hit Search</div>
         <div class="empty-sub">We'll scan the latest {{ pages * 100 }} AMVGG trades and {{ pages * 50 }} Elvebredd listings</div>
+        <div class="empty-sub" style="margin-top:4px;font-style:italic">Trades where the poster didn't specify form are also included</div>
       </div>
 
       <!-- No results -->
@@ -319,7 +320,7 @@ const filteredTrades = computed(() => {
 })
 
 // ── Search ────────────────────────────────────────────────────────────────────
-const pages   = 2
+const pages   = 4
 const loading  = ref(false)
 const hasSearched = ref(false)
 const trades   = ref<BrowsedTrade[]>([])
