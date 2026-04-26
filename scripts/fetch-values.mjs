@@ -228,6 +228,12 @@ async function fetchElve () {
     'pet wear': 'petWear', 'toys': 'toy', 'stickers': 'sticker',
     'vehicles': 'vehicle', 'strollers': 'stroller', 'food': 'food',
     'gifts': 'gift', 'eggs': 'egg',
+    'other': 'food', // potions are "other" in Elvebredd but "food" in AMVGG
+  }
+  // Elvebredd uses different names for some potions
+  const ELVE_NAME_MAP = {
+    'Fly A Pet Potion Forever': 'Fly-A-Pet Potion',
+    'Ride A Pet Potion Forever': 'Ride-A-Pet Potion',
   }
   const elveItems = {}
   const typeRe = /\\"type\\":\\"([^"\\]+)\\"/g
@@ -240,8 +246,9 @@ async function fetchElve () {
     const valMatch  = before.match(/\\"value\\":([\d.]+)(?![\d.])/)
     const nameMatch = after.match(/\\"name\\":\\"([^"\\]+)\\"/)
     if (!valMatch || !nameMatch) continue
+    const name = ELVE_NAME_MAP[nameMatch[1]] ?? nameMatch[1]
     if (!elveItems[catKey]) elveItems[catKey] = {}
-    elveItems[catKey][nameMatch[1]] = parseFloat(valMatch[1])
+    elveItems[catKey][name] = parseFloat(valMatch[1])
   }
   const itemCount = Object.values(elveItems).reduce((s, c) => s + Object.keys(c).length, 0)
   console.log(`${Object.keys(result).length} pets, ${itemCount} items`)
