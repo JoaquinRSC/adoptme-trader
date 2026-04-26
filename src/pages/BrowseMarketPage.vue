@@ -420,7 +420,7 @@ async function runSearch () {
     const res    = await fetch('/api/trade/browse', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ petName: selectedPet.value, form: selectedForm.value, sources: ['amvgg'], pages }),
+      body: JSON.stringify({ petName: selectedPet.value, form: selectedForm.value, sources: ['amvgg', 'elvebredd'], pages }),
     })
     const result = await res.json() as { trades: BrowsedTrade[]; errors: string[] }
     trades.value = result.trades

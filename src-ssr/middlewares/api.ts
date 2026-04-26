@@ -662,18 +662,21 @@ async function browseMarket (payload: {
         const mapItem = (item: ElvePet): BrowsedTradePet => {
           const petForm = elveAttrsToForm(item.attributes)
           const isPet   = detailsCache.has(item.name)
-          return { name: item.name, form: petForm, value: cachedValue(item.name, petForm, 'elvebredd'), elveValue: null, isPet }
+          const demand  = (detailsCache.get(item.name)?.demands[petForm] ?? null) as DemandLevel
+          return { name: item.name, form: petForm, value: cachedValue(item.name, petForm, 'amvgg'), elveValue: cachedValue(item.name, petForm, 'elvebredd'), demand, isPet }
         }
-        const offering   = listing.ownerGive.map(mapItem)
-        const lookingFor = listing.ownerGet.map(mapItem)
-        const offerTotal = computeTotals(offering)
-        const wantTotal  = computeTotals(lookingFor)
-        const ratio      = offerTotal !== null && wantTotal ? offerTotal / wantTotal : null
+        const offering        = listing.ownerGive.map(mapItem)
+        const lookingFor      = listing.ownerGet.map(mapItem)
+        const offerTotal      = computeTotals(offering)
+        const wantTotal       = computeTotals(lookingFor)
+        const elveOfferTotal  = offering.every(p => p.elveValue !== null) ? offering.reduce((s, p) => s + p.elveValue!, 0) : null
+        const elveWantTotal   = lookingFor.every(p => p.elveValue !== null) ? lookingFor.reduce((s, p) => s + p.elveValue!, 0) : null
+        const ratio           = elveOfferTotal !== null && elveWantTotal ? elveOfferTotal / elveWantTotal : null
         results.push({
           id: String(listing.id), platform: 'elvebredd',
           authorName: listing.ownerRobloxUsername || listing.ownerUsername,
           publishedAt: listing.timeCreated,
-          offering, lookingFor, offerTotal, wantTotal,
+          offering, lookingFor, offerTotal, wantTotal, elveOfferTotal, elveWantTotal,
           score: scoreRatio(ratio), ratio,
         })
       }
