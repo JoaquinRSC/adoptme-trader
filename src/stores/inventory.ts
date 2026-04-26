@@ -8,13 +8,13 @@ const STORAGE_KEY = 'adoptme_inventory'
 function loadFromStorage (): InventoryPet[] {
   try {
     const raw = JSON.parse(localStorage.getItem(STORAGE_KEY) ?? '[]') as Array<{
-      id: string; name: string; form: PetForm; quantity?: number
+      id: string; name: string; form: PetForm; quantity?: number; category?: ItemCategory | 'pet'
     }>
     const result: InventoryPet[] = []
     for (const p of raw) {
       const count = Math.max(1, p.quantity ?? 1)
       for (let i = 0; i < count; i++) {
-        result.push({ id: i === 0 ? p.id : uid(), name: p.name, form: p.form })
+        result.push({ id: i === 0 ? p.id : uid(), name: p.name, form: p.form, category: p.category })
       }
     }
     return result
