@@ -717,8 +717,10 @@ async function fetchValue (pet: InventoryPet) {
   loadingValue[pet.id] = true
   try {
     if (pet.category && pet.category !== 'pet') {
-      const res = await fetch(`/api/item/value?name=${encodeURIComponent(pet.name)}&category=${pet.category}`)
-      petValue[pet.id] = await res.json() as number | null
+      const res  = await fetch(`/api/item/details?name=${encodeURIComponent(pet.name)}&category=${pet.category}`)
+      const data = await res.json() as { value: number | null; demand: string | null }
+      petValue[pet.id]  = data.value
+      petDemand[pet.id] = data.demand as DemandLevel
     } else {
       const res     = await fetch(`/api/pet/details?name=${encodeURIComponent(pet.name)}`)
       const details = await res.json() as { values: Record<string, number | null>; demands: Record<string, string | null> }
