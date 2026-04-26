@@ -218,6 +218,7 @@
                     <span class="mini-val" v-if="pet.value !== null">AMV {{ formatVal(pet.value, 'amvgg') }}</span>
                     <span class="mini-val mini-val--unknown" v-else-if="pet.elveValue === null">—</span>
                     <span class="mini-val mini-val--elve" v-if="pet.elveValue !== null">ELV {{ pet.elveValue.toFixed(2) }}</span>
+                    <span v-if="pet.demand" class="mini-demand" :class="`demand--${demandClass(pet.demand)}`" :title="pet.demand">{{ demandStars(pet.demand) }}</span>
                   </div>
                 </div>
               </div>
@@ -254,6 +255,7 @@
                     <span class="mini-val" v-if="pet.value !== null">AMV {{ formatVal(pet.value, 'amvgg') }}</span>
                     <span class="mini-val mini-val--unknown" v-else-if="pet.elveValue === null">—</span>
                     <span class="mini-val mini-val--elve" v-if="pet.elveValue !== null">ELV {{ pet.elveValue.toFixed(2) }}</span>
+                    <span v-if="pet.demand" class="mini-demand" :class="`demand--${demandClass(pet.demand)}`" :title="pet.demand">{{ demandStars(pet.demand) }}</span>
                   </div>
                 </div>
               </div>
@@ -279,7 +281,8 @@ import { useFormPicker } from 'src/composables/useFormPicker'
 import { ADOPT_ME_PETS } from 'src/data/pets'
 import { useInventoryStore } from 'src/stores/inventory'
 import { useValuesStore } from 'src/stores/values'
-interface BrowsedTradePet { name: string; form: string; isPet: boolean; value: number | null; elveValue: number | null }
+import type { DemandLevel } from 'src/stores/values'
+interface BrowsedTradePet { name: string; form: string; isPet: boolean; value: number | null; elveValue: number | null; demand: DemandLevel }
 interface BrowsedTrade {
   id: string; platform: 'amvgg' | 'elvebredd'; authorName: string; publishedAt: string
   offering: BrowsedTradePet[]; lookingFor: BrowsedTradePet[]
@@ -442,6 +445,17 @@ function scoreLabel (trade: BrowsedTrade): string {
 
 function formatVal (v: number, platform: 'amvgg' | 'elvebredd'): string {
   return platform === 'elvebredd' ? v.toFixed(2) : v % 1 === 0 ? String(v) : v.toFixed(2)
+}
+
+function demandClass (d: DemandLevel): string {
+  if (d === 'High') return 'high'
+  if (d === 'Medium') return 'med'
+  return 'low'
+}
+
+function demandStars (d: DemandLevel): string {
+  const n = d === 'High' ? 3 : d === 'Medium' ? 2 : 1
+  return '★'.repeat(n) + '☆'.repeat(3 - n)
 }
 
 function isSearchedPet (pet: { name: string; form: string }): boolean {
@@ -928,6 +942,11 @@ const _ = computed(() => selectedForm.value) // keep selectedForm reactive
 }
 .mini-val--unknown { color: var(--text-3); }
 .mini-val--elve    { color: #34d399; }
+
+.mini-demand { font-size: 9px; letter-spacing: 1px; }
+.demand--high { color: #34d399; }
+.demand--med  { color: #f0b429; }
+.demand--low  { color: var(--text-3); }
 
 .side-total {
   font-size: 11px;
