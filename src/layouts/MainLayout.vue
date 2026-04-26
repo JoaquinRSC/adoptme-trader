@@ -86,8 +86,8 @@ const navItems = [
   { name: 'inventory',     icon: matInventory2, label: 'My Pets'       },
   { name: 'check-values',  icon: matBalance,    label: 'Check Values'  },
   { name: 'trade-builder', icon: matSwapHoriz,  label: 'Trade Builder' },
-  { name: 'my-trades',     icon: matReceipt,    label: 'My Trades'     },
   { name: 'browse-market', icon: matSearch,     label: 'Browse Market' },
+  { name: 'my-trades',     icon: matReceipt,    label: 'My Trades'     },
 ]
 </script>
 
