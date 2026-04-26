@@ -2,7 +2,7 @@
   <div class="login-bg">
     <div class="login-card">
       <div class="login-logo">
-        <img src="/favicon.ico" alt="logo" width="40" height="40" />
+        <span class="logo-paw">🐾</span>
       </div>
       <h1 class="login-title">Adoptme Trader</h1>
       <p class="login-sub">Enter your password to continue</p>
@@ -45,8 +45,10 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
+import { useTheme } from 'src/composables/useTheme'
 
 const router = useRouter()
+useTheme()
 const inputRef = ref<HTMLInputElement | null>(null)
 const password = ref('')
 const showPassword = ref(false)
@@ -103,7 +105,11 @@ async function submit () {
 
 .login-logo {
   margin-bottom: 8px;
-  opacity: 0.9;
+}
+
+.logo-paw {
+  font-size: 36px;
+  line-height: 1;
 }
 
 .login-title {
