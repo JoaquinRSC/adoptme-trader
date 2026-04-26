@@ -39,7 +39,7 @@
                 @error="(e) => (e.target as HTMLImageElement).style.display='none'"
               />
               <div class="slot-meta">
-                <span class="slot-form" :style="{ color: FORM_COLOR_HEX[item.pet.form] }">{{ FORM_LABELS[item.pet.form] }}</span>
+                <span class="slot-form" :style="(!item.pet.category || item.pet.category === 'pet') ? { color: FORM_COLOR_HEX[item.pet.form] } : {}">{{ item.pet.category && item.pet.category !== 'pet' ? CATEGORY_LABELS[item.pet.category] : FORM_LABELS[item.pet.form] }}</span>
                 <span v-if="item.demand" class="slot-demand" :class="`demand--${demandClass(item.demand)}`" :title="item.demand">{{ demandStars(item.demand) }}</span>
                 <span class="slot-val">
                   <q-spinner v-if="item.loading" size="8px" />
@@ -196,7 +196,7 @@
     <q-dialog v-model="showInventoryPicker" @hide="resetPicker">
       <q-card class="picker-card">
         <q-card-section class="q-pb-sm">
-          <div class="dialog-title">Add pet to offer</div>
+          <div class="dialog-title">Add to offer</div>
           <div class="picker-tabs">
             <button
               class="picker-tab"
@@ -230,8 +230,8 @@
                 @error="(e) => (e.target as HTMLImageElement).style.display='none'"
               />
               <div class="picker-card-name">{{ pet.name }}</div>
-              <span class="picker-card-form" :style="{ color: FORM_COLOR_HEX[pet.form] }">
-                {{ FORM_LABELS[pet.form] }}
+              <span class="picker-card-form" :style="(!pet.category || pet.category === 'pet') ? { color: FORM_COLOR_HEX[pet.form] } : {}">
+                {{ pet.category && pet.category !== 'pet' ? CATEGORY_LABELS[pet.category] : FORM_LABELS[pet.form] }}
               </span>
             </button>
           </div>
@@ -239,18 +239,34 @@
 
         <!-- Other tab -->
         <q-card-section v-else class="other-section">
-          <div class="form-section-label">Form</div>
-          <div class="form-grid">
-            <button class="form-chip" :class="{'form-chip--active': otherFly}" :style="otherFly ? {background: otherFlyGrad} : {}" @click="otherFly = !otherFly">F</button>
-            <button class="form-chip" :class="{'form-chip--active': otherRide}" :style="otherRide ? {background: otherRideGrad} : {}" @click="otherRide = !otherRide">R</button>
-            <button class="form-chip" :class="{'form-chip--active': otherIsNormal}" :style="otherIsNormal ? {background: otherNormGrad} : {}" @click="otherResetForm()">D</button>
-            <button class="form-chip" :class="{'form-chip--active': otherNm === 'n'}" :style="otherNm === 'n' ? {background: otherNGrad} : {}" @click="otherNm = otherNm === 'n' ? 'none' : 'n'">N</button>
-            <button class="form-chip" :class="{'form-chip--active': otherNm === 'm'}" :style="otherNm === 'm' ? {background: otherMGrad} : {}" @click="otherNm = otherNm === 'm' ? 'none' : 'm'">M</button>
+          <!-- Category picker -->
+          <div class="cat-picker-row">
+            <button class="cat-picker-btn" :class="{ 'cat-picker-btn--active': pickerCategory === 'pet' }" @click="pickerCategory = 'pet'; petSearch = ''; searchResults = []">Pets</button>
+            <button
+              v-for="opt in itemCatOptions"
+              :key="opt.value"
+              class="cat-picker-btn"
+              :class="{ 'cat-picker-btn--active': pickerCategory === opt.value }"
+              @click="pickerCategory = opt.value; petSearch = ''; searchResults = []"
+            >{{ opt.label }}</button>
           </div>
+
+          <!-- Form chips — only for pets -->
+          <template v-if="pickerCategory === 'pet'">
+            <div class="form-section-label">Form</div>
+            <div class="form-grid">
+              <button class="form-chip" :class="{'form-chip--active': otherFly}" :style="otherFly ? {background: otherFlyGrad} : {}" @click="otherFly = !otherFly">F</button>
+              <button class="form-chip" :class="{'form-chip--active': otherRide}" :style="otherRide ? {background: otherRideGrad} : {}" @click="otherRide = !otherRide">R</button>
+              <button class="form-chip" :class="{'form-chip--active': otherIsNormal}" :style="otherIsNormal ? {background: otherNormGrad} : {}" @click="otherResetForm()">D</button>
+              <button class="form-chip" :class="{'form-chip--active': otherNm === 'n'}" :style="otherNm === 'n' ? {background: otherNGrad} : {}" @click="otherNm = otherNm === 'n' ? 'none' : 'n'">N</button>
+              <button class="form-chip" :class="{'form-chip--active': otherNm === 'm'}" :style="otherNm === 'm' ? {background: otherMGrad} : {}" @click="otherNm = otherNm === 'm' ? 'none' : 'm'">M</button>
+            </div>
+          </template>
+
           <q-input
             v-model="petSearch"
             dense outlined
-            placeholder="Search pet…"
+            :placeholder="pickerCategory === 'pet' ? 'Search pet…' : `Search ${CATEGORY_LABELS[pickerCategory]}…`"
             :debounce="250"
             clearable
             style="margin-top: 10px"
@@ -258,7 +274,7 @@
             <template #prepend><q-icon :name="matSearch" size="16px" style="color:var(--text-3)" /></template>
           </q-input>
           <div class="results-panel">
-            <div class="results-state" v-if="!petSearch.trim()">Start typing to find a pet</div>
+            <div class="results-state" v-if="!petSearch.trim()">Start typing to search</div>
             <div class="results-state" v-else-if="searchLoading"><q-spinner size="14px" color="primary" /><span>Searching…</span></div>
             <div class="results-state" v-else-if="!searchResults.length">No results for "{{ petSearch }}"</div>
             <div
@@ -277,7 +293,7 @@
                 <div class="result-img-placeholder">🐾</div>
               </div>
               <span class="result-name">{{ name }}</span>
-              <span class="form-pill" :style="{ color: FORM_COLOR_HEX[otherPickerForm], marginLeft: 'auto' }">{{ FORM_LABELS[otherPickerForm] }}</span>
+              <span v-if="pickerCategory === 'pet'" class="form-pill" :style="{ color: FORM_COLOR_HEX[otherPickerForm], marginLeft: 'auto' }">{{ FORM_LABELS[otherPickerForm] }}</span>
             </div>
           </div>
         </q-card-section>
@@ -302,8 +318,8 @@ import { useInventoryStore } from 'src/stores/inventory'
 import { useValuesStore, type DemandLevel } from 'src/stores/values'
 import { useFormPicker } from 'src/composables/useFormPicker'
 import {
-  FORM_LABELS, FORM_COLOR_HEX,
-  type PetForm, type InventoryPet, type PetSuggestion,
+  FORM_LABELS, FORM_COLOR_HEX, CATEGORY_LABELS,
+  type PetForm, type InventoryPet, type ItemCategory, type PetSuggestion,
 } from 'src/types'
 
 const inventory = useInventoryStore()
@@ -334,10 +350,23 @@ const searchDone          = ref(false)
 const valueSource         = ref<'amvgg' | 'elvebredd'>('amvgg')
 
 // Picker state
-const pickerTab     = ref<'mine' | 'other'>('mine')
-const petSearch     = ref('')
-const searchResults = ref<string[]>([])
-const searchLoading = ref(false)
+const pickerTab      = ref<'mine' | 'other'>('mine')
+const pickerCategory = ref<ItemCategory>('pet')
+const petSearch      = ref('')
+const searchResults  = ref<string[]>([])
+const searchLoading  = ref(false)
+
+const itemCatOptions = [
+  { label: 'Pet Wear',  value: 'petWear'  },
+  { label: 'Eggs',      value: 'egg'      },
+  { label: 'Strollers', value: 'stroller' },
+  { label: 'Food',      value: 'food'     },
+  { label: 'Vehicles',  value: 'vehicle'  },
+  { label: 'Toys',      value: 'toy'      },
+  { label: 'Gifts',     value: 'gift'     },
+  { label: 'Stickers',  value: 'sticker'  },
+  { label: 'Houses',    value: 'house'    },
+]
 
 const {
   flyPick: otherFly, ridePick: otherRide, nmPick: otherNm,
@@ -350,7 +379,10 @@ watch(petSearch, async (q) => {
   if (!q.trim()) { searchResults.value = []; return }
   searchLoading.value = true
   try {
-    const res = await fetch(`/api/pets/search?q=${encodeURIComponent(q)}`)
+    const url = pickerCategory.value === 'pet'
+      ? `/api/pets/search?q=${encodeURIComponent(q)}`
+      : `/api/items/search?q=${encodeURIComponent(q)}&category=${pickerCategory.value}`
+    const res = await fetch(url)
     searchResults.value = await res.json() as string[]
   } finally {
     searchLoading.value = false
@@ -358,17 +390,19 @@ watch(petSearch, async (q) => {
 })
 
 function resetPicker () {
-  pickerTab.value     = 'mine'
-  petSearch.value     = ''
-  searchResults.value = []
+  pickerTab.value      = 'mine'
+  pickerCategory.value = 'pet'
+  petSearch.value      = ''
+  searchResults.value  = []
   otherResetForm()
 }
 
 function addOtherPet (name: string) {
   const synthetic: InventoryPet = {
-    id:   `${name}-${otherPickerForm.value}-${Date.now()}`,
+    id:       `${name}-${pickerCategory.value}-${Date.now()}`,
     name,
-    form: otherPickerForm.value,
+    form:     pickerCategory.value === 'pet' ? otherPickerForm.value : 'normal',
+    category: pickerCategory.value,
   }
   addOffered(synthetic)
   showInventoryPicker.value = false
@@ -469,6 +503,14 @@ async function addOffered (pet: InventoryPet) {
   offeredPets.value.push(item)
 
   try {
+    if (pet.category && pet.category !== 'pet') {
+      const res = await fetch(`/api/item/value?name=${encodeURIComponent(pet.name)}&category=${pet.category}`)
+      const val = await res.json() as number | null
+      const found = offeredPets.value.find(o => o.pet.id === pet.id)
+      if (found) { found.amvggValue = val; found.elveValue = val }
+      return
+    }
+
     const [detailsResult, elveResult] = await Promise.allSettled([
       fetch(`/api/pet/details?name=${encodeURIComponent(pet.name)}`).then(r => r.json()) as Promise<{ values: Record<string, number | null>; demands: Record<string, string | null> }>,
       values.getElveValue(pet.name, pet.form),
@@ -1275,4 +1317,25 @@ function deltaChipClass (delta: number) {
   transition: background 0.15s, color 0.15s;
 }
 .btn-ghost:hover { background: var(--surface-3); color: var(--text-1); }
+
+/* Category picker row */
+.cat-picker-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-bottom: 10px;
+}
+.cat-picker-btn {
+  padding: 4px 10px;
+  border: 1px solid var(--border);
+  border-radius: 99px;
+  background: transparent;
+  color: var(--text-3);
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.12s, color 0.12s, border-color 0.12s;
+}
+.cat-picker-btn:hover { border-color: var(--border-hi); color: var(--text-2); }
+.cat-picker-btn--active { background: var(--primary); border-color: var(--primary); color: #fff; }
 </style>

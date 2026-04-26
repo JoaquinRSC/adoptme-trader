@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia'
 import { ref, watch } from 'vue'
-import type { InventoryPet, PetForm } from 'src/types'
+import type { InventoryPet, PetForm, ItemCategory } from 'src/types'
 import { uid } from 'quasar'
 
 const STORAGE_KEY = 'adoptme_inventory'
@@ -32,7 +32,13 @@ export const useInventoryStore = defineStore('inventory', () => {
 
   function addPet (name: string, form: PetForm, count = 1) {
     for (let i = 0; i < count; i++) {
-      pets.value.push({ id: uid(), name, form })
+      pets.value.push({ id: uid(), name, form, category: 'pet' })
+    }
+  }
+
+  function addItem (name: string, category: ItemCategory, count = 1) {
+    for (let i = 0; i < count; i++) {
+      pets.value.push({ id: uid(), name, form: 'normal', category })
     }
   }
 
@@ -46,5 +52,5 @@ export const useInventoryStore = defineStore('inventory', () => {
     if (pet) pet.form = form
   }
 
-  return { pets, addPet, removePet, updateForm }
+  return { pets, addPet, addItem, removePet, updateForm }
 })

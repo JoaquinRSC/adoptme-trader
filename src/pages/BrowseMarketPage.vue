@@ -214,7 +214,7 @@
                   </div>
                   <div class="mini-meta">
                     <span class="mini-name">{{ pet.name }}</span>
-                    <span class="mini-form" :style="{ color: FORM_COLOR_HEX[pet.form as PetForm] }">{{ FORM_LABELS[pet.form as PetForm] }}</span>
+                    <span v-if="pet.isPet" class="mini-form" :style="{ color: FORM_COLOR_HEX[pet.form as PetForm] }">{{ FORM_LABELS[pet.form as PetForm] }}</span>
                     <span class="mini-val" v-if="pet.value !== null">AMV {{ formatVal(pet.value, 'amvgg') }}</span>
                     <span class="mini-val mini-val--unknown" v-else-if="pet.elveValue === null">—</span>
                     <span class="mini-val mini-val--elve" v-if="pet.elveValue !== null">ELV {{ pet.elveValue.toFixed(2) }}</span>
@@ -250,7 +250,7 @@
                   </div>
                   <div class="mini-meta">
                     <span class="mini-name">{{ pet.name }}</span>
-                    <span class="mini-form" :style="{ color: FORM_COLOR_HEX[pet.form as PetForm] }">{{ FORM_LABELS[pet.form as PetForm] }}</span>
+                    <span v-if="pet.isPet" class="mini-form" :style="{ color: FORM_COLOR_HEX[pet.form as PetForm] }">{{ FORM_LABELS[pet.form as PetForm] }}</span>
                     <span class="mini-val" v-if="pet.value !== null">AMV {{ formatVal(pet.value, 'amvgg') }}</span>
                     <span class="mini-val mini-val--unknown" v-else-if="pet.elveValue === null">—</span>
                     <span class="mini-val mini-val--elve" v-if="pet.elveValue !== null">ELV {{ pet.elveValue.toFixed(2) }}</span>
@@ -279,7 +279,7 @@ import { useFormPicker } from 'src/composables/useFormPicker'
 import { ADOPT_ME_PETS } from 'src/data/pets'
 import { useInventoryStore } from 'src/stores/inventory'
 import { useValuesStore } from 'src/stores/values'
-interface BrowsedTradePet { name: string; form: string; value: number | null; elveValue: number | null }
+interface BrowsedTradePet { name: string; form: string; isPet: boolean; value: number | null; elveValue: number | null }
 interface BrowsedTrade {
   id: string; platform: 'amvgg' | 'elvebredd'; authorName: string; publishedAt: string
   offering: BrowsedTradePet[]; lookingFor: BrowsedTradePet[]

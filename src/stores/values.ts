@@ -91,5 +91,19 @@ export const useValuesStore = defineStore('values', () => {
     return cache.value[cacheKey(name, form)] ?? null
   }
 
-  return { cache, allPets, loadingAllPets, getValue, getBatch, loadAllPets, getCached, getElveValue, getElveBatch }
+  const itemsAmvCache = ref<Record<string, number | null>>({})
+
+  async function getItemValue (name: string, category: string): Promise<number | null> {
+    const key = `${category}:${name}`
+    if (key in itemsAmvCache.value) return itemsAmvCache.value[key]
+    const value = await apiFetch<number | null>(`/api/item/value?name=${encodeURIComponent(name)}&category=${category}`)
+    itemsAmvCache.value[key] = value
+    return value
+  }
+
+  function getItemCached (name: string, category: string): number | null {
+    return itemsAmvCache.value[`${category}:${name}`] ?? null
+  }
+
+  return { cache, allPets, loadingAllPets, getValue, getBatch, loadAllPets, getCached, getElveValue, getElveBatch, getItemValue, getItemCached, itemsAmvCache }
 })

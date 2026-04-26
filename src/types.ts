@@ -30,10 +30,38 @@ export const FORM_COLOR: Record<PetForm, string> = {
   mfr:    'deep-orange-6',
 }
 
+export type ItemCategory = 'pet' | 'petWear' | 'egg' | 'stroller' | 'food' | 'vehicle' | 'toy' | 'gift' | 'sticker' | 'house'
+
+export const CATEGORY_LABELS: Record<ItemCategory, string> = {
+  pet:      'Pets',
+  petWear:  'Pet Wear',
+  egg:      'Eggs',
+  stroller: 'Strollers',
+  food:     'Food',
+  vehicle:  'Vehicles',
+  toy:      'Toys',
+  gift:     'Gifts',
+  sticker:  'Stickers',
+  house:    'Houses',
+}
+
+export const CATEGORY_SLUG: Record<Exclude<ItemCategory, 'pet'>, string> = {
+  petWear:  'petwear',
+  egg:      'eggs',
+  stroller: 'strollers',
+  food:     'food',
+  vehicle:  'vehicles',
+  toy:      'toys',
+  gift:     'gifts',
+  sticker:  'stickers',
+  house:    'houses',
+}
+
 export interface InventoryPet {
   id: string
   name: string
   form: PetForm
+  category?: ItemCategory
 }
 
 export const FORM_GRADIENT: Record<PetForm, string> = {
