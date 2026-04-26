@@ -71,6 +71,30 @@
 
     </div>
 
+    <!-- My Pets quick-pick strip -->
+    <div v-if="sortedInventoryPets.length" class="my-pets-strip">
+      <div class="my-pets-label">My Pets</div>
+      <div class="my-pets-scroll">
+        <button
+          v-for="pet in sortedInventoryPets"
+          :key="pet.id"
+          class="my-pet-chip"
+          :class="{ 'my-pet-chip--active': selectedPet === pet.name && selectedForm === pet.form }"
+          @click="pickInventoryPet(pet)"
+        >
+          <img
+            :src="`https://amvgg.com/items/${encodeURIComponent(pet.name)}.webp`"
+            class="my-pet-chip-img"
+            @error="(e) => (e.target as HTMLImageElement).style.display = 'none'"
+          />
+          <div class="my-pet-chip-info">
+            <span class="my-pet-chip-name">{{ pet.name }}</span>
+            <span class="my-pet-chip-form" :style="{ color: FORM_COLOR_HEX[pet.form as PetForm] }">{{ FORM_LABELS[pet.form as PetForm] }}</span>
+          </div>
+        </button>
+      </div>
+    </div>
+
     <!-- Selected pet preview -->
     <div v-if="selectedPet" class="selected-preview">
       <img
@@ -253,6 +277,8 @@ import { matSearch, matSwapHoriz } from '@quasar/extras/material-icons'
 import { FORM_LABELS, FORM_COLOR_HEX, type PetForm } from 'src/types'
 import { useFormPicker } from 'src/composables/useFormPicker'
 import { ADOPT_ME_PETS } from 'src/data/pets'
+import { useInventoryStore } from 'src/stores/inventory'
+import { useValuesStore } from 'src/stores/values'
 interface BrowsedTradePet { name: string; form: string; value: number | null; elveValue: number | null }
 interface BrowsedTrade {
   id: string; platform: 'amvgg' | 'elvebredd'; authorName: string; publishedAt: string
@@ -260,6 +286,25 @@ interface BrowsedTrade {
   offerTotal: number | null; wantTotal: number | null
   elveOfferTotal: number | null; elveWantTotal: number | null
   score: 'good' | 'fair' | 'bad' | 'unknown'; ratio: number | null
+}
+
+// ── Inventory quick-pick ──────────────────────────────────────────────────────
+const inventory   = useInventoryStore()
+const valuesStore = useValuesStore()
+
+const sortedInventoryPets = computed(() =>
+  [...inventory.pets].sort((a, b) => {
+    const va = valuesStore.getCached(a.name, a.form) ?? -1
+    const vb = valuesStore.getCached(b.name, b.form) ?? -1
+    return vb - va
+  })
+)
+
+function pickInventoryPet (pet: { name: string; form: string }) {
+  selectedPet.value = pet.name
+  petSearch.value   = pet.name
+  petResults.value  = []
+  resetForm(pet.form as PetForm)
 }
 
 // ── Form picker ───────────────────────────────────────────────────────────────
@@ -540,6 +585,79 @@ const _ = computed(() => selectedForm.value) // keep selectedForm reactive
 }
 .btn-search:disabled { opacity: 0.4; cursor: not-allowed; }
 .btn-search:not(:disabled):hover { opacity: 0.85; }
+
+/* ── My Pets strip ── */
+.my-pets-strip {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.my-pets-label {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text-3);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.my-pets-scroll {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding-bottom: 4px;
+  scrollbar-width: thin;
+}
+.my-pets-scroll::-webkit-scrollbar { height: 3px; }
+.my-pets-scroll::-webkit-scrollbar-thumb { background: var(--border); border-radius: 99px; }
+
+.my-pet-chip {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 5px 10px 5px 6px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  cursor: pointer;
+  transition: border-color 0.12s, background 0.12s;
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+.my-pet-chip:hover { border-color: var(--primary); background: var(--surface-2); }
+.my-pet-chip--active { border-color: var(--primary); background: var(--primary-dim); }
+
+.my-pet-chip-img {
+  width: 28px;
+  height: 28px;
+  object-fit: contain;
+  filter: drop-shadow(0 1px 3px rgba(0,0,0,0.5));
+}
+
+.my-pet-chip-info {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  line-height: 1.2;
+}
+
+.my-pet-chip-name {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text-1);
+  max-width: 100px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.my-pet-chip-form {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.2px;
+}
 
 /* ── Selected pet preview ── */
 .selected-preview {
