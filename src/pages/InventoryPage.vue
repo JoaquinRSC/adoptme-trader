@@ -99,6 +99,7 @@
             <template v-else-if="activeValue(pet) !== null && activeValue(pet) !== undefined">
               <span class="value-num">{{ activeValue(pet) }}</span>
             </template>
+            <span v-else-if="pet.category && pet.category !== 'pet'" class="value-na">—</span>
             <button v-else class="value-fetch" @click="fetchActive(pet)">Fetch</button>
           </div>
           <div class="demand-row" v-if="petDemand[pet.id]">
@@ -1048,6 +1049,12 @@ function confirmRemove (id: string, name: string) {
   font-size: 15px;
   font-weight: 800;
   color: var(--gold);
+}
+.value-na {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-dim);
+  opacity: 0.5;
 }
 .value-fetch {
   font-size: 11px;
