@@ -123,8 +123,9 @@ let   elveFetchInFlight: Promise<void> | null = null
 const imageCache = new Map<string, string | null>()
 let   petNamesCache: string[] | null = null
 
-const itemsCache       = new Map<string, { value: number; demand: string | null; elveValue?: number | null }>()
-const itemValueByName  = new Map<string, number>()
+const itemsCache           = new Map<string, { value: number; demand: string | null; elveValue?: number | null }>()
+const itemValueByName      = new Map<string, number>()
+const itemElveValueByName  = new Map<string, number>()
 let   itemsCacheFilled = false
 
 // ── Fetch helpers ─────────────────────────────────────────────────────────────
@@ -149,6 +150,7 @@ async function warmItemsCache (): Promise<void> {
     for (const [name, data] of Object.entries(items)) {
       itemsCache.set(`${category}:${name}`, data)
       itemValueByName.set(name, data.value)
+      if (data.elveValue != null) itemElveValueByName.set(name, data.elveValue)
     }
   }
   console.log(`Loaded ${itemsCache.size} non-pet items from static items cache`)
@@ -567,7 +569,7 @@ async function browseMarket (payload: {
   const errors:  string[] = []
 
   function cachedValue (name: string, petForm: string, platform: 'amvgg' | 'elvebredd'): number | null {
-    if (platform === 'elvebredd') return elveValuesCache.get(name)?.[petForm] ?? null
+    if (platform === 'elvebredd') return elveValuesCache.get(name)?.[petForm] ?? itemElveValueByName.get(name) ?? null
     const petVal = detailsCache.get(name)?.values[petForm] ?? null
     if (petVal !== null) return petVal
     return itemValueByName.get(name) ?? null
