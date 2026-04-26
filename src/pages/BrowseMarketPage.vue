@@ -110,19 +110,24 @@
       <!-- Trade cards -->
       <div v-else class="trades-list">
 
-        <!-- Score summary -->
+        <!-- Score summary + filter -->
         <div v-if="trades.length" class="results-header">
-          <span class="results-count">{{ trades.length }} trade{{ trades.length === 1 ? '' : 's' }} found</span>
+          <span class="results-count">{{ filteredTrades.length }} of {{ trades.length }} trade{{ trades.length === 1 ? '' : 's' }}</span>
           <div class="score-pills">
             <span class="score-pill score-pill--good">{{ scoreCount('good') }} good</span>
             <span class="score-pill score-pill--fair">{{ scoreCount('fair') }} fair</span>
             <span class="score-pill score-pill--bad">{{ scoreCount('bad') }} bad</span>
             <span v-if="scoreCount('unknown')" class="score-pill score-pill--unknown">{{ scoreCount('unknown') }} unknown</span>
           </div>
+          <div class="score-filter">
+            <button class="filter-btn" :class="{ 'filter-btn--active': minScore === 'all' }"  @click="minScore = 'all'">All</button>
+            <button class="filter-btn" :class="{ 'filter-btn--active': minScore === 'fair' }" @click="minScore = 'fair'">Good & Fair</button>
+            <button class="filter-btn" :class="{ 'filter-btn--active': minScore === 'good' }" @click="minScore = 'good'">Good only</button>
+          </div>
         </div>
 
         <div
-          v-for="trade in trades"
+          v-for="trade in filteredTrades"
           :key="`${trade.platform}-${trade.id}`"
           class="trade-card"
           :class="`trade-card--${trade.score}`"
@@ -303,6 +308,15 @@ function toggleSource (s: 'amvgg' | 'elvebredd') {
     sources.value = [...sources.value, s]
   }
 }
+
+// ── Score filter ─────────────────────────────────────────────────────────────
+const minScore = ref<'all' | 'fair' | 'good'>('fair')
+
+const filteredTrades = computed(() => {
+  if (minScore.value === 'all') return trades.value
+  if (minScore.value === 'good') return trades.value.filter(t => t.score === 'good')
+  return trades.value.filter(t => t.score === 'good' || t.score === 'fair')
+})
 
 // ── Search ────────────────────────────────────────────────────────────────────
 const pages   = 2
@@ -770,4 +784,29 @@ const _ = computed(() => selectedForm.value) // keep selectedForm reactive
 .results-area {
   flex: 1;
 }
+
+/* ── Score filter ── */
+.score-filter {
+  display: flex;
+  gap: 4px;
+  background: var(--surface-2);
+  border-radius: 8px;
+  padding: 3px;
+  margin-left: auto;
+}
+
+.filter-btn {
+  padding: 5px 12px;
+  border: none;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+  background: transparent;
+  color: var(--text-2);
+  transition: background 0.15s, color 0.15s;
+  white-space: nowrap;
+}
+.filter-btn--active { background: var(--primary); color: #fff; }
+.filter-btn:not(.filter-btn--active):hover { color: var(--text-1); }
 </style>
