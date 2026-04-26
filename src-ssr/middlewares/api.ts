@@ -413,6 +413,18 @@ function extractImageUrlFromHtml (html: string): string | null {
 
 async function fetchPetImageAsBase64 (petName: string): Promise<string | null> {
   if (imageCache.has(petName)) return imageCache.get(petName) ?? null
+
+  // Try direct webp URL first (faster, no HTML scraping needed)
+  const directUrl = `https://amvgg.com/items/${encodeURIComponent(petName)}.webp`
+  try {
+    const directRes = await fetchWithTimeout(directUrl)
+    if (directRes.ok && (directRes.headers.get('content-type') ?? '').startsWith('image/')) {
+      imageCache.set(petName, directUrl)
+      return directUrl
+    }
+  } catch { /* fall through to HTML scraping */ }
+
+  // Fall back to scraping the pet detail page
   const slug = petName.replace(/ /g, '_')
   try {
     const pageRes = await fetchWithTimeout(`https://amvgg.com/pet/${slug}`)
