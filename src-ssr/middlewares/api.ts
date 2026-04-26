@@ -175,7 +175,7 @@ function parseDetailsFromBlock (html: string, petName?: string): PetDetails {
           const raw = pet[field]
           if (raw !== null && raw !== undefined) {
             const n = typeof raw === 'number' ? raw : parseFloat(String(raw))
-            if (!isNaN(n)) values[form] = n
+            if (!isNaN(n) && n > 0) values[form] = n
           }
         }
         for (const [field, form] of AMVGG_DEMAND_FIELDS) {
@@ -250,10 +250,7 @@ async function warmDetailsCache (): Promise<void> {
 
   const staticAmv = loadStaticCache<Record<string, PetDetails>>('amv-cache.json')
   if (staticAmv) {
-    for (const [name, data] of Object.entries(staticAmv)) {
-      detailsCache.set(name, data)
-      individualFetchDone.add(name)
-    }
+    for (const [name, data] of Object.entries(staticAmv)) detailsCache.set(name, applyFormFallbacks(data))
     console.log(`Loaded ${detailsCache.size} pets from static AMV cache`)
     return
   }
@@ -330,7 +327,7 @@ async function fetchPetDetails (petName: string): Promise<PetDetails> {
         if (Object.keys(indiv.values).length > 0) {
           const cached = detailsCache.get(petName) ?? { values: {}, demands: {}, rarity: null }
           for (const [form, val] of Object.entries(indiv.values)) {
-            if (val !== null) (cached.values as Record<string, unknown>)[form] = val
+            if (val !== null && (val as number) > 0) (cached.values as Record<string, unknown>)[form] = val
           }
           detailsCache.set(petName, applyFormFallbacks(cached))
         }
