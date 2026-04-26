@@ -805,6 +805,7 @@ function deltaChipClass (delta: number) {
   width: 80%;
   height: 80%;
   object-fit: contain;
+  filter: drop-shadow(0 4px 12px rgba(0,0,0,0.5));
 }
 
 .slot-meta {
