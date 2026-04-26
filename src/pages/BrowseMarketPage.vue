@@ -125,6 +125,16 @@
           <div class="score-filter">
             <button class="filter-btn" :class="{ 'filter-btn--active': minScore === 'fair' }" @click="minScore = 'fair'">Good & Fair</button>
             <button class="filter-btn" :class="{ 'filter-btn--active': minScore === 'good' }" @click="minScore = 'good'">Good only</button>
+            <button class="filter-btn" :class="{ 'filter-btn--active': minScore === 'op' }"   @click="minScore = 'op'">OP</button>
+            <template v-if="minScore === 'op'">
+              <input
+                v-model.number="opThreshold"
+                type="number" min="5" max="500" step="5"
+                class="op-input"
+                title="Minimum % win to show"
+              />
+              <span class="op-label">% win</span>
+            </template>
           </div>
           <button
             class="filter-btn my-pet-btn"
@@ -181,13 +191,15 @@
                   <div class="mini-meta">
                     <span class="mini-name">{{ pet.name }}</span>
                     <span class="mini-form" :style="{ color: FORM_COLOR_HEX[pet.form as PetForm] }">{{ FORM_LABELS[pet.form as PetForm] }}</span>
-                    <span class="mini-val" v-if="pet.value !== null">{{ formatVal(pet.value, trade.platform) }}</span>
-                    <span class="mini-val mini-val--unknown" v-else>—</span>
+                    <span class="mini-val" v-if="pet.value !== null">AMV {{ formatVal(pet.value, 'amvgg') }}</span>
+                    <span class="mini-val mini-val--unknown" v-else-if="pet.elveValue === null">—</span>
+                    <span class="mini-val mini-val--elve" v-if="pet.elveValue !== null">ELV {{ pet.elveValue.toFixed(2) }}</span>
                   </div>
                 </div>
               </div>
-              <div class="side-total" v-if="trade.wantTotal !== null">
-                Total: <strong>{{ formatVal(trade.wantTotal, trade.platform) }}</strong>
+              <div class="side-total" v-if="trade.wantTotal !== null || trade.elveWantTotal !== null">
+                <span v-if="trade.wantTotal !== null">AMV <strong>{{ formatVal(trade.wantTotal, 'amvgg') }}</strong></span>
+                <span v-if="trade.elveWantTotal !== null" class="total-elve">ELV <strong>{{ trade.elveWantTotal.toFixed(2) }}</strong></span>
               </div>
             </div>
 
@@ -215,13 +227,15 @@
                   <div class="mini-meta">
                     <span class="mini-name">{{ pet.name }}</span>
                     <span class="mini-form" :style="{ color: FORM_COLOR_HEX[pet.form as PetForm] }">{{ FORM_LABELS[pet.form as PetForm] }}</span>
-                    <span class="mini-val" v-if="pet.value !== null">{{ formatVal(pet.value, trade.platform) }}</span>
-                    <span class="mini-val mini-val--unknown" v-else>—</span>
+                    <span class="mini-val" v-if="pet.value !== null">AMV {{ formatVal(pet.value, 'amvgg') }}</span>
+                    <span class="mini-val mini-val--unknown" v-else-if="pet.elveValue === null">—</span>
+                    <span class="mini-val mini-val--elve" v-if="pet.elveValue !== null">ELV {{ pet.elveValue.toFixed(2) }}</span>
                   </div>
                 </div>
               </div>
-              <div class="side-total" v-if="trade.offerTotal !== null">
-                Total: <strong>{{ formatVal(trade.offerTotal, trade.platform) }}</strong>
+              <div class="side-total" v-if="trade.offerTotal !== null || trade.elveOfferTotal !== null">
+                <span v-if="trade.offerTotal !== null">AMV <strong>{{ formatVal(trade.offerTotal, 'amvgg') }}</strong></span>
+                <span v-if="trade.elveOfferTotal !== null" class="total-elve">ELV <strong>{{ trade.elveOfferTotal.toFixed(2) }}</strong></span>
               </div>
             </div>
 
@@ -239,11 +253,12 @@ import { matSearch, matSwapHoriz } from '@quasar/extras/material-icons'
 import { FORM_LABELS, FORM_COLOR_HEX, type PetForm } from 'src/types'
 import { useFormPicker } from 'src/composables/useFormPicker'
 import { ADOPT_ME_PETS } from 'src/data/pets'
-interface BrowsedTradePet { name: string; form: string; value: number | null }
+interface BrowsedTradePet { name: string; form: string; value: number | null; elveValue: number | null }
 interface BrowsedTrade {
   id: string; platform: 'amvgg' | 'elvebredd'; authorName: string; publishedAt: string
   offering: BrowsedTradePet[]; lookingFor: BrowsedTradePet[]
   offerTotal: number | null; wantTotal: number | null
+  elveOfferTotal: number | null; elveWantTotal: number | null
   score: 'good' | 'fair' | 'bad' | 'unknown'; ratio: number | null
 }
 
@@ -320,12 +335,18 @@ function clearSelection () {
 }
 
 // ── Score + pet filter ───────────────────────────────────────────────────────
-const minScore  = ref<'fair' | 'good'>('fair')
-const myPetOnly = ref(false)
+const minScore    = ref<'fair' | 'good' | 'op'>('fair')
+const opThreshold = ref(30)
+const myPetOnly   = ref(false)
 
 const filteredTrades = computed(() => {
-  let result = trades.value.filter(t => t.score === 'good' || t.score === 'fair')
-  if (minScore.value === 'good') result = result.filter(t => t.score === 'good')
+  let result: BrowsedTrade[]
+  if (minScore.value === 'op') {
+    result = trades.value.filter(t => t.ratio !== null && t.ratio >= (1 + opThreshold.value / 100))
+  } else {
+    result = trades.value.filter(t => t.score === 'good' || t.score === 'fair')
+    if (minScore.value === 'good') result = result.filter(t => t.score === 'good')
+  }
   if (myPetOnly.value) result = result.filter(t => t.lookingFor.length === 1)
   return result
 })
@@ -788,13 +809,34 @@ const _ = computed(() => selectedForm.value) // keep selectedForm reactive
   color: var(--gold);
 }
 .mini-val--unknown { color: var(--text-3); }
+.mini-val--elve    { color: #34d399; }
 
 .side-total {
   font-size: 11px;
   color: var(--text-2);
   margin-top: 8px;
 }
+.side-total { display: flex; flex-direction: column; gap: 2px; }
 .side-total strong { color: var(--text-1); }
+.total-elve { color: #34d399; }
+
+/* ── OP filter ── */
+.op-input {
+  width: 56px;
+  padding: 4px 6px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--surface-3);
+  color: var(--text-1);
+  font-size: 12px;
+  font-weight: 700;
+  text-align: center;
+}
+.op-label {
+  font-size: 11px;
+  color: var(--text-3);
+  font-weight: 600;
+}
 
 /* ── View button ── */
 .view-btn {

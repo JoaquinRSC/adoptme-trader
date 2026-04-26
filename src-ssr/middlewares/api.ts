@@ -14,22 +14,25 @@ export interface PetDetails {
 }
 
 export interface BrowsedTradePet {
-  name:  string
-  form:  string
-  value: number | null
+  name:      string
+  form:      string
+  value:     number | null
+  elveValue: number | null
 }
 
 export interface BrowsedTrade {
-  id:          string
-  platform:    'amvgg' | 'elvebredd'
-  authorName:  string
-  publishedAt: string
-  offering:    BrowsedTradePet[]
-  lookingFor:  BrowsedTradePet[]
-  offerTotal:  number | null
-  wantTotal:   number | null
-  score:       'good' | 'fair' | 'bad' | 'unknown'
-  ratio:       number | null
+  id:            string
+  platform:      'amvgg' | 'elvebredd'
+  authorName:    string
+  publishedAt:   string
+  offering:      BrowsedTradePet[]
+  lookingFor:    BrowsedTradePet[]
+  offerTotal:    number | null
+  wantTotal:     number | null
+  elveOfferTotal: number | null
+  elveWantTotal:  number | null
+  score:         'good' | 'fair' | 'bad' | 'unknown'
+  ratio:         number | null
 }
 
 // ── Constants ─────────────────────────────────────────────────────────────────
@@ -565,17 +568,19 @@ async function browseMarket (payload: {
       for (const trade of data.trades) {
         const mapItem = (item: AmvggItem): BrowsedTradePet => {
           const petForm = item.type === '' ? form : (AMVGG_TYPE_TO_FORM[item.type] ?? 'normal')
-          return { name: item.name, form: petForm, value: cachedValue(item.name, petForm, 'amvgg') }
+          return { name: item.name, form: petForm, value: cachedValue(item.name, petForm, 'amvgg'), elveValue: cachedValue(item.name, petForm, 'elvebredd') }
         }
-        const offering   = trade.offering.map(mapItem)
-        const lookingFor = trade.lookingFor.map(mapItem)
-        const offerTotal = computeTotals(offering)
-        const wantTotal  = computeTotals(lookingFor)
+        const offering      = trade.offering.map(mapItem)
+        const lookingFor    = trade.lookingFor.map(mapItem)
+        const offerTotal    = computeTotals(offering)
+        const wantTotal     = computeTotals(lookingFor)
+        const elveOfferTotal = offering.every(p => p.elveValue !== null) ? offering.reduce((s, p) => s + p.elveValue!, 0) : null
+        const elveWantTotal  = lookingFor.every(p => p.elveValue !== null) ? lookingFor.reduce((s, p) => s + p.elveValue!, 0) : null
         const ratio      = offerTotal !== null && wantTotal ? offerTotal / wantTotal : null
         results.push({
           id: trade.id, platform: 'amvgg',
           authorName: trade.authorName, publishedAt: trade.publishedAt,
-          offering, lookingFor, offerTotal, wantTotal,
+          offering, lookingFor, offerTotal, wantTotal, elveOfferTotal, elveWantTotal,
           score: scoreRatio(ratio), ratio,
         })
       }
