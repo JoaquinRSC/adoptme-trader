@@ -18,6 +18,7 @@ export interface BrowsedTradePet {
   form:      string
   value:     number | null
   elveValue: number | null
+  isPet:     boolean
 }
 
 export interface BrowsedTrade {
@@ -121,6 +122,10 @@ let   elveFetchInFlight: Promise<void> | null = null
 const imageCache = new Map<string, string | null>()
 let   petNamesCache: string[] | null = null
 
+const itemsCache       = new Map<string, { value: number; demand: string | null }>()
+const itemValueByName  = new Map<string, number>()
+let   itemsCacheFilled = false
+
 // ── Fetch helpers ─────────────────────────────────────────────────────────────
 
 function fetchWithTimeout (url: string, timeoutMs = 12000): Promise<Response> {
@@ -130,6 +135,22 @@ function fetchWithTimeout (url: string, timeoutMs = 12000): Promise<Response> {
     headers: { 'User-Agent': USER_AGENT },
     signal: controller.signal,
   }).finally(() => clearTimeout(id))
+}
+
+// ── Items cache (non-pet categories) ─────────────────────────────────────────
+
+async function warmItemsCache (): Promise<void> {
+  if (itemsCacheFilled) return
+  itemsCacheFilled = true
+  const staticItems = loadStaticCache<Record<string, Record<string, { value: number; demand: string | null }>>>('items-cache.json')
+  if (!staticItems) return
+  for (const [category, items] of Object.entries(staticItems)) {
+    for (const [name, data] of Object.entries(items)) {
+      itemsCache.set(`${category}:${name}`, data)
+      itemValueByName.set(name, data.value)
+    }
+  }
+  console.log(`Loaded ${itemsCache.size} non-pet items from static items cache`)
 }
 
 // ── AMVGG parsing ─────────────────────────────────────────────────────────────
@@ -527,14 +548,16 @@ async function browseMarket (payload: {
   pages?:  number
 }): Promise<{ trades: BrowsedTrade[]; errors: string[] }> {
   const { petName, form, sources, pages = 2 } = payload
-  await Promise.all([warmDetailsCache(), warmElveCache()])
+  await Promise.all([warmDetailsCache(), warmElveCache(), warmItemsCache()])
 
   const results: BrowsedTrade[] = []
   const errors:  string[] = []
 
   function cachedValue (name: string, petForm: string, platform: 'amvgg' | 'elvebredd'): number | null {
     if (platform === 'elvebredd') return elveValuesCache.get(name)?.[petForm] ?? null
-    return detailsCache.get(name)?.values[petForm] ?? null
+    const petVal = detailsCache.get(name)?.values[petForm] ?? null
+    if (petVal !== null) return petVal
+    return itemValueByName.get(name) ?? null
   }
 
   function scoreRatio (ratio: number | null): BrowsedTrade['score'] {
@@ -567,8 +590,9 @@ async function browseMarket (payload: {
 
       for (const trade of data.trades) {
         const mapItem = (item: AmvggItem, emptyFallback: string): BrowsedTradePet => {
+          const isPet   = detailsCache.has(item.name)
           const petForm = item.type === '' ? emptyFallback : (AMVGG_TYPE_TO_FORM[item.type] ?? 'normal')
-          return { name: item.name, form: petForm, value: cachedValue(item.name, petForm, 'amvgg'), elveValue: cachedValue(item.name, petForm, 'elvebredd') }
+          return { name: item.name, form: petForm, value: cachedValue(item.name, petForm, 'amvgg'), elveValue: cachedValue(item.name, petForm, 'elvebredd'), isPet }
         }
         const offering      = trade.offering.map(i => mapItem(i, 'normal'))
         const lookingFor    = trade.lookingFor.map(i => mapItem(i, form))
@@ -621,7 +645,8 @@ async function browseMarket (payload: {
       for (const listing of data.listings) {
         const mapItem = (item: ElvePet): BrowsedTradePet => {
           const petForm = elveAttrsToForm(item.attributes)
-          return { name: item.name, form: petForm, value: cachedValue(item.name, petForm, 'elvebredd') }
+          const isPet   = detailsCache.has(item.name)
+          return { name: item.name, form: petForm, value: cachedValue(item.name, petForm, 'elvebredd'), elveValue: null, isPet }
         }
         const offering   = listing.ownerGive.map(mapItem)
         const lookingFor = listing.ownerGet.map(mapItem)
@@ -651,6 +676,7 @@ export default defineSsrMiddleware(({ app }) => {
   // Warm caches on server start (non-blocking)
   void warmDetailsCache()
   void warmElveCache()
+  void warmItemsCache()
 
   app.get('/api/pets/list', async (_req, res) => {
     res.json(await getPetNamesList())
@@ -706,6 +732,43 @@ export default defineSsrMiddleware(({ app }) => {
     const result: Record<string, number | null> = {}
     for (const { name, form } of requests) {
       result[`${name}__${form}`] = elveValuesCache.get(name)?.[form] ?? null
+    }
+    res.json(result)
+  })
+
+  app.get('/api/item/value', async (req, res) => {
+    await warmItemsCache()
+    const name     = String(req.query['name'] ?? '')
+    const category = String(req.query['category'] ?? '')
+    res.json(itemsCache.get(`${category}:${name}`)?.value ?? null)
+  })
+
+  app.get('/api/items/search', async (req, res) => {
+    await warmItemsCache()
+    const q        = String(req.query['q'] ?? '').toLowerCase().trim()
+    const category = String(req.query['category'] ?? '')
+    if (!q) return res.json([])
+    const results: string[] = []
+    for (const key of itemsCache.keys()) {
+      if (category && !key.startsWith(`${category}:`)) continue
+      const name = key.slice(key.indexOf(':') + 1)
+      if (name.toLowerCase().includes(q)) results.push(name)
+    }
+    results.sort((a, b) => {
+      const al = a.toLowerCase(), bl = b.toLowerCase()
+      if (al.startsWith(q) !== bl.startsWith(q)) return al.startsWith(q) ? -1 : 1
+      return al.localeCompare(bl)
+    })
+    res.json(results.slice(0, 50))
+  })
+
+  app.get('/api/items/all', async (req, res) => {
+    await warmItemsCache()
+    const category = String(req.query['category'] ?? '')
+    const result: Array<{ name: string; value: number; demand: string | null }> = []
+    for (const [key, data] of itemsCache) {
+      if (category && !key.startsWith(`${category}:`)) continue
+      result.push({ name: key.slice(key.indexOf(':') + 1), ...data })
     }
     res.json(result)
   })

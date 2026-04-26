@@ -227,6 +227,60 @@ async function fetchElve () {
   return result
 }
 
+// ── Non-pet categories ────────────────────────────────────────────────────────
+
+const NON_PET_CATEGORIES = [
+  { key: 'petWear',   slug: 'petwear'   },
+  { key: 'egg',       slug: 'eggs'      },
+  { key: 'stroller',  slug: 'strollers' },
+  { key: 'food',      slug: 'food'      },
+  { key: 'vehicle',   slug: 'vehicles'  },
+  { key: 'toy',       slug: 'toys'      },
+  { key: 'gift',      slug: 'gifts'     },
+  { key: 'sticker',   slug: 'stickers'  },
+  { key: 'house',     slug: 'houses'    },
+]
+
+async function fetchAmvggCategory (slug) {
+  const res = await get(`https://amvgg.com/values/${slug}`)
+  if (!res.ok) throw new Error(`HTTP ${res.status}`)
+  const html = await res.text()
+
+  const result = {}
+  const nameRe = /\\"name\\":\\"([^"\\]+)\\"/g
+  let m
+  while ((m = nameRe.exec(html)) !== null) {
+    const name = m[1]
+    if (name === 'theme-color' || name === 'color-scheme') continue
+    const chunk = html.slice(m.index, m.index + 250)
+    const valueMatch = chunk.match(/\\"value\\":\\"([\d.]+)\\"/)
+    if (!valueMatch) continue
+    const demandMatch = chunk.match(/\\"demand\\":\\"([^"\\]+)\\"/)
+    result[name] = {
+      value:  parseFloat(valueMatch[1]),
+      demand: demandMatch ? demandMatch[1] : null,
+    }
+  }
+  return result
+}
+
+async function fetchAmvggItems () {
+  process.stdout.write('Fetching AMVGG non-pet items... ')
+  const result = {}
+  for (const { key, slug } of NON_PET_CATEGORIES) {
+    try {
+      const items = await fetchAmvggCategory(slug)
+      result[key] = items
+      process.stdout.write(`${key}(${Object.keys(items).length}) `)
+    } catch (e) {
+      console.error(`\n  ✗ Failed ${key}: ${e.message}`)
+      result[key] = {}
+    }
+  }
+  console.log()
+  return result
+}
+
 // ── Main ──────────────────────────────────────────────────────────────────────
 
 async function main () {
@@ -248,6 +302,15 @@ async function main () {
     ok = true
   } catch (e) {
     console.error('  ✗ Elvebredd failed:', e.message)
+  }
+
+  try {
+    const items = await fetchAmvggItems()
+    writeFileSync(join(DATA_DIR, 'items-cache.json'), JSON.stringify(items))
+    console.log('  ✓ src/data/items-cache.json saved')
+    ok = true
+  } catch (e) {
+    console.error('  ✗ Items failed:', e.message)
   }
 
   if (ok) console.log('\nDone. Commit the JSON files and deploy to update Railway.')

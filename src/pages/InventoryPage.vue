@@ -38,7 +38,22 @@
           <q-icon :name="matAdd" size="16px" />
           Add Pet
         </button>
+        <button class="btn-secondary" @click="openAddItem">
+          <q-icon :name="matAdd" size="16px" />
+          Add Item
+        </button>
       </div>
+    </div>
+
+    <!-- Category filter -->
+    <div class="cat-filter" v-if="availableCategories.length > 1">
+      <button
+        v-for="cat in availableCategories"
+        :key="cat"
+        class="cat-chip"
+        :class="{ 'cat-chip--active': categoryFilter === cat }"
+        @click="categoryFilter = cat"
+      >{{ cat === 'all' ? 'All' : CATEGORY_LABELS[cat as ItemCategory] }}</button>
     </div>
 
     <!-- Empty state -->
@@ -51,7 +66,7 @@
 
     <!-- Pet grid -->
     <div class="pet-grid" v-else>
-      <div class="pet-card" v-for="pet in sortedPets" :key="pet.id">
+      <div class="pet-card" v-for="pet in filteredSortedPets" :key="pet.id">
 
         <!-- Thumbnail -->
         <div class="pet-thumb">
@@ -62,11 +77,14 @@
           />
           <span v-else class="thumb-emoji">🐾</span>
           <span
+            v-if="!pet.category || pet.category === 'pet'"
             class="thumb-badge"
             :style="{ color: FORM_COLOR_HEX[pet.form], borderColor: FORM_COLOR_HEX[pet.form] + '44' }"
-          >
-            {{ FORM_LABELS[pet.form] }}
-          </span>
+          >{{ FORM_LABELS[pet.form] }}</span>
+          <span
+            v-else
+            class="thumb-badge thumb-badge--category"
+          >{{ CATEGORY_LABELS[pet.category] }}</span>
         </div>
 
         <!-- Card body -->
@@ -218,6 +236,110 @@
       </q-card>
     </q-dialog>
 
+    <!-- Add Item dialog (non-pets) -->
+    <q-dialog v-model="showAddItem" persistent @hide="resetItemSearch">
+      <q-card class="add-card">
+        <div class="add-header">
+          <div class="dialog-title">Add Item</div>
+        </div>
+        <div class="add-body">
+          <div class="add-left">
+            <q-select
+              v-model="newItemCategory"
+              :options="itemCategoryOptions"
+              emit-value map-options
+              outlined dense
+              label="Category"
+              style="margin-bottom:8px"
+              @update:model-value="onItemCategoryChange"
+            />
+            <q-input
+              ref="itemSearchInputRef"
+              v-model="itemSearchQuery"
+              :label="`Search ${newItemCategory ? CATEGORY_LABELS[newItemCategory] : 'items'}…`"
+              outlined dense autofocus
+              autocomplete="off"
+              @update:model-value="onItemSearchInput"
+              @keydown.enter.prevent="pickFirstItemResult"
+              @keydown.escape.prevent="showAddItem = false"
+              @keydown.up.prevent="itemDropIndex = Math.max(itemDropIndex - 1, 0)"
+              @keydown.down.prevent="itemDropIndex = Math.min(itemDropIndex + 1, itemSearchResults.length - 1)"
+            >
+              <template #prepend>
+                <q-icon :name="matSearch" size="16px" style="color:var(--text-3)" />
+              </template>
+            </q-input>
+            <div class="results-panel">
+              <div v-if="itemSearching && !itemSearchResults.length" class="results-state">
+                <q-spinner size="14px" color="primary" /><span>Searching…</span>
+              </div>
+              <div v-else-if="!itemSearchQuery.trim()" class="results-state">
+                Start typing to find an item
+              </div>
+              <div v-else-if="!itemSearchResults.length" class="results-state">
+                No results for "{{ itemSearchQuery }}"
+              </div>
+              <div
+                v-for="(name, i) in itemSearchResults"
+                :key="name"
+                class="result-item"
+                :class="{ 'result-item--active': i === itemDropIndex }"
+                @mousedown.prevent="selectItem(name)"
+                @mouseover="itemDropIndex = i"
+              >
+                <div class="result-img-wrap">
+                  <img
+                    :src="`https://amvgg.com/items/${encodeURIComponent(name)}.webp`"
+                    class="result-img"
+                    @error="(e) => (e.target as HTMLImageElement).style.display='none'"
+                  />
+                  <div class="result-img-placeholder">📦</div>
+                </div>
+                <span class="result-name">{{ name }}</span>
+                <q-icon v-if="newItemName === name" :name="matCheck" size="13px" style="color:var(--primary);margin-left:auto" />
+              </div>
+            </div>
+          </div>
+          <div class="add-right">
+            <div class="pet-preview-card">
+              <div v-if="newItemName" class="preview-filled">
+                <div class="preview-img-wrap">
+                  <img
+                    :src="`https://amvgg.com/items/${encodeURIComponent(newItemName)}.webp`"
+                    class="preview-img"
+                    @error="(e) => (e.target as HTMLImageElement).style.display='none'"
+                  />
+                  <div class="preview-img-ph">📦</div>
+                </div>
+                <div class="preview-info">
+                  <div class="preview-name">{{ newItemName }}</div>
+                  <div class="preview-form-badge" style="color:var(--primary);border-color:var(--primary)">
+                    {{ newItemCategory ? CATEGORY_LABELS[newItemCategory] : '' }}
+                  </div>
+                </div>
+              </div>
+              <div v-else class="preview-empty">← Select an item from the list</div>
+            </div>
+            <q-input
+              v-model.number="newItemQty"
+              type="number"
+              label="Quantity"
+              outlined dense
+              :min="1"
+            />
+            <div class="add-actions">
+              <button class="btn-ghost" @click="showAddItem = false">Cancel</button>
+              <button
+                class="btn-primary"
+                :disabled="!newItemName.trim() || !newItemCategory"
+                @click="confirmAddItem"
+              >Add to Inventory</button>
+            </div>
+          </div>
+        </div>
+      </q-card>
+    </q-dialog>
+
   </q-page>
 </template>
 
@@ -230,8 +352,8 @@ import { useInventoryStore } from 'src/stores/inventory'
 import { useValuesStore, type DemandLevel } from 'src/stores/values'
 import { ADOPT_ME_PETS } from 'src/data/pets'
 import {
-  FORM_LABELS, FORM_COLOR_HEX,
-  type PetForm, type InventoryPet,
+  FORM_LABELS, FORM_COLOR_HEX, CATEGORY_LABELS,
+  type PetForm, type InventoryPet, type ItemCategory,
 } from 'src/types'
 
 const $q = useQuasar()
@@ -414,6 +536,119 @@ watch(() => newPetName.value, async (name) => {
   }
 })
 
+// ── Category filter ───────────────────────────────────────────────────────────
+const ALL_CATEGORY_ORDER: Array<'pet' | ItemCategory> = [
+  'pet', 'petWear', 'egg', 'stroller', 'food', 'vehicle', 'toy', 'gift', 'sticker', 'house',
+]
+
+const categoryFilter = ref<'all' | ItemCategory>('all')
+
+const availableCategories = computed(() => {
+  const cats = new Set(inventory.pets.map(p => p.category ?? 'pet'))
+  if (cats.size <= 1) return []
+  const result: Array<'all' | ItemCategory> = ['all']
+  for (const cat of ALL_CATEGORY_ORDER) {
+    if (cats.has(cat)) result.push(cat)
+  }
+  return result
+})
+
+const filteredSortedPets = computed(() => {
+  if (categoryFilter.value === 'all') return sortedPets.value
+  return sortedPets.value.filter(p => (p.category ?? 'pet') === categoryFilter.value)
+})
+
+// ── Add Item dialog (non-pets) ────────────────────────────────────────────────
+const showAddItem       = ref(false)
+const newItemName       = ref('')
+const newItemCategory   = ref<ItemCategory | null>(null)
+const newItemQty        = ref(1)
+const itemSearchQuery   = ref('')
+const itemSearchResults = ref<string[]>([])
+const itemSearching     = ref(false)
+const itemDropIndex     = ref(-1)
+const itemSearchInputRef = ref()
+
+const itemCategoryOptions = [
+  { label: 'Pet Wear',  value: 'petWear'  },
+  { label: 'Eggs',      value: 'egg'      },
+  { label: 'Strollers', value: 'stroller' },
+  { label: 'Food',      value: 'food'     },
+  { label: 'Vehicles',  value: 'vehicle'  },
+  { label: 'Toys',      value: 'toy'      },
+  { label: 'Gifts',     value: 'gift'     },
+  { label: 'Stickers',  value: 'sticker'  },
+  { label: 'Houses',    value: 'house'    },
+]
+
+function openAddItem () {
+  newItemName.value       = ''
+  newItemCategory.value   = null
+  newItemQty.value        = 1
+  itemSearchQuery.value   = ''
+  itemSearchResults.value = []
+  showAddItem.value       = true
+}
+
+function onItemCategoryChange () {
+  newItemName.value       = ''
+  itemSearchQuery.value   = ''
+  itemSearchResults.value = []
+}
+
+let itemSearchTimer: ReturnType<typeof setTimeout> | null = null
+
+async function onItemSearchInput (val: string | number | null) {
+  const q = String(val ?? '').trim()
+  if (!q || !newItemCategory.value) { itemSearchResults.value = []; return }
+  itemSearching.value = true
+  if (itemSearchTimer) clearTimeout(itemSearchTimer)
+  itemSearchTimer = setTimeout(async () => {
+    try {
+      const res = await fetch(`/api/items/search?q=${encodeURIComponent(q)}&category=${newItemCategory.value}`)
+      itemSearchResults.value = await res.json() as string[]
+    } finally {
+      itemSearching.value = false
+    }
+  }, 200)
+}
+
+function selectItem (name: string) {
+  newItemName.value       = name
+  itemSearchQuery.value   = name
+  itemSearchResults.value = []
+  itemDropIndex.value     = -1
+}
+
+function pickFirstItemResult () {
+  if (itemDropIndex.value >= 0 && itemSearchResults.value[itemDropIndex.value]) {
+    selectItem(itemSearchResults.value[itemDropIndex.value])
+  } else if (itemSearchResults.value.length) {
+    selectItem(itemSearchResults.value[0])
+  }
+}
+
+function confirmAddItem () {
+  if (!newItemName.value.trim() || !newItemCategory.value) return
+  const count = Math.max(1, newItemQty.value)
+  inventory.addItem(newItemName.value.trim(), newItemCategory.value, count)
+  const added = inventory.pets.slice(-count)
+  for (const item of added) {
+    void fetchValue(item)
+    void fetchImage(item.id, item.name)
+  }
+  newItemName.value       = ''
+  newItemQty.value        = 1
+  itemSearchQuery.value   = ''
+  itemSearchResults.value = []
+  void nextTick(() => itemSearchInputRef.value?.focus())
+}
+
+function resetItemSearch () {
+  itemSearchQuery.value   = ''
+  itemSearchResults.value = []
+}
+
 // ── Value + demand fetching ───────────────────────────────────────────────────
 const valueSource  = ref<'amvgg' | 'elvebredd'>('amvgg')
 const petValue     = reactive<Record<string, number | null>>({})
@@ -476,10 +711,15 @@ function demandStarClass (d: DemandLevel): string {
 async function fetchValue (pet: InventoryPet) {
   loadingValue[pet.id] = true
   try {
-    const res     = await fetch(`/api/pet/details?name=${encodeURIComponent(pet.name)}`)
-    const details = await res.json() as { values: Record<string, number | null>; demands: Record<string, string | null> }
-    petValue[pet.id]  = details.values[pet.form] ?? null
-    petDemand[pet.id] = (details.demands[pet.form] ?? null) as DemandLevel
+    if (pet.category && pet.category !== 'pet') {
+      const res = await fetch(`/api/item/value?name=${encodeURIComponent(pet.name)}&category=${pet.category}`)
+      petValue[pet.id] = await res.json() as number | null
+    } else {
+      const res     = await fetch(`/api/pet/details?name=${encodeURIComponent(pet.name)}`)
+      const details = await res.json() as { values: Record<string, number | null>; demands: Record<string, string | null> }
+      petValue[pet.id]  = details.values[pet.form] ?? null
+      petDemand[pet.id] = (details.demands[pet.form] ?? null) as DemandLevel
+    }
   } catch {
     petValue[pet.id] = null
   } finally {
@@ -488,6 +728,10 @@ async function fetchValue (pet: InventoryPet) {
 }
 
 async function fetchElveValue (pet: InventoryPet) {
+  if (pet.category && pet.category !== 'pet') {
+    petElveValue[pet.id] = null
+    return
+  }
   loadingValue[pet.id] = true
   try {
     petElveValue[pet.id] = await values.getElveValue(pet.name, pet.form)
@@ -626,6 +870,44 @@ function confirmRemove (id: string, name: string) {
 .btn-primary:active  { transform: scale(0.97); }
 .btn-primary:disabled { opacity: 0.4; cursor: not-allowed; }
 
+.btn-secondary {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  border: 1px solid var(--border-hi);
+  border-radius: 10px;
+  background: transparent;
+  color: var(--text-1);
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+}
+.btn-secondary:hover { background: var(--surface-3); border-color: var(--primary); }
+
+/* Category filter */
+.cat-filter {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 18px;
+}
+
+.cat-chip {
+  padding: 5px 14px;
+  border: 1px solid var(--border);
+  border-radius: 99px;
+  background: transparent;
+  color: var(--text-2);
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.cat-chip:hover { border-color: var(--primary); color: var(--text-1); }
+.cat-chip--active { background: var(--primary); border-color: var(--primary); color: #fff; }
+
 .btn-ghost {
   display: inline-flex;
   align-items: center;
@@ -701,6 +983,12 @@ function confirmRemove (id: string, name: string) {
   position: absolute;
   z-index: 0;
 }
+.thumb-badge--category {
+  color: var(--text-2) !important;
+  border-color: var(--border-hi) !important;
+  font-size: 9px !important;
+}
+
 .thumb-badge {
   position: absolute;
   bottom: 8px;
