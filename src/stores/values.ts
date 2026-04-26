@@ -10,25 +10,23 @@ export interface PetDetails {
   rarity:  string | null
 }
 
-declare global {
-  interface Window {
-    electronAPI: {
-      getPetValue: (name: string, form: string) => Promise<number | null>
-      getAllPets: () => Promise<Array<{ name: string; value: number }>>
-      getBatchValues: (requests: Array<{ name: string; form: string }>) => Promise<Record<string, number | null>>
-      getPetDetails: (petName: string) => Promise<PetDetails>
-      loadPetList: () => Promise<string[]>
-      searchPets: (query: string) => Promise<string[]>
-      getPetImageUrl: (petName: string) => Promise<string | null>
-      getElveValue: (petName: string, form: string) => Promise<number | null>
-      getElveBatchValues: (requests: Array<{ name: string; form: string }>) => Promise<Record<string, number | null>>
-      debugPetPage: (petName: string) => Promise<Record<string, unknown>>
-    }
-  }
+async function apiFetch<T> (url: string): Promise<T> {
+  const res = await fetch(url)
+  if (!res.ok) throw new Error(`HTTP ${res.status}`)
+  return res.json() as Promise<T>
+}
+
+async function apiPost<T> (url: string, body: unknown): Promise<T> {
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  })
+  if (!res.ok) throw new Error(`HTTP ${res.status}`)
+  return res.json() as Promise<T>
 }
 
 export const useValuesStore = defineStore('values', () => {
-  // In-memory value cache: key = "PetName__form"
   const cache = ref<Record<string, number | null>>({})
   const allPets = ref<Array<{ name: string; value: number }>>([])
   const loadingAllPets = ref(false)
@@ -40,8 +38,7 @@ export const useValuesStore = defineStore('values', () => {
   async function getValue (name: string, form: PetForm): Promise<number | null> {
     const key = cacheKey(name, form)
     if (key in cache.value) return cache.value[key]
-
-    const value = await window.electronAPI.getPetValue(name, form)
+    const value = await apiFetch<number | null>(`/api/pet/value?name=${encodeURIComponent(name)}&form=${form}`)
     cache.value[key] = value
     return value
   }
@@ -49,7 +46,7 @@ export const useValuesStore = defineStore('values', () => {
   async function getBatch (requests: Array<{ name: string; form: PetForm }>) {
     const missing = requests.filter(r => !(cacheKey(r.name, r.form) in cache.value))
     if (missing.length > 0) {
-      const result = await window.electronAPI.getBatchValues(missing)
+      const result = await apiPost<Record<string, number | null>>('/api/pet/batch', missing)
       for (const [k, v] of Object.entries(result)) cache.value[k] = v
     }
     return requests.map(r => ({
@@ -62,7 +59,7 @@ export const useValuesStore = defineStore('values', () => {
     if (allPets.value.length > 0 || loadingAllPets.value) return
     loadingAllPets.value = true
     try {
-      allPets.value = await window.electronAPI.getAllPets()
+      allPets.value = await apiFetch<Array<{ name: string; value: number }>>('/api/pets/all')
     } finally {
       loadingAllPets.value = false
     }
@@ -73,7 +70,7 @@ export const useValuesStore = defineStore('values', () => {
   async function getElveValue (name: string, form: PetForm): Promise<number | null> {
     const key = cacheKey(name, form)
     if (key in elveCache.value) return elveCache.value[key]
-    const value = await window.electronAPI.getElveValue(name, form)
+    const value = await apiFetch<number | null>(`/api/pet/elve-value?name=${encodeURIComponent(name)}&form=${form}`)
     elveCache.value[key] = value
     return value
   }
@@ -81,7 +78,7 @@ export const useValuesStore = defineStore('values', () => {
   async function getElveBatch (requests: Array<{ name: string; form: PetForm }>) {
     const missing = requests.filter(r => !(cacheKey(r.name, r.form) in elveCache.value))
     if (missing.length > 0) {
-      const result = await window.electronAPI.getElveBatchValues(missing)
+      const result = await apiPost<Record<string, number | null>>('/api/pet/elve-batch', missing)
       for (const [k, v] of Object.entries(result)) elveCache.value[k] = v
     }
     return requests.map(r => ({

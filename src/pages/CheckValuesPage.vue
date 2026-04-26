@@ -408,7 +408,7 @@ async function addPetToSide(side: 'your' | 'them', name: string, form: PetForm) 
   list.value.push(entry)
 
   const [detailsResult, elveResult] = await Promise.allSettled([
-    window.electronAPI.getPetDetails(name),
+    fetch(`/api/pet/details?name=${encodeURIComponent(name)}`).then(r => r.json()) as Promise<{ values: Record<string, number | null>; demands: Record<string, string | null> }>,
     valueSource.value === 'elvebredd' ? valuesStore.getElveValue(name, form) : Promise.resolve(null),
   ])
 
@@ -471,7 +471,8 @@ watch(yourPetSearch, async (q) => {
   if (!q.trim()) { yourPickerResults.value = []; return }
   yourSearchLoading.value = true
   try {
-    yourPickerResults.value = await window.electronAPI.searchPets(q)
+    const res = await fetch(`/api/pets/search?q=${encodeURIComponent(q)}`)
+    yourPickerResults.value = await res.json() as string[]
   } finally {
     yourSearchLoading.value = false
   }
@@ -515,7 +516,8 @@ async function ensureAmvggList() {
   if (amvggListLoaded) return
   amvggListLoaded = true
   try {
-    const list = await window.electronAPI.loadPetList()
+    const res  = await fetch('/api/pets/list')
+    const list = await res.json() as string[]
     if (list.length) {
       mergedPetList.value = [...new Set([...ADOPT_ME_PETS, ...list])]
       if (searchQuery.value.trim()) searchResults.value = localSearch(searchQuery.value.trim())
@@ -567,7 +569,8 @@ function onSearchInput() {
   searching.value = true
   searchTimer = setTimeout(async () => {
     try {
-      const remote = await window.electronAPI.searchPets(q)
+      const res    = await fetch(`/api/pets/search?q=${encodeURIComponent(q)}`)
+      const remote = await res.json() as string[]
       if (remote.length) {
         searchResults.value = sortResults([...new Set([...remote, ...localSearch(q)])], q).slice(0, 20)
       }
@@ -584,18 +587,6 @@ function selectPet(name: string) {
 function pickFirstResult() {
   if (searchResults.value[dropIndex.value]) selectPet(searchResults.value[dropIndex.value])
 }
-
-onMounted(() => {
-  window.electronAPI.onPetValuesUpdated((petName, details) => {
-    if (valueSource.value !== 'amvgg') return
-    for (const entry of [...yourSide.value, ...themSide.value]) {
-      if (entry.name === petName && !entry.loading) {
-        const updated = details.values[entry.form] ?? null
-        if (updated !== null) entry.value = updated
-      }
-    }
-  })
-})
 
 function confirmAdd() {
   if (!selectedPetName.value.trim()) return

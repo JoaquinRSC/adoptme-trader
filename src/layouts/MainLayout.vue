@@ -68,36 +68,19 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
-import { useQuasar } from 'quasar'
+import { ref } from 'vue'
 import { matInventory2, matSwapHoriz, matBalance, matChevronLeft, matChevronRight, matReceipt, matSearch } from '@quasar/extras/material-icons'
 import { version } from '../../package.json'
 import { useTheme } from 'src/composables/useTheme'
 
 const drawer = ref(true)
 const collapsed = ref(localStorage.getItem('sidebar-collapsed') === 'true')
-const $q = useQuasar()
 const { current: currentTheme, themes, apply: applyTheme } = useTheme()
 
 function toggleCollapse() {
   collapsed.value = !collapsed.value
   localStorage.setItem('sidebar-collapsed', String(collapsed.value))
 }
-
-onMounted(() => {
-  window.electronAPI.onUpdateDownloaded(() => {
-    $q.notify({
-      message: 'Update ready',
-      caption: 'A new version has been downloaded',
-      color: 'positive',
-      timeout: 0,
-      actions: [
-        { label: 'Restart now', color: 'white', handler: () => void window.electronAPI.installUpdate() },
-        { label: 'Later', color: 'white' },
-      ],
-    })
-  })
-})
 
 const navItems = [
   { name: 'inventory',     icon: matInventory2, label: 'My Pets'       },

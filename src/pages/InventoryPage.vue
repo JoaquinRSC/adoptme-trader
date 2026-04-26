@@ -288,7 +288,8 @@ async function ensureAmvggList () {
   if (amvggListLoaded) return
   amvggListLoaded = true
   try {
-    const list = await window.electronAPI.loadPetList()
+    const res  = await fetch('/api/pets/list')
+    const list = await res.json() as string[]
     if (list.length) {
       amvggPetList.value = list
       mergedPetList.value = [...new Set([...ADOPT_ME_PETS, ...list])]
@@ -341,7 +342,8 @@ function onSearchInput (val: string | number | null) {
     searching.value = true
     searchTimer = setTimeout(async () => {
       try {
-        const remote = await window.electronAPI.searchPets(q)
+        const res    = await fetch(`/api/pets/search?q=${encodeURIComponent(q)}`)
+        const remote = await res.json() as string[]
         if (remote.length) {
           searchResults.value = sortResults([...new Set([...remote, ...localSearch(q)])], q).slice(0, 20)
         }
@@ -393,14 +395,23 @@ function resetSearch () {
 const petImageUrl = reactive<Record<string, string | null>>({})
 
 async function fetchImage (id: string, name: string) {
-  const url = await window.electronAPI.getPetImageUrl(name)
-  petImageUrl[id] = url
+  try {
+    const res = await fetch(`/api/pet/image?name=${encodeURIComponent(name)}`)
+    petImageUrl[id] = await res.json() as string | null
+  } catch {
+    petImageUrl[id] = null
+  }
 }
 
 const previewImageUrl = ref<string | null>(null)
 watch(() => newPetName.value, async (name) => {
   previewImageUrl.value = null
-  if (name) previewImageUrl.value = await window.electronAPI.getPetImageUrl(name)
+  if (name) {
+    try {
+      const res = await fetch(`/api/pet/image?name=${encodeURIComponent(name)}`)
+      previewImageUrl.value = await res.json() as string | null
+    } catch { /* ignore */ }
+  }
 })
 
 // ── Value + demand fetching ───────────────────────────────────────────────────
@@ -465,9 +476,10 @@ function demandStarClass (d: DemandLevel): string {
 async function fetchValue (pet: InventoryPet) {
   loadingValue[pet.id] = true
   try {
-    const details = await window.electronAPI.getPetDetails(pet.name)
+    const res     = await fetch(`/api/pet/details?name=${encodeURIComponent(pet.name)}`)
+    const details = await res.json() as { values: Record<string, number | null>; demands: Record<string, string | null> }
     petValue[pet.id]  = details.values[pet.form] ?? null
-    petDemand[pet.id] = details.demands[pet.form] ?? null
+    petDemand[pet.id] = (details.demands[pet.form] ?? null) as DemandLevel
   } catch {
     petValue[pet.id] = null
   } finally {

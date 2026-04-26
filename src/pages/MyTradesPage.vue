@@ -8,33 +8,6 @@
       </div>
     </div>
 
-    <!-- Account connections -->
-    <div class="section-title">Connected Accounts</div>
-    <div class="accounts-grid">
-
-      <div class="account-card" v-for="p in platforms" :key="p.id">
-        <div class="account-header">
-          <div class="account-logo">{{ p.logo }}</div>
-          <div class="account-info">
-            <div class="account-name">{{ p.label }}</div>
-            <div class="account-status" :class="p.loggedIn ? 'status--on' : 'status--off'">
-              {{ p.loggedIn ? 'Connected' : 'Not connected' }}
-            </div>
-          </div>
-        </div>
-        <div class="account-actions">
-          <button v-if="!p.loggedIn" class="btn-primary" :disabled="p.loading" @click="login(p.id)">
-            <q-spinner v-if="p.loading" size="14px" />
-            <template v-else>Connect</template>
-          </button>
-          <button v-else class="btn-ghost btn-ghost--danger" :disabled="p.loading" @click="logout(p.id)">
-            Disconnect
-          </button>
-        </div>
-      </div>
-
-    </div>
-
     <!-- Published trades list -->
     <div class="section-title" style="margin-top: 28px">Published Trades</div>
 
@@ -78,18 +51,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
-import { useQuasar } from 'quasar'
-
-const $q = useQuasar()
-
-interface PlatformState {
-  id: 'amvgg' | 'elvebredd'
-  label: string
-  logo: string
-  loggedIn: boolean
-  loading: boolean
-}
+import { ref } from 'vue'
 
 interface PublishedTrade {
   id: string
@@ -99,61 +61,15 @@ interface PublishedTrade {
   publishedAt: string
 }
 
-const platforms = ref<PlatformState[]>([
-  { id: 'amvgg', label: 'AMVGG', logo: '🟣', loggedIn: false, loading: false },
-  { id: 'elvebredd', label: 'Elvebredd', logo: '🟢', loggedIn: false, loading: false },
-])
-
 const TRADES_KEY = 'published-trades'
 
 const publishedTrades = ref<PublishedTrade[]>(
   JSON.parse(localStorage.getItem(TRADES_KEY) ?? '[]')
 )
 
-async function checkStatuses () {
-  for (const p of platforms.value) {
-    try {
-      const { loggedIn } = await window.electronAPI.authStatus(p.id)
-      p.loggedIn = loggedIn
-    } catch { /* keep false */ }
-  }
-}
-
-async function login (platform: 'amvgg' | 'elvebredd') {
-  const p = platforms.value.find(x => x.id === platform)!
-  p.loading = true
-  try {
-    const { success } = await window.electronAPI.loginPlatform(platform)
-    if (success) {
-      p.loggedIn = true
-      $q.notify({ message: `Connected to ${p.label}`, color: 'positive', timeout: 2000 })
-    } else {
-      await checkStatuses()  // user may have closed window after login anyway
-    }
-  } catch {
-    $q.notify({ message: 'Login failed', color: 'negative', timeout: 2000 })
-  } finally {
-    p.loading = false
-  }
-}
-
-async function logout (platform: 'amvgg' | 'elvebredd') {
-  const p = platforms.value.find(x => x.id === platform)!
-  p.loading = true
-  try {
-    await window.electronAPI.logoutPlatform(platform)
-    p.loggedIn = false
-    $q.notify({ message: `Disconnected from ${p.label}`, color: 'positive', timeout: 2000 })
-  } finally {
-    p.loading = false
-  }
-}
-
 function formatDate (iso: string) {
   return new Date(iso).toLocaleString()
 }
-
-onMounted(checkStatuses)
 </script>
 
 <style scoped>

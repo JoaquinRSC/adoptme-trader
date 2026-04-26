@@ -182,46 +182,12 @@
       <q-card class="publish-card">
         <div class="pub-header">
           <div class="dialog-title">Publish Trade</div>
-          <div class="pub-summary" v-if="selectedSuggestion">
-            <span class="pub-offering">{{ offeredPets.map(o => o.pet.name).join(', ') }}</span>
-            <span class="pub-arrow">→</span>
-            <span class="pub-wanting">{{ selectedSuggestion.name }} ({{ selectedSuggestion.form.toUpperCase() }})</span>
-          </div>
         </div>
-
-        <div class="pub-body">
-          <div class="pub-platform" v-for="p in publishPlatforms" :key="p.id">
-            <div class="pub-plat-info">
-              <span class="pub-plat-logo">{{ p.logo }}</span>
-              <span class="pub-plat-name">{{ p.label }}</span>
-              <span class="pub-plat-status" :class="p.loggedIn ? 'status--on' : 'status--off'">
-                {{ p.loggedIn ? 'Connected' : 'Not connected' }}
-              </span>
-            </div>
-            <div class="pub-plat-right">
-              <button v-if="!p.loggedIn" class="btn-sm-link" @click="goToAccounts">Connect →</button>
-              <q-toggle v-else v-model="p.selected" color="primary" />
-            </div>
-          </div>
-
-          <div class="pub-result" v-if="publishResults.length">
-            <div class="pub-result-row" v-for="r in publishResults" :key="r.platform">
-              <span class="pub-result-icon">{{ r.ok ? '✅' : '❌' }}</span>
-              <span class="pub-result-text">{{ r.platform.toUpperCase() }}: {{ r.message }}</span>
-            </div>
-          </div>
+        <div class="pub-body" style="text-align:center;padding:24px 0;color:var(--text-3);font-size:13px">
+          Coming soon — trade publishing will be available in a future update.
         </div>
-
         <div class="pub-footer">
           <button class="btn-ghost" @click="showPublish = false">Close</button>
-          <button
-            class="btn-primary"
-            :disabled="publishing || !anyPlatformSelected"
-            @click="publishTrade"
-          >
-            <q-spinner v-if="publishing" size="14px" />
-            <template v-else>Publish</template>
-          </button>
         </div>
       </q-card>
     </q-dialog>
@@ -384,7 +350,8 @@ watch(petSearch, async (q) => {
   if (!q.trim()) { searchResults.value = []; return }
   searchLoading.value = true
   try {
-    searchResults.value = await window.electronAPI.searchPets(q)
+    const res = await fetch(`/api/pets/search?q=${encodeURIComponent(q)}`)
+    searchResults.value = await res.json() as string[]
   } finally {
     searchLoading.value = false
   }
@@ -447,8 +414,8 @@ function demandStars (d: DemandLevel): string {
   return '★'.repeat(n) + '☆'.repeat(3 - n)
 }
 
-function getFormDemand (details: Awaited<ReturnType<typeof window.electronAPI.getPetDetails>>, form: PetForm): DemandLevel {
-  return details.demands[form] ?? null
+function getFormDemand (details: { demands: Record<string, string | null> }, form: PetForm): DemandLevel {
+  return (details.demands[form] ?? null) as DemandLevel
 }
 
 // ── Fairness ──────────────────────────────────────────────────────────────────
@@ -489,7 +456,7 @@ async function addOffered (pet: InventoryPet) {
 
   try {
     const [detailsResult, elveResult] = await Promise.allSettled([
-      window.electronAPI.getPetDetails(pet.name),
+      fetch(`/api/pet/details?name=${encodeURIComponent(pet.name)}`).then(r => r.json()) as Promise<{ values: Record<string, number | null>; demands: Record<string, string | null> }>,
       values.getElveValue(pet.name, pet.form),
     ])
     const found = offeredPets.value.find(o => o.pet.id === pet.id)
@@ -566,7 +533,8 @@ async function search () {
 
     await Promise.all(top20.map(async s => {
       try {
-        const details = await window.electronAPI.getPetDetails(s.name)
+        const res     = await fetch(`/api/pet/details?name=${encodeURIComponent(s.name)}`)
+        const details = await res.json() as { demands: Record<string, string | null> }
         s.demand = getFormDemand(details, s.form as PetForm)
       } catch { /* demand stays null */ }
     }))
@@ -582,95 +550,11 @@ async function search () {
 
 const selectedSuggestion = ref<SuggestionWithDemand | null>(null)
 const showPublish = ref(false)
-const publishing  = ref(false)
-
-interface PublishResult { platform: string; ok: boolean; message: string }
-const publishResults = ref<PublishResult[]>([])
-
-interface PlatformPublish {
-  id: 'amvgg' | 'elvebredd'
-  label: string
-  logo: string
-  loggedIn: boolean
-  selected: boolean
-}
-
-const publishPlatforms = ref<PlatformPublish[]>([
-  { id: 'amvgg',     label: 'AMVGG',     logo: '🟣', loggedIn: false, selected: false },
-  { id: 'elvebredd', label: 'Elvebredd', logo: '🟢', loggedIn: false, selected: false },
-])
-
-const anyPlatformSelected = computed(() => publishPlatforms.value.some(p => p.loggedIn && p.selected))
-
-async function refreshAuthStatus () {
-  for (const p of publishPlatforms.value) {
-    try {
-      const { loggedIn } = await window.electronAPI.authStatus(p.id)
-      p.loggedIn = loggedIn
-    } catch { /* keep false */ }
-  }
-}
 
 function goToAccounts () {
   showPublish.value = false
   void router.push({ name: 'my-trades' })
 }
-
-const TRADES_KEY = 'published-trades'
-
-async function publishTrade () {
-  if (!selectedSuggestion.value || !offeredPets.value.length) return
-  publishing.value  = true
-  publishResults.value = []
-
-  const offering   = offeredPets.value.map(o => ({ name: o.pet.name, form: o.pet.form }))
-  const lookingFor = [{ name: selectedSuggestion.value.name, form: selectedSuggestion.value.form }]
-
-  const selected = publishPlatforms.value.filter(p => p.loggedIn && p.selected)
-
-  for (const p of selected) {
-    try {
-      if (p.id === 'amvgg') {
-        const result = await window.electronAPI.createAmvggTrade({ offering, lookingFor })
-        const tradeId = result.data.id
-        saveLocalTrade('amvgg', tradeId, offering, lookingFor)
-        publishResults.value.push({ platform: 'amvgg', ok: true, message: `Trade #${tradeId} created` })
-      } else {
-        const result = await window.electronAPI.createElveTrade({ ownerGive: offering, ownerGet: lookingFor })
-        const tradeId = String(result.id)
-        saveLocalTrade('elvebredd', tradeId, offering, lookingFor)
-        publishResults.value.push({ platform: 'elvebredd', ok: true, message: `Listing #${tradeId} created` })
-      }
-    } catch (err) {
-      publishResults.value.push({ platform: p.id, ok: false, message: String(err).replace('Error: ', '') })
-    }
-  }
-
-  publishing.value = false
-}
-
-function saveLocalTrade (
-  platform: 'amvgg' | 'elvebredd',
-  id: string,
-  offering: Array<{ name: string; form: string }>,
-  lookingFor: Array<{ name: string; form: string }>
-) {
-  const trades = JSON.parse(localStorage.getItem(TRADES_KEY) ?? '[]')
-  trades.unshift({ id, platform, offering, lookingFor, publishedAt: new Date().toISOString() })
-  localStorage.setItem(TRADES_KEY, JSON.stringify(trades.slice(0, 100)))
-}
-
-onMounted(() => {
-  refreshAuthStatus()
-  window.electronAPI.onPetValuesUpdated((petName, details) => {
-    for (const item of offeredPets.value) {
-      if (item.pet.name === petName && !item.loading) {
-        const updated = details.values[item.pet.form] ?? null
-        if (updated !== null) item.amvggValue = updated
-      }
-    }
-  })
-})
 
 // ── Delta helpers ─────────────────────────────────────────────────────────────
 function deltaCardClass (delta: number) {
