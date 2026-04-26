@@ -100,7 +100,7 @@
                 </span>
               </div>
             </div>
-            <button class="pet-slot pet-slot--add" @click="openAddDialog('them')">
+            <button class="pet-slot pet-slot--add" @click="showThemPicker = true">
               <div class="slot-plus-circle">+</div>
             </button>
           </div>
@@ -210,111 +210,99 @@
       </q-card>
     </q-dialog>
 
-    <!-- Add pet dialog -->
-    <q-dialog v-model="showAdd" persistent @hide="resetDialog">
-      <q-card class="add-card">
-        <div class="add-header">
-          <div class="dialog-title">
-            Add Pet — {{ addingTo === 'your' ? 'YOU' : 'THEM' }}
+    <!-- THEM side picker (tabs: My Pets / Other) -->
+    <q-dialog v-model="showThemPicker" @hide="resetThemPicker">
+      <q-card class="picker-card">
+        <q-card-section class="q-pb-sm">
+          <div class="dialog-title">Add pet — THEM</div>
+          <div class="picker-tabs">
+            <button
+              class="picker-tab"
+              :class="{ 'picker-tab--active': themPickerTab === 'mine' }"
+              @click="themPickerTab = 'mine'"
+            >My Pets</button>
+            <button
+              class="picker-tab"
+              :class="{ 'picker-tab--active': themPickerTab === 'other' }"
+              @click="themPickerTab = 'other'"
+            >Other</button>
           </div>
-        </div>
+        </q-card-section>
+        <q-separator style="border-color: var(--border)" />
 
-        <div class="add-body">
-          <!-- Search -->
-          <div class="add-left">
-            <q-input
-              ref="searchInputRef"
-              v-model="searchQuery"
-              label="Search pets…"
-              outlined dense autofocus
-              autocomplete="off"
-              @update:model-value="onSearchInput"
-              @keydown.enter.prevent="pickFirstResult"
-              @keydown.escape.prevent="showAdd = false"
-              @keydown.up.prevent="dropIndex = Math.max(dropIndex - 1, 0)"
-              @keydown.down.prevent="dropIndex = Math.min(dropIndex + 1, searchResults.length - 1)"
+        <!-- My Pets tab -->
+        <q-card-section v-if="themPickerTab === 'mine'">
+          <div class="empty-panel" v-if="!inventoryPets.length">
+            No pets in inventory — add some in My Pets first.
+          </div>
+          <div class="picker-grid" v-else>
+            <button
+              class="picker-card-item"
+              v-for="pet in inventoryPets"
+              :key="pet.id"
+              @click="addInventoryPetToThem(pet)"
             >
-              <template #prepend>
-                <q-icon :name="matSearch" size="16px" style="color:var(--text-3)" />
-              </template>
-            </q-input>
+              <img
+                :src="`https://amvgg.com/items/${encodeURIComponent(pet.name)}.webp`"
+                class="picker-card-img"
+                @error="(e) => (e.target as HTMLImageElement).style.display='none'"
+              />
+              <div class="picker-card-name">{{ pet.name }}</div>
+              <span class="picker-card-form" :style="{ color: FORM_COLOR_HEX[pet.form] }">
+                {{ FORM_LABELS[pet.form] }}
+              </span>
+            </button>
+          </div>
+        </q-card-section>
 
-            <div class="results-panel">
-              <div v-if="searching && !searchResults.length" class="results-state">
-                <q-spinner size="14px" color="primary" /><span>Searching…</span>
+        <!-- Other tab -->
+        <q-card-section v-else class="other-section">
+          <div class="form-section-label">Form</div>
+          <div class="form-grid">
+            <button class="form-chip" :class="{'form-chip--active': themOtherFly}" :style="themOtherFly ? {background: themOtherFlyGrad} : {}" @click="themOtherFly = !themOtherFly">F</button>
+            <button class="form-chip" :class="{'form-chip--active': themOtherRide}" :style="themOtherRide ? {background: themOtherRideGrad} : {}" @click="themOtherRide = !themOtherRide">R</button>
+            <button class="form-chip" :class="{'form-chip--active': themOtherIsNormal}" :style="themOtherIsNormal ? {background: themOtherNormGrad} : {}" @click="themOtherResetForm()">D</button>
+            <button class="form-chip" :class="{'form-chip--active': themOtherNm === 'n'}" :style="themOtherNm === 'n' ? {background: themOtherNGrad} : {}" @click="themOtherNm = themOtherNm === 'n' ? 'none' : 'n'">N</button>
+            <button class="form-chip" :class="{'form-chip--active': themOtherNm === 'm'}" :style="themOtherNm === 'm' ? {background: themOtherMGrad} : {}" @click="themOtherNm = themOtherNm === 'm' ? 'none' : 'm'">M</button>
+          </div>
+          <q-input
+            v-model="themPetSearch"
+            dense outlined
+            placeholder="Search pet…"
+            :debounce="250"
+            clearable
+            style="margin-top: 10px"
+          >
+            <template #prepend><q-icon :name="matSearch" size="16px" style="color:var(--text-3)" /></template>
+          </q-input>
+          <div class="results-panel">
+            <div class="results-state" v-if="!themPetSearch.trim()">Start typing to find a pet</div>
+            <div class="results-state" v-else-if="themSearchLoading"><q-spinner size="14px" color="primary" /><span>Searching…</span></div>
+            <div class="results-state" v-else-if="!themPickerResults.length">No results for "{{ themPetSearch }}"</div>
+            <div
+              v-else
+              class="result-item"
+              v-for="name in themPickerResults"
+              :key="name"
+              @mousedown.prevent="addOtherPetToThem(name)"
+            >
+              <div class="result-img-wrap">
+                <img
+                  :src="`https://amvgg.com/items/${encodeURIComponent(name)}.webp`"
+                  class="result-img"
+                  @error="(e) => (e.target as HTMLImageElement).style.display='none'"
+                />
+                <div class="result-img-placeholder">🐾</div>
               </div>
-              <div v-else-if="!searchQuery.trim()" class="results-state">
-                Start typing to find a pet
-              </div>
-              <div v-else-if="!searchResults.length" class="results-state">
-                No results for "{{ searchQuery }}"
-              </div>
-              <div
-                v-for="(name, i) in searchResults"
-                :key="name"
-                class="result-item"
-                :class="{ 'result-item--active': i === dropIndex }"
-                @mousedown.prevent="selectPet(name)"
-                @mouseover="dropIndex = i"
-              >
-                <div class="result-img-wrap">
-                  <img
-                    :src="`https://amvgg.com/items/${encodeURIComponent(name)}.webp`"
-                    class="result-img"
-                    @error="(e) => (e.target as HTMLImageElement).style.display='none'"
-                  />
-                  <div class="result-img-placeholder">🐾</div>
-                </div>
-                <span class="result-name">{{ name }}</span>
-                <q-icon v-if="selectedPetName === name" :name="matCheck" size="13px" style="color:var(--primary);margin-left:auto" />
-              </div>
+              <span class="result-name">{{ name }}</span>
+              <span class="form-pill" :style="{ color: FORM_COLOR_HEX[themOtherPickerForm], marginLeft: 'auto' }">{{ FORM_LABELS[themOtherPickerForm] }}</span>
             </div>
           </div>
+        </q-card-section>
 
-          <!-- Form + confirm -->
-          <div class="add-right">
-            <div class="pet-preview-card">
-              <div v-if="selectedPetName" class="preview-filled">
-                <div class="preview-img-wrap">
-                  <img
-                    :src="`https://amvgg.com/items/${encodeURIComponent(selectedPetName)}.webp`"
-                    class="preview-img"
-                    @error="(e) => (e.target as HTMLImageElement).style.display='none'"
-                  />
-                  <div class="preview-img-ph">🐾</div>
-                </div>
-                <div class="preview-info">
-                  <div class="preview-name">{{ selectedPetName }}</div>
-                  <div
-                    class="preview-form-badge"
-                    :style="{ color: FORM_COLOR_HEX[selectedForm], borderColor: FORM_COLOR_HEX[selectedForm] }"
-                  >{{ FORM_LABELS[selectedForm] }}</div>
-                </div>
-              </div>
-              <div v-else class="preview-empty">← Select a pet from the list</div>
-            </div>
-
-            <div class="form-section">
-              <div class="form-section-label">Form</div>
-              <div class="form-grid">
-                <button class="form-chip" :class="{'form-chip--active': flyPick}" :style="flyPick ? {background: flyGrad} : {}" @click="flyPick = !flyPick">F</button>
-                <button class="form-chip" :class="{'form-chip--active': ridePick}" :style="ridePick ? {background: rideGrad} : {}" @click="ridePick = !ridePick">R</button>
-                <button class="form-chip" :class="{'form-chip--active': isNormal}" :style="isNormal ? {background: normGrad} : {}" @click="resetForm()">D</button>
-                <button class="form-chip" :class="{'form-chip--active': nmPick === 'n'}" :style="nmPick === 'n' ? {background: nGrad} : {}" @click="nmPick = nmPick === 'n' ? 'none' : 'n'">N</button>
-                <button class="form-chip" :class="{'form-chip--active': nmPick === 'm'}" :style="nmPick === 'm' ? {background: mGrad} : {}" @click="nmPick = nmPick === 'm' ? 'none' : 'm'">M</button>
-              </div>
-            </div>
-
-            <div class="add-actions">
-              <button class="btn-ghost" @click="showAdd = false">Cancel</button>
-              <button
-                class="btn-primary"
-                :disabled="!selectedPetName.trim()"
-                @click="confirmAdd"
-              >Add</button>
-            </div>
-          </div>
-        </div>
+        <q-card-actions align="right">
+          <button class="btn-ghost" @click="showThemPicker = false">Close</button>
+        </q-card-actions>
       </q-card>
     </q-dialog>
 
@@ -322,13 +310,12 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch, nextTick, onMounted } from 'vue'
-import { matAdd, matClose, matSearch, matCheck, matBalance } from '@quasar/extras/material-icons'
+import { ref, computed, watch } from 'vue'
+import { matSearch, matBalance } from '@quasar/extras/material-icons'
 import { uid } from 'quasar'
 import { FORM_LABELS, FORM_COLOR_HEX, type PetForm, type InventoryPet } from 'src/types'
 import { useValuesStore, type DemandLevel } from 'src/stores/values'
 import { useInventoryStore } from 'src/stores/inventory'
-import { ADOPT_ME_PETS } from 'src/data/pets'
 import { useFormPicker } from 'src/composables/useFormPicker'
 
 const valuesStore = useValuesStore()
@@ -495,107 +482,47 @@ function addOtherPetToYour(name: string) {
   showYourPicker.value = false
 }
 
-// ── Add dialog ────────────────────────────────────────────────────────────────
+// ── THEM side picker ──────────────────────────────────────────────────────────
 
-const showAdd = ref(false)
-const addingTo = ref<'your' | 'them'>('your')
-const searchQuery = ref('')
-const searchResults = ref<string[]>([])
-const searching = ref(false)
-const dropIndex = ref(0)
-const selectedPetName = ref('')
-const { flyPick, ridePick, nmPick, form: selectedForm, reset: resetForm, isNormal, flyGrad, rideGrad, normGrad, nGrad, mGrad } = useFormPicker()
-const searchInputRef = ref()
+const showThemPicker  = ref(false)
+const themPickerTab   = ref<'mine' | 'other'>('mine')
+const themPetSearch   = ref('')
+const themPickerResults = ref<string[]>([])
+const themSearchLoading = ref(false)
 
-let searchTimer: ReturnType<typeof setTimeout> | null = null
+const {
+  flyPick: themOtherFly, ridePick: themOtherRide, nmPick: themOtherNm,
+  form: themOtherPickerForm, reset: themOtherResetForm, isNormal: themOtherIsNormal,
+  flyGrad: themOtherFlyGrad, rideGrad: themOtherRideGrad, normGrad: themOtherNormGrad,
+  nGrad: themOtherNGrad, mGrad: themOtherMGrad,
+} = useFormPicker()
 
-const mergedPetList = ref<string[]>([...ADOPT_ME_PETS])
-let amvggListLoaded = false
-
-async function ensureAmvggList() {
-  if (amvggListLoaded) return
-  amvggListLoaded = true
+watch(themPetSearch, async (q) => {
+  if (!q.trim()) { themPickerResults.value = []; return }
+  themSearchLoading.value = true
   try {
-    const res  = await fetch('/api/pets/list')
-    const list = await res.json() as string[]
-    if (list.length) {
-      mergedPetList.value = [...new Set([...ADOPT_ME_PETS, ...list])]
-      if (searchQuery.value.trim()) searchResults.value = localSearch(searchQuery.value.trim())
-    }
-  } catch { /* use local fallback */ }
+    const res = await fetch(`/api/pets/search?q=${encodeURIComponent(q)}`)
+    themPickerResults.value = await res.json() as string[]
+  } finally {
+    themSearchLoading.value = false
+  }
+})
+
+function resetThemPicker() {
+  themPickerTab.value     = 'mine'
+  themPetSearch.value     = ''
+  themPickerResults.value = []
+  themOtherResetForm()
 }
 
-function sortResults(list: string[], q: string): string[] {
-  const lower = q.toLowerCase()
-  return [...list].sort((a, b) => {
-    const al = a.toLowerCase(), bl = b.toLowerCase()
-    const aExact = al === lower, bExact = bl === lower
-    const aStart = al.startsWith(lower), bStart = bl.startsWith(lower)
-    if (aExact !== bExact) return aExact ? -1 : 1
-    if (aStart !== bStart) return aStart ? -1 : 1
-    return a.localeCompare(b)
-  })
+function addInventoryPetToThem(pet: InventoryPet) {
+  addPetToSide('them', pet.name, pet.form)
+  showThemPicker.value = false
 }
 
-function localSearch(q: string): string[] {
-  const lower = q.toLowerCase()
-  const matches = mergedPetList.value.filter(n => n.toLowerCase().includes(lower))
-  return sortResults(matches, q).slice(0, 20)
-}
-
-function openAddDialog(side: 'your' | 'them') {
-  addingTo.value = side
-  showAdd.value = true
-  ensureAmvggList()
-}
-
-function resetDialog() {
-  searchQuery.value = ''
-  searchResults.value = []
-  searching.value = false
-  dropIndex.value = 0
-  selectedPetName.value = ''
-  resetForm()
-}
-
-function onSearchInput() {
-  dropIndex.value = 0
-  if (searchTimer) clearTimeout(searchTimer)
-  const q = searchQuery.value.trim()
-  if (!q) { searchResults.value = []; searching.value = false; return }
-
-  searchResults.value = localSearch(q)
-
-  searching.value = true
-  searchTimer = setTimeout(async () => {
-    try {
-      const res    = await fetch(`/api/pets/search?q=${encodeURIComponent(q)}`)
-      const remote = await res.json() as string[]
-      if (remote.length) {
-        searchResults.value = sortResults([...new Set([...remote, ...localSearch(q)])], q).slice(0, 20)
-      }
-    } finally {
-      searching.value = false
-    }
-  }, 220)
-}
-
-function selectPet(name: string) {
-  selectedPetName.value = name
-}
-
-function pickFirstResult() {
-  if (searchResults.value[dropIndex.value]) selectPet(searchResults.value[dropIndex.value])
-}
-
-function confirmAdd() {
-  if (!selectedPetName.value.trim()) return
-  addPetToSide(addingTo.value, selectedPetName.value, selectedForm.value)
-  selectedPetName.value = ''
-  searchQuery.value     = ''
-  searchResults.value   = []
-  dropIndex.value       = 0
-  void nextTick(() => searchInputRef.value?.focus())
+function addOtherPetToThem(name: string) {
+  addPetToSide('them', name, themOtherPickerForm.value)
+  showThemPicker.value = false
 }
 </script>
 
@@ -880,35 +807,11 @@ function confirmAdd() {
   justify-content: center;
 }
 
-/* ── Add dialog ── */
-.add-card {
-  width: 680px;
-  max-width: 95vw;
-  background: var(--surface);
-  border-radius: 16px;
-  overflow: hidden;
-}
-
-.add-header {
-  padding: 18px 22px 14px;
-  border-bottom: 1px solid var(--border);
-}
-
+/* ── Dialogs ── */
 .dialog-title {
   font-size: 16px;
   font-weight: 800;
   color: var(--text-1);
-}
-
-.add-body {
-  display: grid;
-  grid-template-columns: 1fr 220px;
-  gap: 0;
-}
-
-.add-left {
-  padding: 16px;
-  border-right: 1px solid var(--border);
 }
 
 .results-panel {
@@ -970,73 +873,6 @@ function confirmAdd() {
   color: var(--text-1);
 }
 
-.add-right {
-  padding: 16px;
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-
-.pet-preview-card {
-  background: var(--surface-2);
-  border-radius: 10px;
-  padding: 12px;
-  min-height: 68px;
-  display: flex;
-  align-items: center;
-}
-
-.preview-filled {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  width: 100%;
-}
-
-.preview-img-wrap {
-  position: relative;
-  width: 44px;
-  height: 44px;
-  flex-shrink: 0;
-}
-
-.preview-img {
-  width: 100%;
-  height: 100%;
-  object-fit: contain;
-}
-
-.preview-img-ph {
-  position: absolute;
-  inset: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 22px;
-  z-index: -1;
-}
-
-.preview-name {
-  font-size: 13px;
-  font-weight: 700;
-  color: var(--text-1);
-}
-
-.preview-form-badge {
-  font-size: 11px;
-  font-weight: 700;
-  border: 1px solid;
-  border-radius: 4px;
-  padding: 1px 5px;
-  display: inline-block;
-  margin-top: 3px;
-}
-
-.preview-empty {
-  font-size: 12px;
-  color: var(--text-3);
-}
-
 .form-section-label {
   font-size: 11px;
   font-weight: 700;
@@ -1079,12 +915,6 @@ function confirmAdd() {
   border-color: transparent;
 }
 
-.add-actions {
-  display: flex;
-  gap: 8px;
-  margin-top: auto;
-}
-
 .btn-ghost {
   flex: 1;
   padding: 8px;
@@ -1100,26 +930,8 @@ function confirmAdd() {
 
 .btn-ghost:hover { background: var(--surface-2); }
 
-.btn-primary {
-  flex: 1;
-  padding: 8px;
-  border: none;
-  border-radius: 8px;
-  background: var(--primary);
-  color: #fff;
-  font-size: 13px;
-  font-weight: 700;
-  cursor: pointer;
-  transition: opacity 0.12s;
-}
-
-.btn-primary:disabled {
-  opacity: 0.4;
-  cursor: not-allowed;
-}
-
-/* ── YOUR side picker ── */
-.picker-card { min-width: 400px; max-width: 520px; }
+/* ── Pickers ── */
+.picker-card { min-width: 400px; max-width: 520px; background: var(--surface); border-radius: 16px; overflow: hidden; }
 
 .picker-tabs {
   display: flex;
