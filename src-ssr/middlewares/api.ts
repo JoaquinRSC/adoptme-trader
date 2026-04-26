@@ -2,6 +2,7 @@ import { defineSsrMiddleware } from '#q-app/wrappers'
 import { json as parseJson } from 'express'
 import { existsSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
+import { execFile } from 'node:child_process'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -137,6 +138,18 @@ function fetchWithTimeout (url: string, timeoutMs = 12000): Promise<Response> {
     headers: { 'User-Agent': USER_AGENT },
     signal: controller.signal,
   }).finally(() => clearTimeout(id))
+}
+
+function curlFetch (url: string, timeoutMs = 12000): Promise<{ ok: boolean; status: number; json: <T>() => Promise<T> }> {
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error('curl timeout')), timeoutMs)
+    execFile('curl', ['-s', '--max-time', String(Math.floor(timeoutMs / 1000)), '-A', USER_AGENT, url], { maxBuffer: 10 * 1024 * 1024 }, (err, stdout) => {
+      clearTimeout(timer)
+      if (err) { reject(err); return }
+      if (!stdout || stdout.length < 2) { resolve({ ok: false, status: 0, json: async () => { throw new Error('empty') } }); return }
+      resolve({ ok: true, status: 200, json: async <T>() => JSON.parse(stdout) as T })
+    })
+  })
 }
 
 // ── Items cache (non-pet categories) ─────────────────────────────────────────
@@ -647,10 +660,10 @@ async function browseMarket (payload: {
 
     const pageResponses = await Promise.all(
       Array.from({ length: pages }, (_, p) =>
-        fetchWithTimeout(`${elveBaseUrl}&offset=${p * 50}`)
+        curlFetch(`${elveBaseUrl}&offset=${p * 50}`)
           .then(r => {
             if (!r.ok) { errors.push(`Elvebredd HTTP ${r.status} (offset ${p * 50})`); return null }
-            return r.json() as Promise<ElveResp>
+            return r.json<ElveResp>()
           })
           .catch(e => { errors.push(`Elvebredd fetch error: ${e}`); return null })
       )
