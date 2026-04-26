@@ -74,6 +74,7 @@
             v-if="petImageUrl[pet.id]"
             :src="petImageUrl[pet.id]!"
             class="thumb-img"
+            @error="() => { petImageUrl[pet.id] = null }"
           />
           <span v-else class="thumb-emoji">🐾</span>
           <span
@@ -384,7 +385,7 @@ function confirmAdd () {
   const added = inventory.pets.slice(-count)
   for (const pet of added) {
     void fetchValue(pet)
-    void fetchImage(pet.id, pet.name)
+    void fetchImage(pet.id, pet.name, pet.category)
   }
   newPetName.value    = ''
   newPetQty.value     = 1
@@ -516,7 +517,11 @@ function resetSearch () {
 // ── Image fetching ────────────────────────────────────────────────────────────
 const petImageUrl = reactive<Record<string, string | null>>({})
 
-async function fetchImage (id: string, name: string) {
+async function fetchImage (id: string, name: string, category?: string) {
+  if (category && category !== 'pet') {
+    petImageUrl[id] = `https://amvgg.com/items/${encodeURIComponent(name)}.webp`
+    return
+  }
   try {
     const res = await fetch(`/api/pet/image?name=${encodeURIComponent(name)}`)
     petImageUrl[id] = await res.json() as string | null
@@ -635,7 +640,7 @@ function confirmAddItem () {
   const added = inventory.pets.slice(-count)
   for (const item of added) {
     void fetchValue(item)
-    void fetchImage(item.id, item.name)
+    void fetchImage(item.id, item.name, item.category)
   }
   newItemName.value       = ''
   newItemQty.value        = 1
@@ -749,7 +754,7 @@ onMounted(() => {
   void Promise.all([valueWorker(), valueWorker(), valueWorker()])
 
   const imgQueue = [...inventory.pets]
-  const imgWorker = async () => { while (imgQueue.length) { const p = imgQueue.shift()!; await fetchImage(p.id, p.name) } }
+  const imgWorker = async () => { while (imgQueue.length) { const p = imgQueue.shift()!; await fetchImage(p.id, p.name, p.category) } }
   void Promise.all([imgWorker(), imgWorker(), imgWorker()])
 })
 

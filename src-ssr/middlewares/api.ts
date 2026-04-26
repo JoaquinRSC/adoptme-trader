@@ -743,6 +743,14 @@ export default defineSsrMiddleware(({ app }) => {
     res.json(itemsCache.get(`${category}:${name}`)?.value ?? null)
   })
 
+  app.get('/api/item/details', async (req, res) => {
+    await warmItemsCache()
+    const name     = String(req.query['name'] ?? '')
+    const category = String(req.query['category'] ?? '')
+    const item     = itemsCache.get(`${category}:${name}`)
+    res.json(item ? { value: item.value, demand: item.demand } : { value: null, demand: null })
+  })
+
   app.get('/api/items/search', async (req, res) => {
     await warmItemsCache()
     const q        = String(req.query['q'] ?? '').toLowerCase().trim()
