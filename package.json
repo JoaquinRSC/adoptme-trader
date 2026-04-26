@@ -1,31 +1,30 @@
 {
   "name": "adoptme-trader",
-  "version": "0.4.4",
+  "version": "0.5.0",
   "description": "Adopt Me trade manager",
   "productName": "AdoptMe Trader",
   "author": "Joaquin",
   "private": true,
   "scripts": {
-    "dev": "quasar dev -m electron",
-    "build": "quasar build -m electron",
-    "lint": "eslint --ext .js,.ts,.vue src src-electron",
-    "package:win": "quasar build -m electron",
-    "shortcut:win": "powershell -Command \"$s=New-Object -ComObject WScript.Shell;$sc=$s.CreateShortcut([System.IO.Path]::Combine([System.Environment]::GetFolderPath('Desktop'),'AdoptMe Trader.lnk'));$exe=Get-ChildItem -Path 'dist/electron/Packaged' -Filter '*.exe' -Recurse | Select-Object -First 1;$sc.TargetPath=$exe.FullName;$sc.IconLocation=(Resolve-Path 'public/icons/icon.ico').Path+',0';$sc.Save()\""
+    "dev": "quasar dev -m ssr",
+    "build": "quasar build -m ssr",
+    "start": "node dist/ssr/index.js",
+    "lint": "eslint --ext .js,.ts,.vue src src-ssr"
   },
   "dependencies": {
-    "electron-updater": "^6.8.3",
+    "@types/compression": "^1.8.1",
+    "compression": "^1.8.1",
+    "express": "^4.18.2",
     "pinia": "^2.1.7",
     "quasar": "^2.16.0",
     "vue": "^3.4.18",
     "vue-router": "^4.3.0"
   },
   "devDependencies": {
-    "@electron/packager": "^19.1.0",
     "@quasar/app-vite": "^2.0.0",
     "@quasar/extras": "^1.16.12",
+    "@types/express": "^4.17.21",
     "@types/node": "^20.11.5",
-    "electron": "^28.2.3",
-    "electron-builder": "^24.9.1",
     "typescript": "^5.3.3",
     "vite": "^5.0.12"
   },

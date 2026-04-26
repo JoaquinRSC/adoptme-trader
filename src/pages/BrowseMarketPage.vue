@@ -234,7 +234,13 @@ import { matSearch, matSwapHoriz } from '@quasar/extras/material-icons'
 import { FORM_LABELS, FORM_COLOR_HEX, type PetForm } from 'src/types'
 import { useFormPicker } from 'src/composables/useFormPicker'
 import { ADOPT_ME_PETS } from 'src/data/pets'
-import type { BrowsedTrade } from 'src-electron/electron-main'
+interface BrowsedTradePet { name: string; form: string; value: number | null }
+interface BrowsedTrade {
+  id: string; platform: 'amvgg' | 'elvebredd'; authorName: string; publishedAt: string
+  offering: BrowsedTradePet[]; lookingFor: BrowsedTradePet[]
+  offerTotal: number | null; wantTotal: number | null
+  score: 'good' | 'fair' | 'bad' | 'unknown'; ratio: number | null
+}
 
 // ── Form picker ───────────────────────────────────────────────────────────────
 const { flyPick, ridePick, nmPick, form: selectedForm, reset: resetForm, isNormal, flyGrad, rideGrad, normGrad, nGrad, mGrad } = useFormPicker()
@@ -252,7 +258,8 @@ async function ensureAmvggList () {
   if (amvggListLoaded) return
   amvggListLoaded = true
   try {
-    const list = await window.electronAPI.loadPetList()
+    const res  = await fetch('/api/pets/list')
+    const list = await res.json() as string[]
     if (list.length) mergedList.value = [...new Set([...ADOPT_ME_PETS, ...list])]
   } catch { /* use local fallback */ }
 }
@@ -281,7 +288,8 @@ function onPetSearchInput () {
   ensureAmvggList()
   searchTimer = setTimeout(async () => {
     try {
-      const remote = await window.electronAPI.searchPets(q)
+      const res    = await fetch(`/api/pets/search?q=${encodeURIComponent(q)}`)
+      const remote = await res.json() as string[]
       if (remote.length) {
         petResults.value = [...new Set([...remote, ...localSearch(q)])].slice(0, 12)
       }
@@ -345,12 +353,12 @@ async function runSearch () {
   trades.value = []
   searchErrors.value = []
   try {
-    const result = await window.electronAPI.browseMarketTrades({
-      petName: selectedPet.value,
-      form:    selectedForm.value,
-      sources: sources.value,
-      pages,
+    const res    = await fetch('/api/trade/browse', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ petName: selectedPet.value, form: selectedForm.value, sources: sources.value, pages }),
     })
+    const result = await res.json() as { trades: BrowsedTrade[]; errors: string[] }
     trades.value = result.trades
     searchErrors.value = result.errors
   } finally {
