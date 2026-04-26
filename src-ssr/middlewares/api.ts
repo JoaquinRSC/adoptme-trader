@@ -250,7 +250,10 @@ async function warmDetailsCache (): Promise<void> {
 
   const staticAmv = loadStaticCache<Record<string, PetDetails>>('amv-cache.json')
   if (staticAmv) {
-    for (const [name, data] of Object.entries(staticAmv)) detailsCache.set(name, data)
+    for (const [name, data] of Object.entries(staticAmv)) {
+      detailsCache.set(name, data)
+      individualFetchDone.add(name)
+    }
     console.log(`Loaded ${detailsCache.size} pets from static AMV cache`)
     return
   }
