@@ -210,53 +210,15 @@
       </q-card>
     </q-dialog>
 
-    <!-- THEM side picker (tabs: My Pets / Other) -->
+    <!-- THEM side picker (search only) -->
     <q-dialog v-model="showThemPicker" @hide="resetThemPicker">
       <q-card class="picker-card">
         <q-card-section class="q-pb-sm">
           <div class="dialog-title">Add pet — THEM</div>
-          <div class="picker-tabs">
-            <button
-              class="picker-tab"
-              :class="{ 'picker-tab--active': themPickerTab === 'mine' }"
-              @click="themPickerTab = 'mine'"
-            >My Pets</button>
-            <button
-              class="picker-tab"
-              :class="{ 'picker-tab--active': themPickerTab === 'other' }"
-              @click="themPickerTab = 'other'"
-            >Other</button>
-          </div>
         </q-card-section>
         <q-separator style="border-color: var(--border)" />
 
-        <!-- My Pets tab -->
-        <q-card-section v-if="themPickerTab === 'mine'">
-          <div class="empty-panel" v-if="!inventoryPets.length">
-            No pets in inventory — add some in My Pets first.
-          </div>
-          <div class="picker-grid" v-else>
-            <button
-              class="picker-card-item"
-              v-for="pet in sortedInventoryPets"
-              :key="pet.id"
-              @click="addInventoryPetToThem(pet)"
-            >
-              <img
-                :src="`https://amvgg.com/items/${encodeURIComponent(pet.name)}.webp`"
-                class="picker-card-img"
-                @error="(e) => (e.target as HTMLImageElement).style.display='none'"
-              />
-              <div class="picker-card-name">{{ pet.name }}</div>
-              <span class="picker-card-form" :style="{ color: FORM_COLOR_HEX[pet.form] }">
-                {{ FORM_LABELS[pet.form] }}
-              </span>
-            </button>
-          </div>
-        </q-card-section>
-
-        <!-- Other tab -->
-        <q-card-section v-else class="other-section">
+        <q-card-section class="other-section">
           <div class="form-section-label">Form</div>
           <div class="form-grid">
             <button class="form-chip" :class="{'form-chip--active': themOtherFly}" :style="themOtherFly ? {background: themOtherFlyGrad} : {}" @click="themOtherFly = !themOtherFly">F</button>
@@ -495,10 +457,9 @@ function addOtherPetToYour(name: string) {
 // ── THEM side picker ──────────────────────────────────────────────────────────
 
 const showThemPicker  = ref(false)
-const themPickerTab   = ref<'mine' | 'other'>('mine')
 
-watch([showYourPicker, showThemPicker], async ([yourOpen, themOpen]) => {
-  if ((yourOpen || themOpen) && inventoryPets.value.length) {
+watch(showYourPicker, async (open) => {
+  if (open && inventoryPets.value.length) {
     await valuesStore.getBatch(inventoryPets.value.map(p => ({ name: p.name, form: p.form })))
   }
 })
@@ -525,15 +486,9 @@ watch(themPetSearch, async (q) => {
 })
 
 function resetThemPicker() {
-  themPickerTab.value     = 'mine'
   themPetSearch.value     = ''
   themPickerResults.value = []
   themOtherResetForm()
-}
-
-function addInventoryPetToThem(pet: InventoryPet) {
-  addPetToSide('them', pet.name, pet.form)
-  showThemPicker.value = false
 }
 
 function addOtherPetToThem(name: string) {
