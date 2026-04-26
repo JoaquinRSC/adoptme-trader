@@ -482,12 +482,6 @@ function resetYourPicker() {
   yourOtherResetForm()
 }
 
-watch([showYourPicker, showThemPicker], async ([yourOpen, themOpen]) => {
-  if ((yourOpen || themOpen) && inventoryPets.value.length) {
-    await valuesStore.getBatch(inventoryPets.value.map(p => ({ name: p.name, form: p.form })))
-  }
-})
-
 function addInventoryPetToYour(pet: InventoryPet) {
   addPetToSide('your', pet.name, pet.form)
   showYourPicker.value = false
@@ -502,6 +496,12 @@ function addOtherPetToYour(name: string) {
 
 const showThemPicker  = ref(false)
 const themPickerTab   = ref<'mine' | 'other'>('mine')
+
+watch([showYourPicker, showThemPicker], async ([yourOpen, themOpen]) => {
+  if ((yourOpen || themOpen) && inventoryPets.value.length) {
+    await valuesStore.getBatch(inventoryPets.value.map(p => ({ name: p.name, form: p.form })))
+  }
+})
 const themPetSearch   = ref('')
 const themPickerResults = ref<string[]>([])
 const themSearchLoading = ref(false)
