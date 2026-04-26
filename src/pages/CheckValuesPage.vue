@@ -377,9 +377,10 @@ async function addPetToSide(side: 'your' | 'them', name: string, form: PetForm, 
 
   if (category !== 'pet') {
     try {
-      const res = await fetch(`/api/item/value?name=${encodeURIComponent(name)}&category=${category}`)
+      const res  = await fetch(`/api/item/details?name=${encodeURIComponent(name)}&category=${category}`)
+      const data = await res.json() as { value: number | null; demand: string | null }
       const found = list.value.find(e => e.id === entry.id)
-      if (found) { found.value = await res.json() as number | null; found.loading = false }
+      if (found) { found.value = data.value; found.demand = data.demand as DemandLevel; found.loading = false }
     } catch {
       const found = list.value.find(e => e.id === entry.id)
       if (found) found.loading = false
@@ -417,8 +418,10 @@ async function refreshValues() {
   for (const entry of allEntries) { entry.loading = true; entry.value = null }
   for (const entry of allEntries) {
     if (entry.category && entry.category !== 'pet') {
-      const res = await fetch(`/api/item/value?name=${encodeURIComponent(entry.name)}&category=${entry.category}`)
-      entry.value = await res.json() as number | null
+      const res  = await fetch(`/api/item/details?name=${encodeURIComponent(entry.name)}&category=${entry.category}`)
+      const data = await res.json() as { value: number | null; demand: string | null }
+      entry.value = data.value
+      entry.demand = data.demand as DemandLevel
     } else {
       entry.value = valueSource.value === 'elvebredd'
         ? await valuesStore.getElveValue(entry.name, entry.form)
@@ -494,7 +497,7 @@ function resetYourPicker() {
 }
 
 function addInventoryPetToYour(pet: InventoryPet) {
-  addPetToSide('your', pet.name, pet.form)
+  addPetToSide('your', pet.name, pet.form, pet.category ?? 'pet')
   showYourPicker.value = false
 }
 
