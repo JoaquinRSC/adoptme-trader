@@ -45,17 +45,19 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { useTheme } from 'src/composables/useTheme'
 
 const router = useRouter()
-useTheme()
 const inputRef = ref<HTMLInputElement | null>(null)
 const password = ref('')
 const showPassword = ref(false)
 const wrongPassword = ref(false)
 const loading = ref(false)
 
-onMounted(() => inputRef.value?.focus())
+onMounted(() => {
+  const saved = localStorage.getItem('app-theme')
+  if (saved) document.documentElement.dataset.theme = saved === 'purple' ? '' : saved
+  inputRef.value?.focus()
+})
 
 async function submit () {
   if (!password.value || loading.value) return
