@@ -9,14 +9,14 @@ npm run dev            # Start Quasar SSR dev server (hot-reload)
 npm run build          # Build SSR for production (outputs to dist/ssr/)
 npm run lint           # ESLint on src/ and src-ssr/
 npm run fetch-values   # Pre-fetch AMVGG + Elvebredd values to src/data/*.json (run locally, then commit)
-railway up --detach --service adoptme-trader  # Deploy to Railway
+flyctl deploy          # Deploy to Fly.io (app: dawn-thunder-3296, region: gru)
 ```
 
-No test suite exists. After code changes, run `npm run build` to verify compilation, then deploy via `railway up`.
+No test suite exists. After code changes, run `npm run build` to verify compilation, then deploy via `flyctl deploy`.
 
 ## Architecture
 
-Quasar v2 + Vue 3 Composition API + Pinia, running as **SSR on Railway** (Node 22). No Electron — the app is a web app accessible via a Railway-hosted URL.
+Quasar v2 + Vue 3 Composition API + Pinia, running as **SSR on Fly.io** (Node 22). No Electron — the app is a web app accessible at https://dawn-thunder-3296.fly.dev.
 
 ### Request flow
 
@@ -37,7 +37,7 @@ Values are pre-fetched locally with `node scripts/fetch-values.mjs` and committe
 - `src/data/amv-cache.json` — AMVGG values + demands + rarity, keyed by pet name
 - `src/data/elve-cache.json` — Elvebredd values, keyed by pet name
 
-The `Dockerfile` copies these into the Railway image. The server loads them at startup in `warmDetailsCache()` and `warmElveCache()`.
+The `Dockerfile` copies these into the Fly.io image. The server loads them at startup in `warmDetailsCache()` and `warmElveCache()`.
 
 **AMVGG formula**: non-category-13 pets use a multiplier table (`AMVGG_MULTIPLIERS` in `fetch-values.mjs`) to compute fly/ride/nr/nf/mr/mf from the base fr/nfr/mfr values — same formula as `amvgg.com/calculator`. Category 13 uses stored per-form values directly.
 
@@ -71,7 +71,8 @@ The `Dockerfile` copies these into the Railway image. The server loads them at s
 - `src/layouts/MainLayout.vue` — Sidebar nav (My Pets, Check Values, Trade Builder, Browse Market, My Trades) + theme swatch picker + collapse
 - `src-ssr/middlewares/api.ts` — All API handlers, AMVGG/Elvebredd cache warming, trade browsing logic
 - `scripts/fetch-values.mjs` — Pre-fetch script: fetches AMVGG (Node fetch) + Elvebredd (curl) and saves to `src/data/*.json`
-- `Dockerfile` — Multi-stage build for Railway; copies `src/data/` into the image
+- `Dockerfile` — Multi-stage build for Fly.io; copies `src/data/` into the image
+- `fly.toml` — Fly.io app config (app: dawn-thunder-3296, region: gru, 256MB RAM)
 
 ### AMVGG value fetching (server)
 
@@ -87,22 +88,22 @@ CSS custom properties on `:root` in `src/css/app.scss`. Themes override the same
 
 ### Deployment
 
-Railway project: `adoptme-trader` service. Source is uploaded directly (not connected to GitHub auto-deploy). After every set of commits:
+Fly.io app: `dawn-thunder-3296` (https://dawn-thunder-3296.fly.dev). After every set of commits:
 
 ```bash
-railway up --detach --service adoptme-trader
+flyctl deploy
 ```
 
 ### Value cache update workflow
 
 When AMVGG/Elvebredd values need refreshing:
 1. `npm run fetch-values` (local, requires curl)
-2. Commit `src/data/amv-cache.json` and `src/data/elve-cache.json`
-3. `railway up --detach --service adoptme-trader`
+2. Commit `src/data/amv-cache.json`, `src/data/elve-cache.json`, `src/data/items-cache.json`
+3. `flyctl deploy`
 
 ## Phase roadmap
 
 - **Phase 1 (done):** Inventory management + trade builder (AMVGG values + demand)
 - **Phase 1.5 (done):** Elvebredd cross-check in Check Values; color themes
-- **Phase 1.8 (done):** SSR migration to Railway; static value cache; Browse Market; OP filter; Elve values in trade cards
+- **Phase 1.8 (done):** SSR migration to Fly.io; static value cache; Browse Market; OP filter; Elve values in trade cards; non-pet item categories (Pet Wear, Eggs, Strollers, Food, Vehicles, Toys, Gifts, Stickers, Houses)
 - **Phase 2:** Auto-publish trades to AMVGG/Elvebredd; trade renewal
