@@ -59,6 +59,15 @@ const api = {
   logoutPlatform: (platform: 'amvgg' | 'elvebredd'): Promise<{ success: boolean }> =>
     ipcRenderer.invoke('auth:logout', platform),
 
+  // Browse market: find trades that want a specific pet
+  browseMarketTrades: (payload: {
+    petName: string
+    form:    string
+    sources: Array<'amvgg' | 'elvebredd'>
+    pages?:  number
+  }): Promise<import('./electron-main').BrowsedTrade[]> =>
+    ipcRenderer.invoke('trade:browse', payload),
+
   // Trade: create on AMVGG
   createAmvggTrade: (payload: {
     offering:   Array<{ name: string; form: string }>

@@ -448,6 +448,37 @@ const FORM_TO_ELVE_ATTRS: Record<string, { fly: boolean; ride: boolean; default:
   mfr:    { fly: true,  ride: true,  default: false, neon: false, mega: true  },
 }
 
+const AMVGG_TYPE_TO_FORM: Record<string, string> = {
+  '': 'normal', 'f': 'fly', 'r': 'ride', 'fr': 'fr',
+  'n': 'n', 'nf': 'nf', 'nr': 'nr', 'nfr': 'nfr',
+  'm': 'm', 'mf': 'mf', 'mr': 'mr', 'mfr': 'mfr',
+}
+
+function elveAttrsToForm (a: { fly: boolean; ride: boolean; neon: boolean; mega: boolean; default: boolean }): string {
+  if (a.mega) return a.fly && a.ride ? 'mfr' : a.fly ? 'mf' : a.ride ? 'mr' : 'm'
+  if (a.neon) return a.fly && a.ride ? 'nfr' : a.fly ? 'nf' : a.ride ? 'nr' : 'n'
+  return a.fly && a.ride ? 'fr' : a.fly ? 'fly' : a.ride ? 'ride' : 'normal'
+}
+
+export interface BrowsedTradePet {
+  name:  string
+  form:  string
+  value: number | null
+}
+
+export interface BrowsedTrade {
+  id:          string
+  platform:    'amvgg' | 'elvebredd'
+  authorName:  string
+  publishedAt: string
+  offering:    BrowsedTradePet[]
+  lookingFor:  BrowsedTradePet[]
+  offerTotal:  number | null
+  wantTotal:   number | null
+  score:       'good' | 'fair' | 'bad' | 'unknown'
+  ratio:       number | null
+}
+
 // ── Elvebredd value fetching ──────────────────────────────────────────────────
 
 const elveValuesCache = new Map<string, Record<string, number>>()
@@ -880,6 +911,139 @@ function registerIpcHandlers () {
     })
     if (!res.ok) throw new Error(`Elvebredd ${res.status}: ${(await res.text()).slice(0, 300)}`)
     return await res.json() as { ok: boolean; id: number }
+  })
+
+  // ── Browse market trades for a specific pet ───────────────────────────────────
+
+  ipcMain.handle('trade:browse', async (_, {
+    petName,
+    form,
+    sources,
+    pages = 2,
+  }: {
+    petName: string
+    form:    string
+    sources: Array<'amvgg' | 'elvebredd'>
+    pages?:  number
+  }): Promise<BrowsedTrade[]> => {
+    await Promise.all([warmDetailsCache(), warmElveCache()])
+
+    const USER_AGENT = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36'
+    const results: BrowsedTrade[] = []
+    const nameLower = petName.toLowerCase()
+
+    function cachedValue (name: string, petForm: string, platform: 'amvgg' | 'elvebredd'): number | null {
+      if (platform === 'elvebredd') return elveValuesCache.get(name)?.[petForm] ?? null
+      return detailsCache.get(name)?.values[petForm] ?? null
+    }
+
+    function scoreRatio (ratio: number | null): BrowsedTrade['score'] {
+      if (ratio === null) return 'unknown'
+      if (ratio >= 0.9) return 'good'
+      if (ratio >= 0.7) return 'fair'
+      return 'bad'
+    }
+
+    function computeTotals (pets: BrowsedTradePet[]): number | null {
+      if (pets.some(p => p.value === null)) return null
+      return pets.reduce((s, p) => s + (p.value ?? 0), 0)
+    }
+
+    // ── AMVGG ──────────────────────────────────────────────────────────────────
+    if (sources.includes('amvgg')) {
+      interface AmvggItem  { id: number; name: string; type: string; fg: boolean }
+      interface AmvggTrade { id: string; authorName: string; lookingFor: AmvggItem[]; offering: AmvggItem[]; publishedAt: string }
+      interface AmvggResp  { trades: AmvggTrade[]; pagination: { hasMore: boolean; nextCursor: string } }
+
+      const doFetch = amvggSession
+        ? (u: string) => amvggSession!.fetch(u)
+        : (u: string) => net.fetch(u, { headers: { 'User-Agent': USER_AGENT } })
+
+      let cursor: string | undefined
+      for (let p = 0; p < pages; p++) {
+        const url = `https://amvgg.com/api/trades?limit=100${cursor ? `&cursor=${encodeURIComponent(cursor)}` : ''}`
+        const res = await doFetch(url)
+        if (!res.ok) break
+        const data = await res.json() as AmvggResp
+
+        for (const trade of data.trades) {
+          const match = trade.lookingFor.some(item =>
+            item.name.toLowerCase() === nameLower &&
+            (AMVGG_TYPE_TO_FORM[item.type ?? ''] ?? 'normal') === form
+          )
+          if (!match) continue
+
+          const mapItem = (item: AmvggItem): BrowsedTradePet => {
+            const petForm = AMVGG_TYPE_TO_FORM[item.type ?? ''] ?? 'normal'
+            return { name: item.name, form: petForm, value: cachedValue(item.name, petForm, 'amvgg') }
+          }
+          const offering   = trade.offering.map(mapItem)
+          const lookingFor = trade.lookingFor.map(mapItem)
+          const offerTotal = computeTotals(offering)
+          const wantTotal  = computeTotals(lookingFor)
+          const ratio      = offerTotal !== null && wantTotal ? offerTotal / wantTotal : null
+
+          results.push({
+            id: trade.id, platform: 'amvgg',
+            authorName: trade.authorName, publishedAt: trade.publishedAt,
+            offering, lookingFor, offerTotal, wantTotal,
+            score: scoreRatio(ratio), ratio,
+          })
+        }
+
+        if (!data.pagination.hasMore) break
+        cursor = data.pagination.nextCursor
+      }
+    }
+
+    // ── Elvebredd ──────────────────────────────────────────────────────────────
+    if (sources.includes('elvebredd')) {
+      interface ElvePet     { id: number; name: string; attributes: { fly: boolean; ride: boolean; default: boolean; neon: boolean; mega: boolean } }
+      interface ElveListing { id: number; ownerUsername: string; ownerRobloxUsername: string; ownerGive: ElvePet[]; ownerGet: ElvePet[]; timeCreated: string }
+      interface ElveResp    { listings: ElveListing[]; hasMore: boolean }
+
+      const doFetch = elveSession
+        ? (u: string) => elveSession!.fetch(u)
+        : (u: string) => net.fetch(u, { headers: { 'User-Agent': USER_AGENT } })
+
+      for (let p = 0; p < pages; p++) {
+        const url = `https://elvebredd.com/api/recent-listings?limit=50&offset=${p * 50}&game=Adopt+Me`
+        const res = await doFetch(url)
+        if (!res.ok) break
+        const data = await res.json() as ElveResp
+
+        for (const listing of data.listings) {
+          const match = listing.ownerGet.some(item =>
+            item.name.toLowerCase() === nameLower &&
+            elveAttrsToForm(item.attributes) === form
+          )
+          if (!match) continue
+
+          const mapItem = (item: ElvePet): BrowsedTradePet => {
+            const petForm = elveAttrsToForm(item.attributes)
+            return { name: item.name, form: petForm, value: cachedValue(item.name, petForm, 'elvebredd') }
+          }
+          const offering   = listing.ownerGive.map(mapItem)
+          const lookingFor = listing.ownerGet.map(mapItem)
+          const offerTotal = computeTotals(offering)
+          const wantTotal  = computeTotals(lookingFor)
+          const ratio      = offerTotal !== null && wantTotal ? offerTotal / wantTotal : null
+
+          results.push({
+            id: String(listing.id), platform: 'elvebredd',
+            authorName: listing.ownerRobloxUsername || listing.ownerUsername,
+            publishedAt: listing.timeCreated,
+            offering, lookingFor, offerTotal, wantTotal,
+            score: scoreRatio(ratio), ratio,
+          })
+        }
+
+        if (!data.hasMore) break
+      }
+    }
+
+    const order: Record<BrowsedTrade['score'], number> = { good: 0, fair: 1, unknown: 2, bad: 3 }
+    return results.sort((a, b) => order[a.score] - order[b.score])
   })
 
   // Get multiple values at once (batch)
