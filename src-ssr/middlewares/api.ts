@@ -122,7 +122,7 @@ let   elveFetchInFlight: Promise<void> | null = null
 const imageCache = new Map<string, string | null>()
 let   petNamesCache: string[] | null = null
 
-const itemsCache       = new Map<string, { value: number; demand: string | null }>()
+const itemsCache       = new Map<string, { value: number; demand: string | null; elveValue?: number | null }>()
 const itemValueByName  = new Map<string, number>()
 let   itemsCacheFilled = false
 
@@ -142,7 +142,7 @@ function fetchWithTimeout (url: string, timeoutMs = 12000): Promise<Response> {
 async function warmItemsCache (): Promise<void> {
   if (itemsCacheFilled) return
   itemsCacheFilled = true
-  const staticItems = loadStaticCache<Record<string, Record<string, { value: number; demand: string | null }>>>('items-cache.json')
+  const staticItems = loadStaticCache<Record<string, Record<string, { value: number; demand: string | null; elveValue?: number | null }>>>('items-cache.json')
   if (!staticItems) return
   for (const [category, items] of Object.entries(staticItems)) {
     for (const [name, data] of Object.entries(items)) {
@@ -748,7 +748,10 @@ export default defineSsrMiddleware(({ app }) => {
     const name     = String(req.query['name'] ?? '')
     const category = String(req.query['category'] ?? '')
     const item     = itemsCache.get(`${category}:${name}`)
-    res.json(item ? { value: item.value, demand: item.demand } : { value: null, demand: null })
+    res.json(item
+      ? { value: item.value, demand: item.demand, elveValue: item.elveValue ?? null }
+      : { value: null, demand: null, elveValue: null }
+    )
   })
 
   app.get('/api/items/search', async (req, res) => {

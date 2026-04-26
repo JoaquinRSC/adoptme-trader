@@ -378,9 +378,13 @@ async function addPetToSide(side: 'your' | 'them', name: string, form: PetForm, 
   if (category !== 'pet') {
     try {
       const res  = await fetch(`/api/item/details?name=${encodeURIComponent(name)}&category=${category}`)
-      const data = await res.json() as { value: number | null; demand: string | null }
+      const data = await res.json() as { value: number | null; demand: string | null; elveValue: number | null }
       const found = list.value.find(e => e.id === entry.id)
-      if (found) { found.value = data.value; found.demand = data.demand as DemandLevel; found.loading = false }
+      if (found) {
+        found.value  = valueSource.value === 'elvebredd' ? (data.elveValue ?? data.value) : data.value
+        found.demand = data.demand as DemandLevel
+        found.loading = false
+      }
     } catch {
       const found = list.value.find(e => e.id === entry.id)
       if (found) found.loading = false
@@ -419,8 +423,8 @@ async function refreshValues() {
   for (const entry of allEntries) {
     if (entry.category && entry.category !== 'pet') {
       const res  = await fetch(`/api/item/details?name=${encodeURIComponent(entry.name)}&category=${entry.category}`)
-      const data = await res.json() as { value: number | null; demand: string | null }
-      entry.value = data.value
+      const data = await res.json() as { value: number | null; demand: string | null; elveValue: number | null }
+      entry.value  = valueSource.value === 'elvebredd' ? (data.elveValue ?? data.value) : data.value
       entry.demand = data.demand as DemandLevel
     } else {
       entry.value = valueSource.value === 'elvebredd'
