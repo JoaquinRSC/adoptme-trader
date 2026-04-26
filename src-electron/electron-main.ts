@@ -925,12 +925,12 @@ function registerIpcHandlers () {
     form:    string
     sources: Array<'amvgg' | 'elvebredd'>
     pages?:  number
-  }): Promise<BrowsedTrade[]> => {
+  }): Promise<{ trades: BrowsedTrade[]; errors: string[] }> => {
     await Promise.all([warmDetailsCache(), warmElveCache()])
 
     const USER_AGENT = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36'
     const results: BrowsedTrade[] = []
-    const nameLower = petName.toLowerCase()
+    const errors:  string[] = []
 
     function cachedValue (name: string, petForm: string, platform: 'amvgg' | 'elvebredd'): number | null {
       if (platform === 'elvebredd') return elveValuesCache.get(name)?.[petForm] ?? null
@@ -965,8 +965,9 @@ function registerIpcHandlers () {
       let cursor: string | undefined
       for (let p = 0; p < pages; p++) {
         const url = cursor ? `${baseUrl}&cursor=${encodeURIComponent(cursor)}` : baseUrl
-        const res  = await doFetch(url)
-        if (!res.ok) break
+        let res: Response
+        try { res = await doFetch(url) } catch (e) { errors.push(`AMVGG fetch error: ${e}`); break }
+        if (!res.ok) { errors.push(`AMVGG HTTP ${res.status} for ${url}`); break }
         const data = await res.json() as AmvggResp
 
         for (const trade of data.trades) {
@@ -1016,8 +1017,11 @@ function registerIpcHandlers () {
       const pageResponses = await Promise.all(
         Array.from({ length: pages }, (_, p) =>
           doFetch(`${elveBaseUrl}&offset=${p * 50}`)
-            .then(r => r.ok ? r.json() as Promise<ElveResp> : null)
-            .catch(() => null)
+            .then(r => {
+              if (!r.ok) { errors.push(`Elvebredd HTTP ${r.status} (offset ${p * 50})`); return null }
+              return r.json() as Promise<ElveResp>
+            })
+            .catch(e => { errors.push(`Elvebredd fetch error: ${e}`); return null })
         )
       )
 
@@ -1046,7 +1050,7 @@ function registerIpcHandlers () {
     }
 
     const order: Record<BrowsedTrade['score'], number> = { good: 0, fair: 1, unknown: 2, bad: 3 }
-    return results.sort((a, b) => order[a.score] - order[b.score])
+    return { trades: results.sort((a, b) => order[a.score] - order[b.score]), errors }
   })
 
   // Get multiple values at once (batch)

@@ -106,10 +106,18 @@
       <div v-else-if="hasSearched && !loading && !trades.length" class="empty-state">
         <div class="empty-title">No trades found</div>
         <div class="empty-sub">Nobody is currently offering something for <strong>{{ lastSearchedPet }} ({{ FORM_LABELS[lastSearchedForm as PetForm] }})</strong></div>
+        <div v-if="searchErrors.length" class="error-list">
+          <div v-for="(err, i) in searchErrors" :key="i" class="error-item">{{ err }}</div>
+        </div>
       </div>
 
       <!-- Trade cards -->
       <div v-else class="trades-list">
+
+        <!-- Source errors -->
+        <div v-if="searchErrors.length" class="error-list" style="margin-bottom:10px">
+          <div v-for="(err, i) in searchErrors" :key="i" class="error-item">{{ err }}</div>
+        </div>
 
         <!-- Score summary + filter -->
         <div v-if="trades.length" class="results-header">
@@ -324,6 +332,7 @@ const pages   = 3
 const loading  = ref(false)
 const hasSearched = ref(false)
 const trades   = ref<BrowsedTrade[]>([])
+const searchErrors = ref<string[]>([])
 const lastSearchedPet  = ref('')
 const lastSearchedForm = ref('')
 
@@ -334,13 +343,16 @@ async function runSearch () {
   lastSearchedPet.value  = selectedPet.value
   lastSearchedForm.value = selectedForm.value
   trades.value = []
+  searchErrors.value = []
   try {
-    trades.value = await window.electronAPI.browseMarketTrades({
+    const result = await window.electronAPI.browseMarketTrades({
       petName: selectedPet.value,
       form:    selectedForm.value,
       sources: sources.value,
       pages,
     })
+    trades.value = result.trades
+    searchErrors.value = result.errors
   } finally {
     loading.value = false
   }
@@ -586,6 +598,23 @@ const _ = computed(() => selectedForm.value) // keep selectedForm reactive
   font-size: 12px;
   color: var(--text-3);
   max-width: 320px;
+}
+
+.error-list {
+  margin-top: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.error-item {
+  font-size: 11px;
+  color: #e87171;
+  background: rgba(232, 113, 113, 0.08);
+  border: 1px solid rgba(232, 113, 113, 0.25);
+  border-radius: 6px;
+  padding: 4px 10px;
+  font-family: monospace;
+  word-break: break-all;
 }
 
 /* ── Results header ── */

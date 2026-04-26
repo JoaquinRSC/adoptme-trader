@@ -65,7 +65,7 @@ const api = {
     form:    string
     sources: Array<'amvgg' | 'elvebredd'>
     pages?:  number
-  }): Promise<import('./electron-main').BrowsedTrade[]> =>
+  }): Promise<{ trades: import('./electron-main').BrowsedTrade[]; errors: string[] }> =>
     ipcRenderer.invoke('trade:browse', payload),
 
   // Trade: create on AMVGG
