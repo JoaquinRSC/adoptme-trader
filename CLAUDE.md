@@ -5,90 +5,104 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## Commands
 
 ```bash
-npm run dev          # Start Quasar + Electron in dev mode (hot-reload)
-npm run build        # Build for production (outputs to dist/electron/UnPackaged)
-npm run package:win  # Build + package as portable .exe (dist/electron/Packaged/)
-npm run shortcut:win # Create desktop shortcut pointing to the packaged .exe
-npm run lint         # ESLint on src/ and src-electron/
+npm run dev            # Start Quasar SSR dev server (hot-reload)
+npm run build          # Build SSR for production (outputs to dist/ssr/)
+npm run lint           # ESLint on src/ and src-ssr/
+npm run fetch-values   # Pre-fetch AMVGG + Elvebredd values to src/data/*.json (run locally, then commit)
+railway up --detach --service adoptme-trader  # Deploy to Railway
 ```
 
-No test suite exists. After code changes, run `npm run build` to verify compilation, then distribute via `npm run package:win`.
+No test suite exists. After code changes, run `npm run build` to verify compilation, then deploy via `railway up`.
 
 ## Architecture
 
-Quasar v2 + Vue 3 Composition API + Pinia + Electron 28, targeting Windows desktop (portable .exe).
+Quasar v2 + Vue 3 Composition API + Pinia, running as **SSR on Railway** (Node 22). No Electron — the app is a web app accessible via a Railway-hosted URL.
 
-### Process boundary
+### Request flow
 
 ```
-Renderer (src/)            Preload (electron-preload.ts)         Main (electron-main.ts)
-──────────────────         ──────────────────────────────        ──────────────────────
-window.electronAPI    ←→   contextBridge (typed surface)   ←→   ipcMain.handle handlers
-                                                                  net.fetch → AMVGG / Elvebredd
-                                                                  value-cache.json (userData)
+Browser (src/)           SSR middleware (src-ssr/middlewares/api.ts)
+──────────────────        ─────────────────────────────────────────────
+fetch('/api/...')   →    Express-style handlers on the Quasar SSR server
+                         Reads from in-memory caches warmed at startup:
+                           detailsCache  ← src/data/amv-cache.json
+                           elveValuesCache ← src/data/elve-cache.json
 ```
 
-Security flags: `contextIsolation: true`, `nodeIntegration: false`, `sandbox: true`. All external HTTP goes through main process via `net.fetch` — never call external URLs from the renderer.
+External HTTP (AMVGG, Elvebredd) only happens at startup (cache warm) or via `npm run fetch-values`. The browser never calls external URLs directly.
 
-### IPC channels (electron-preload.ts ↔ electron-main.ts)
+### Static value cache
 
-| Channel | Args | Returns |
+Values are pre-fetched locally with `node scripts/fetch-values.mjs` and committed as JSON:
+- `src/data/amv-cache.json` — AMVGG values + demands + rarity, keyed by pet name
+- `src/data/elve-cache.json` — Elvebredd values, keyed by pet name
+
+The `Dockerfile` copies these into the Railway image. The server loads them at startup in `warmDetailsCache()` and `warmElveCache()`.
+
+**AMVGG formula**: non-category-13 pets use a multiplier table (`AMVGG_MULTIPLIERS` in `fetch-values.mjs`) to compute fly/ride/nr/nf/mr/mf from the base fr/nfr/mfr values — same formula as `amvgg.com/calculator`. Category 13 uses stored per-form values directly.
+
+**Elvebredd fetch**: uses `curl` (not Node fetch) to bypass Cloudflare TLS fingerprint blocking. Node fetch gets 403.
+
+### API endpoints (src-ssr/middlewares/api.ts)
+
+| Endpoint | Method | Description |
 |---|---|---|
-| `pet:getValue` | `(petName, form)` | `number \| null` — AMVGG, cached |
-| `pets:getAll` | — | `Array<{name, value}>` — all pets FR value |
-| `pet:getBatch` | `Array<{name, form}>` | `Array<{name, form, value}>` |
-| `pet:getDetails` | `(petName)` | `PetDetails` — values + demands + rarity |
-| `pets:loadList` | — | `string[]` — full pet name list |
-| `pets:searchList` | `(query)` | `string[]` — filtered names |
-| `pet:getImageUrl` | `(petName)` | `string \| null` — base64 (bypasses CSP) |
-| `pet:getElveValue` | `(petName, form)` | `number \| null` — Elvebredd |
-| `pet:getElveBatch` | `Array<{name, form}>` | `Record<string, number \| null>` |
-| `updater:install` | — | void — quit + install downloaded update |
+| `GET /api/pet/value?name=&form=` | GET | AMVGG value for one pet+form |
+| `GET /api/pet/details?name=` | GET | values + demands + rarity for one pet |
+| `POST /api/pet/batch` | POST | batch AMVGG values: `[{name, form}]` |
+| `GET /api/pet/elve-value?name=&form=` | GET | Elvebredd value for one pet+form |
+| `POST /api/pet/elve-batch` | POST | batch Elvebredd values |
+| `GET /api/pets/all` | GET | all pets with their FR value |
+| `GET /api/pets/list` | GET | full pet name list |
+| `GET /api/pets/search?q=` | GET | filtered pet name list |
+| `POST /api/trade/browse` | POST | browse AMVGG trades for a searched pet |
 
 ### Key files
 
 - `src/types.ts` — `PetForm` union, `FORM_LABELS`, `FORM_COLOR_HEX`, `FORM_GRADIENT`, `InventoryPet`, `PetSuggestion`
 - `src/stores/inventory.ts` — CRUD for `InventoryPet[]`, persisted to `localStorage`
-- `src/stores/values.ts` — In-memory value cache + `DemandLevel` type + `PetDetails` interface; wraps IPC calls
+- `src/stores/values.ts` — In-memory value cache + `DemandLevel` type + `PetDetails` interface; wraps API fetch calls; `getBatch` for bulk pre-loading
 - `src/composables/useFormPicker.ts` — 5-button F/R/D/N/M toggle that derives `PetForm` from booleans; used in add-pet dialogs
 - `src/composables/useTheme.ts` — 5 color themes (Midnight/Ocean/Forest/Crimson/Dusk); persisted to `localStorage`, applied via `data-theme` on `<html>`
 - `src/pages/InventoryPage.vue` — Pet cards with form badge, quantity, lazy value fetch
-- `src/pages/CheckValuesPage.vue` — Two-sided value comparison (YOU vs THEM); supports AMVGG and Elvebredd sources; shows demand ★ per slot
-- `src/pages/TradeBuilderPage.vue` — Offered pets + form selector + demand-adjusted fairness score + suggestions (±20% tolerance)
-- `src/layouts/MainLayout.vue` — Sidebar nav + theme color swatch picker
-- `src-electron/electron-main.ts` — All IPC handlers, AMVGG/Elvebredd fetching, BrowserWindow setup, CSP, auto-updater
-- `src-electron/electron-preload.ts` — contextBridge surface (single source of truth for `window.electronAPI` type)
+- `src/pages/CheckValuesPage.vue` — Two-sided value comparison (YOU vs THEM); supports AMVGG and Elvebredd sources; shows demand ★ per slot; YOU picker has "My Pets" (sorted by value) + "Other" tabs; THEM picker has "Other" tab only (search)
+- `src/pages/TradeBuilderPage.vue` — Offered pets + form selector + demand-adjusted fairness score + suggestions (±20% tolerance); My Pets picker sorted by cached value
+- `src/pages/BrowseMarketPage.vue` — Browse AMVGG trades for a pet you want to offer; layout: You give (left) ↔ They offer (right); filters: Good & Fair / Good only / OP (adjustable % threshold); "My pet only" toggle; shows AMV + ELV values per pet; "View ↗" button links to AMVGG user profile
+- `src/layouts/MainLayout.vue` — Sidebar nav (My Pets, Check Values, Trade Builder, Browse Market, My Trades) + theme swatch picker + collapse
+- `src-ssr/middlewares/api.ts` — All API handlers, AMVGG/Elvebredd cache warming, trade browsing logic
+- `scripts/fetch-values.mjs` — Pre-fetch script: fetches AMVGG (Node fetch) + Elvebredd (curl) and saves to `src/data/*.json`
+- `Dockerfile` — Multi-stage build for Railway; copies `src/data/` into the image
 
-### AMVGG value fetching
+### AMVGG value fetching (server)
 
-`electron-main.ts` runs `warmDetailsCache()` on startup: bulk-fetches `/values/pets` listing page and parses all pet fields from the embedded Next.js JSON (`__NEXT_DATA__`). Individual pet fallback fetches `/pet/{prefix}{slug}`.
+`warmDetailsCache()` loads from `src/data/amv-cache.json` at startup. Applies `applyFormFallbacks()` to propagate demands from base forms (fr→fly/ride, nfr→nr/nf/n, mfr→mr/mf/m).
 
-- Values extracted with `extractNumField()` using regex `/"field":"(\d+\.?\d*)"/`
-- Demand extracted with `extractStrField()` — returns `DemandLevel`: `'High' | 'Medium' | 'Low' | 'Very Low' | null`
-- Form fallbacks: if `mf` is missing, falls back to `mfr`; `fly` → `fr`; etc.
+### Elvebredd value fetching (server)
 
-### Elvebredd value fetching
-
-`warmElveCache()` fetches `/adopt-me-calculator` once. Field mappings use form-specific regex patterns on the embedded JSON (e.g. `"rvalue - fly": 123`). Elvebredd provides **values only** — no demand data.
-
-### esbuild config
-
-`quasar.config.ts` sets `esbuildConf.format = 'cjs'` and `esbuildConf.platform = 'node'` for the electron main process — required to avoid ESM/CJS mismatch at runtime.
-
-### Value cache
-
-Stored at `app.getPath('userData')/value-cache.json`. 1-hour TTL per pet+form key. Never committed (`.gitignore`).
+`warmElveCache()` loads from `src/data/elve-cache.json` at startup. Values stored in `elveValuesCache` Map. No demand data from Elvebredd.
 
 ### Theming
 
-CSS custom properties on `:root` in `src/css/app.scss`. Themes override the same variables via `[data-theme="ocean"]` etc. on `<html>`. Only colors are theme-specific — layout/spacing never changes per theme.
+CSS custom properties on `:root` in `src/css/app.scss`. Themes override the same variables via `[data-theme="ocean"]` etc. on `<html>`. Only colors are theme-specific.
 
-### Release workflow
+### Deployment
 
-Pushing a `v*` tag triggers `.github/workflows/release.yml` (runs on `windows-latest`), which runs `npm run package:win` and publishes the `.exe` as a GitHub Release asset. Bump `version` in `package.json`, commit, then `git tag vX.Y.Z && git push origin vX.Y.Z`.
+Railway project: `adoptme-trader` service. Source is uploaded directly (not connected to GitHub auto-deploy). After every set of commits:
+
+```bash
+railway up --detach --service adoptme-trader
+```
+
+### Value cache update workflow
+
+When AMVGG/Elvebredd values need refreshing:
+1. `npm run fetch-values` (local, requires curl)
+2. Commit `src/data/amv-cache.json` and `src/data/elve-cache.json`
+3. `railway up --detach --service adoptme-trader`
 
 ## Phase roadmap
 
 - **Phase 1 (done):** Inventory management + trade builder (AMVGG values + demand)
 - **Phase 1.5 (done):** Elvebredd cross-check in Check Values; color themes
-- **Phase 2:** Auto-publish trades to AMVGG + Elvebredd; trade renewal
+- **Phase 1.8 (done):** SSR migration to Railway; static value cache; Browse Market; OP filter; Elve values in trade cards
+- **Phase 2:** Auto-publish trades to AMVGG/Elvebredd; trade renewal
