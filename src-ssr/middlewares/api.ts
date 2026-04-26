@@ -18,6 +18,7 @@ export interface BrowsedTradePet {
   form:      string
   value:     number | null
   elveValue: number | null
+  demand:    DemandLevel
   isPet:     boolean
 }
 
@@ -604,7 +605,8 @@ async function browseMarket (payload: {
         const mapItem = (item: AmvggItem, emptyFallback: string): BrowsedTradePet => {
           const isPet   = detailsCache.has(item.name)
           const petForm = item.type === '' ? emptyFallback : (AMVGG_TYPE_TO_FORM[item.type] ?? 'normal')
-          return { name: item.name, form: petForm, value: cachedValue(item.name, petForm, 'amvgg'), elveValue: cachedValue(item.name, petForm, 'elvebredd'), isPet }
+          const demand = (detailsCache.get(item.name)?.demands[petForm] ?? null) as DemandLevel
+          return { name: item.name, form: petForm, value: cachedValue(item.name, petForm, 'amvgg'), elveValue: cachedValue(item.name, petForm, 'elvebredd'), demand, isPet }
         }
         const offering      = trade.offering.map(i => mapItem(i, 'normal'))
         const lookingFor    = trade.lookingFor.map(i => mapItem(i, form))
