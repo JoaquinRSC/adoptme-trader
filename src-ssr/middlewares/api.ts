@@ -667,7 +667,11 @@ async function browseMarket (payload: {
 
     const petNameLower = petName.toLowerCase()
     for (const data of pageResponses) {
-      if (!data || !Array.isArray(data.listings)) continue
+      if (!data) continue
+      if (!Array.isArray(data.listings)) {
+        errors.push(`[elve-debug] keys: ${Object.keys(data as object).join(', ')} | sample: ${JSON.stringify(data).slice(0, 200)}`)
+        continue
+      }
       for (const listing of data.listings) {
         const wantsSearchedPet = listing.ownerGet.some(item =>
           item.name.toLowerCase() === petNameLower && elveAttrsToForm(item.attributes) === form
@@ -698,7 +702,9 @@ async function browseMarket (payload: {
     }
   }
 
-  return { trades: results.sort((a, b) => new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime()), errors }
+  const cutoff = Date.now() - 24 * 60 * 60 * 1000
+  const recent = results.filter(t => new Date(t.publishedAt).getTime() >= cutoff)
+  return { trades: recent.sort((a, b) => new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime()), errors }
 }
 
 // ── Middleware ────────────────────────────────────────────────────────────────
