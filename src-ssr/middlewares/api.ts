@@ -654,24 +654,15 @@ async function browseMarket (payload: {
     let elveBaseUrl  = `https://elvebredd.com/api/recent-listings?limit=50&game=Adopt+Me`
     if (petId !== undefined) elveBaseUrl += `&filterYour=${petId}`
 
-    const pageResponses = await Promise.all(
-      Array.from({ length: pages }, (_, p) =>
-        curlFetch(`${elveBaseUrl}&offset=${p * 50}`)
-          .then(r => {
-            if (!r.ok) { errors.push(`Elvebredd HTTP ${r.status} (offset ${p * 50})`); return null }
-            return r.json<ElveResp>()
-          })
-          .catch(e => { errors.push(`Elvebredd fetch error: ${e}`); return null })
-      )
-    )
-
     const petNameLower = petName.toLowerCase()
-    for (const data of pageResponses) {
-      if (!data) continue
-      if (!Array.isArray(data.listings)) {
-        errors.push(`[elve-debug] keys: ${Object.keys(data as object).join(', ')} | sample: ${JSON.stringify(data).slice(0, 200)}`)
-        continue
-      }
+    for (let p = 0; p < pages; p++) {
+      let data: ElveResp | null = null
+      try {
+        const r = await curlFetch(`${elveBaseUrl}&offset=${p * 50}`)
+        if (!r.ok) { errors.push(`Elvebredd HTTP ${r.status} (offset ${p * 50})`); break }
+        data = await r.json<ElveResp>()
+      } catch (e) { errors.push(`Elvebredd fetch error: ${e}`); break }
+      if (!data || !Array.isArray(data.listings)) break
       for (const listing of data.listings) {
         const wantsSearchedPet = listing.ownerGet.some(item =>
           item.name.toLowerCase() === petNameLower && elveAttrsToForm(item.attributes) === form
