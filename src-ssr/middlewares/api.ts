@@ -140,10 +140,11 @@ function fetchWithTimeout (url: string, timeoutMs = 12000): Promise<Response> {
   }).finally(() => clearTimeout(id))
 }
 
-function curlFetch (url: string, timeoutMs = 12000): Promise<{ ok: boolean; status: number; json: <T>() => Promise<T> }> {
+function curlFetch (url: string, timeoutMs = 12000, extraHeaders: string[] = []): Promise<{ ok: boolean; status: number; json: <T>() => Promise<T> }> {
   return new Promise((resolve, reject) => {
     const timer = setTimeout(() => reject(new Error('curl timeout')), timeoutMs)
-    execFile('curl', ['-s', '--max-time', String(Math.floor(timeoutMs / 1000)), '-A', USER_AGENT, url], { maxBuffer: 10 * 1024 * 1024 }, (err, stdout) => {
+    const headerArgs = extraHeaders.flatMap(h => ['-H', h])
+    execFile('curl', ['-s', '--max-time', String(Math.floor(timeoutMs / 1000)), '-A', USER_AGENT, ...headerArgs, url], { maxBuffer: 10 * 1024 * 1024 }, (err, stdout) => {
       clearTimeout(timer)
       if (err) { reject(err); return }
       if (!stdout || stdout.length < 2) { resolve({ ok: false, status: 0, json: async () => { throw new Error('empty') } }); return }
@@ -655,17 +656,18 @@ async function browseMarket (payload: {
     if (petId !== undefined) elveBaseUrl += `&filterYour=${petId}`
 
     // Elvebredd doesn't let users specify forms on the "want" side — ownerGet always has default:true.
-    // Fetch 1 page only (filterYour already narrows results server-side; more pages trigger rate limits).
+    const elveHeaders = ['Referer: https://www.elvebredd.com/', 'Accept: application/json']
+    const elvePages = petId !== undefined ? 2 : pages
     const petNameLower = petName.toLowerCase()
-    const elvePages = petId !== undefined ? 1 : pages
     for (let p = 0; p < elvePages; p++) {
       let data: ElveResp | null = null
       try {
-        const r = await curlFetch(`${elveBaseUrl}&offset=${p * 50}`)
+        const r = await curlFetch(`${elveBaseUrl}&offset=${p * 50}`, 12000, elveHeaders)
         if (!r.ok) { errors.push(`Elvebredd HTTP ${r.status} (offset ${p * 50})`); break }
         data = await r.json<ElveResp>()
       } catch (e) { errors.push(`Elvebredd fetch error: ${e}`); break }
-      if (!data || !Array.isArray(data.listings)) break
+      if (!data || (data as { ok?: boolean }).ok === false || !Array.isArray(data.listings)) break
+      if (!data.hasMore) { /* last page, don't fetch more */ }
       for (const listing of data.listings) {
         const wantsSearchedPet = listing.ownerGet.some(item => item.name.toLowerCase() === petNameLower)
         if (!wantsSearchedPet) continue
