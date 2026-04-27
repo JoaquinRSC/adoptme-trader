@@ -670,14 +670,16 @@ async function browseMarket (payload: {
         const wantsSearchedPet = listing.ownerGet.some(item => item.name.toLowerCase() === petNameLower)
         if (!wantsSearchedPet) continue
 
-        const mapItem = (item: ElvePet): BrowsedTradePet => {
-          const petForm = elveAttrsToForm(item.attributes)
+        const mapItem = (item: ElvePet, overrideForm?: string): BrowsedTradePet => {
+          const petForm = overrideForm ?? elveAttrsToForm(item.attributes)
           const isPet   = detailsCache.has(item.name)
           const demand  = (detailsCache.get(item.name)?.demands[petForm] ?? null) as DemandLevel
           return { name: item.name, form: petForm, value: cachedValue(item.name, petForm, 'amvgg'), elveValue: cachedValue(item.name, petForm, 'elvebredd'), demand, isPet }
         }
-        const offering        = listing.ownerGive.map(mapItem)
-        const lookingFor      = listing.ownerGet.map(mapItem)
+        const offering        = listing.ownerGive.map(i => mapItem(i))
+        const lookingFor      = listing.ownerGet.map(i =>
+          mapItem(i, i.name.toLowerCase() === petNameLower ? form : undefined)
+        )
         const offerTotal      = computeTotals(offering)
         const wantTotal       = computeTotals(lookingFor)
         const elveOfferTotal  = offering.every(p => p.elveValue !== null) ? offering.reduce((s, p) => s + p.elveValue!, 0) : null
