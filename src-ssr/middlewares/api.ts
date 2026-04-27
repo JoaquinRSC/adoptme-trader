@@ -686,7 +686,9 @@ async function browseMarket (payload: {
         const wantTotal       = computeTotals(lookingFor)
         const elveOfferTotal  = offering.every(p => p.elveValue !== null) ? offering.reduce((s, p) => s + p.elveValue!, 0) : null
         const elveWantTotal   = lookingFor.every(p => p.elveValue !== null) ? lookingFor.reduce((s, p) => s + p.elveValue!, 0) : null
-        const ratio           = elveOfferTotal !== null && elveWantTotal ? elveOfferTotal / elveWantTotal : null
+        const ratio           = elveOfferTotal !== null && elveWantTotal
+          ? elveOfferTotal / elveWantTotal
+          : offerTotal !== null && wantTotal ? offerTotal / wantTotal : null
         results.push({
           id: String(listing.id), platform: 'elvebredd',
           authorName: listing.ownerRobloxUsername || listing.ownerUsername,
