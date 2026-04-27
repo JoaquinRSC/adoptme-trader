@@ -670,13 +670,18 @@ async function browseMarket (payload: {
     )
 
     const petNameLower = petName.toLowerCase()
+    let totalElve = 0, passedElve = 0
+    const sampleNames: string[] = []
     for (const data of pageResponses) {
       if (!data) continue
       for (const listing of data.listings) {
+        totalElve++
+        for (const item of listing.ownerGet) if (sampleNames.length < 5) sampleNames.push(`${item.name}|${elveAttrsToForm(item.attributes)}`)
         const wantsSearchedPet = listing.ownerGet.some(item =>
           item.name.toLowerCase() === petNameLower && elveAttrsToForm(item.attributes) === form
         )
         if (!wantsSearchedPet) continue
+        passedElve++
 
         const mapItem = (item: ElvePet): BrowsedTradePet => {
           const petForm = elveAttrsToForm(item.attributes)
@@ -700,6 +705,7 @@ async function browseMarket (payload: {
         })
       }
     }
+    errors.push(`[debug] elve: ${totalElve} listings, ${passedElve} passed | samples: ${sampleNames.join(', ')}`)
   }
 
   return { trades: results.sort((a, b) => new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime()), errors }
