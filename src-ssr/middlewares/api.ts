@@ -654,8 +654,11 @@ async function browseMarket (payload: {
     let elveBaseUrl  = `https://elvebredd.com/api/recent-listings?limit=50&game=Adopt+Me`
     if (petId !== undefined) elveBaseUrl += `&filterYour=${petId}`
 
+    // Elvebredd doesn't let users specify forms on the "want" side — ownerGet always has default:true.
+    // Fetch 1 page only (filterYour already narrows results server-side; more pages trigger rate limits).
     const petNameLower = petName.toLowerCase()
-    for (let p = 0; p < pages; p++) {
+    const elvePages = petId !== undefined ? 1 : pages
+    for (let p = 0; p < elvePages; p++) {
       let data: ElveResp | null = null
       try {
         const r = await curlFetch(`${elveBaseUrl}&offset=${p * 50}`)
@@ -664,9 +667,7 @@ async function browseMarket (payload: {
       } catch (e) { errors.push(`Elvebredd fetch error: ${e}`); break }
       if (!data || !Array.isArray(data.listings)) break
       for (const listing of data.listings) {
-        const wantsSearchedPet = listing.ownerGet.some(item =>
-          item.name.toLowerCase() === petNameLower && elveAttrsToForm(item.attributes) === form
-        )
+        const wantsSearchedPet = listing.ownerGet.some(item => item.name.toLowerCase() === petNameLower)
         if (!wantsSearchedPet) continue
 
         const mapItem = (item: ElvePet): BrowsedTradePet => {
