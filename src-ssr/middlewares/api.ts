@@ -493,7 +493,9 @@ async function warmElveCache (): Promise<void> {
     const staticElve = loadStaticCache<Record<string, Record<string, number>>>('elve-cache.json')
     if (staticElve) {
       for (const [name, vals] of Object.entries(staticElve)) elveValuesCache.set(name, vals)
-      console.log(`Loaded ${elveValuesCache.size} pets from static Elve cache`)
+      const staticIds = loadStaticCache<Record<string, number>>('elve-ids.json')
+      if (staticIds) for (const [name, id] of Object.entries(staticIds)) elveIdMap.set(name, id)
+      console.log(`Loaded ${elveValuesCache.size} pets, ${elveIdMap.size} IDs from static Elve cache`)
       elveFetchDone = true
       return
     }
@@ -670,18 +672,13 @@ async function browseMarket (payload: {
     )
 
     const petNameLower = petName.toLowerCase()
-    let totalElve = 0, passedElve = 0
-    const sampleNames: string[] = []
     for (const data of pageResponses) {
       if (!data) continue
       for (const listing of data.listings) {
-        totalElve++
-        for (const item of listing.ownerGet) if (sampleNames.length < 5) sampleNames.push(`${item.name}|${elveAttrsToForm(item.attributes)}`)
         const wantsSearchedPet = listing.ownerGet.some(item =>
           item.name.toLowerCase() === petNameLower && elveAttrsToForm(item.attributes) === form
         )
         if (!wantsSearchedPet) continue
-        passedElve++
 
         const mapItem = (item: ElvePet): BrowsedTradePet => {
           const petForm = elveAttrsToForm(item.attributes)
@@ -705,7 +702,6 @@ async function browseMarket (payload: {
         })
       }
     }
-    errors.push(`[debug] elve: ${totalElve} listings, ${passedElve} passed | samples: ${sampleNames.join(', ')}`)
   }
 
   return { trades: results.sort((a, b) => new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime()), errors }

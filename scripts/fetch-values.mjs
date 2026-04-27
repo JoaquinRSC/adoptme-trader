@@ -211,6 +211,26 @@ async function fetchElve () {
     return best ? best.name : null
   }
 
+  const idPositions = []
+  const idRe = /\\"id\\":(\d+)/g
+  let idM
+  while ((idM = idRe.exec(html)) !== null) idPositions.push({ pos: idM.index, id: parseInt(idM[1]) })
+
+  function nearestId (namePos) {
+    let best = null
+    for (const ip of idPositions) {
+      const dist = Math.abs(ip.pos - namePos)
+      if (dist < 500 && (!best || dist < best.dist)) best = { ip, dist }
+    }
+    return best?.ip.id ?? null
+  }
+
+  const idMap = {}
+  for (const np of namePositions) {
+    const id = nearestId(np.pos)
+    if (id !== null) idMap[np.name] = id
+  }
+
   const result = {}
   for (const form of ELVE_FORMS) {
     const re = elveRe(form)
@@ -251,8 +271,8 @@ async function fetchElve () {
     elveItems[catKey][name] = parseFloat(valMatch[1])
   }
   const itemCount = Object.values(elveItems).reduce((s, c) => s + Object.keys(c).length, 0)
-  console.log(`${Object.keys(result).length} pets, ${itemCount} items`)
-  return { pets: result, items: elveItems }
+  console.log(`${Object.keys(result).length} pets, ${itemCount} items, ${Object.keys(idMap).length} IDs`)
+  return { pets: result, items: elveItems, idMap }
 }
 
 // ── Non-pet categories ────────────────────────────────────────────────────────
@@ -325,10 +345,12 @@ async function main () {
 
   let elveItems = {}
   try {
-    const { pets: elve, items } = await fetchElve()
+    const { pets: elve, items, idMap } = await fetchElve()
     elveItems = items
     writeFileSync(join(DATA_DIR, 'elve-cache.json'), JSON.stringify(elve))
+    writeFileSync(join(DATA_DIR, 'elve-ids.json'), JSON.stringify(idMap))
     console.log('  ✓ src/data/elve-cache.json saved')
+    console.log('  ✓ src/data/elve-ids.json saved')
     ok = true
   } catch (e) {
     console.error('  ✗ Elvebredd failed:', e.message)
