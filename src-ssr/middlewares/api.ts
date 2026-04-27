@@ -669,9 +669,15 @@ async function browseMarket (payload: {
       )
     )
 
+    const petNameLower = petName.toLowerCase()
     for (const data of pageResponses) {
       if (!data) continue
       for (const listing of data.listings) {
+        const wantsSearchedPet = listing.ownerGet.some(item =>
+          item.name.toLowerCase() === petNameLower && elveAttrsToForm(item.attributes) === form
+        )
+        if (!wantsSearchedPet) continue
+
         const mapItem = (item: ElvePet): BrowsedTradePet => {
           const petForm = elveAttrsToForm(item.attributes)
           const isPet   = detailsCache.has(item.name)
@@ -696,8 +702,7 @@ async function browseMarket (payload: {
     }
   }
 
-  const order: Record<BrowsedTrade['score'], number> = { good: 0, fair: 1, unknown: 2, bad: 3 }
-  return { trades: results.sort((a, b) => order[a.score] - order[b.score]), errors }
+  return { trades: results.sort((a, b) => new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime()), errors }
 }
 
 // ── Middleware ────────────────────────────────────────────────────────────────
