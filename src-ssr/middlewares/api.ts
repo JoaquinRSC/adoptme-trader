@@ -652,13 +652,7 @@ async function browseMarket (payload: {
 
     const petId      = elveIdMap.get(petName)
     let elveBaseUrl  = `https://elvebredd.com/api/recent-listings?limit=50&game=Adopt+Me`
-
-    if (petId !== undefined) {
-      const a           = FORM_TO_ELVE_ATTRS[form]
-      const filterAttrs = { fly: a.fly, ride: a.ride, neon: a.neon, mega: a.mega }
-      const filterPets  = JSON.stringify([{ id: petId, attributes: filterAttrs }])
-      elveBaseUrl += `&filterYour=${petId}&filterYourPets=${encodeURIComponent(filterPets)}`
-    }
+    if (petId !== undefined) elveBaseUrl += `&filterYour=${petId}`
 
     const pageResponses = await Promise.all(
       Array.from({ length: pages }, (_, p) =>
@@ -673,7 +667,7 @@ async function browseMarket (payload: {
 
     const petNameLower = petName.toLowerCase()
     for (const data of pageResponses) {
-      if (!data) continue
+      if (!data || !Array.isArray(data.listings)) continue
       for (const listing of data.listings) {
         const wantsSearchedPet = listing.ownerGet.some(item =>
           item.name.toLowerCase() === petNameLower && elveAttrsToForm(item.attributes) === form
