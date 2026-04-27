@@ -221,17 +221,26 @@
 
           <template v-if="!amvggCookie">
             <div style="font-size:12px;color:var(--text-3);line-height:1.6">
-              Paste your AMVGG session cookie to enable posting.<br>
-              DevTools (F12) → <b>Network</b> → any <i>amvgg.com</i> request → Request Headers → copy the <b>Cookie</b> value.
+              DevTools (F12) → <b>Application</b> → Cookies → <i>amvgg.com</i><br>
+              Copiá el <b>Value</b> de cada cookie y pegalo abajo.
             </div>
             <q-input
-              v-model="cookieInput"
+              v-model="cookieSessionData"
               type="password"
               dense outlined
-              placeholder="Paste cookie here…"
+              label="session_data"
+              placeholder="Value de __Secure-better-auth.session_data"
               style="font-size:12px"
             />
-            <button class="btn-search" style="width:auto;padding:8px 20px;margin-top:0" :disabled="!cookieInput.trim()" @click="saveAmvggCookie">
+            <q-input
+              v-model="cookieSessionToken"
+              type="password"
+              dense outlined
+              label="session_token"
+              placeholder="Value de __Secure-better-auth.session_token"
+              style="font-size:12px"
+            />
+            <button class="btn-search" style="width:auto;padding:8px 20px;margin-top:0" :disabled="!cookieSessionData.trim() || !cookieSessionToken.trim()" @click="saveAmvggCookie">
               Save & Connect
             </button>
           </template>
@@ -666,7 +675,8 @@ async function search () {
 const selectedSuggestion = ref<SuggestionWithDemand | null>(null)
 const showPublish        = ref(false)
 const amvggCookie        = ref('')
-const cookieInput        = ref('')
+const cookieSessionData  = ref('')
+const cookieSessionToken = ref('')
 const posting            = ref(false)
 const postResult         = ref<{ ok: boolean; error?: string } | null>(null)
 
@@ -675,9 +685,11 @@ onMounted(() => {
 })
 
 function saveAmvggCookie () {
-  amvggCookie.value = cookieInput.value.trim()
-  localStorage.setItem('amvgg_cookie', amvggCookie.value)
-  cookieInput.value = ''
+  const combined = `__Secure-better-auth.session_data=${cookieSessionData.value.trim()}; __Secure-better-auth.session_token=${cookieSessionToken.value.trim()}`
+  amvggCookie.value = combined
+  localStorage.setItem('amvgg_cookie', combined)
+  cookieSessionData.value  = ''
+  cookieSessionToken.value = ''
 }
 
 function disconnectAmvgg () {
