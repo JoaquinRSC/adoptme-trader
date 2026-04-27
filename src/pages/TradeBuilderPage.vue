@@ -178,16 +178,77 @@
     </div>
 
     <!-- Publish trade dialog -->
-    <q-dialog v-model="showPublish">
+    <q-dialog v-model="showPublish" @hide="postResult = null">
       <q-card class="publish-card">
         <div class="pub-header">
-          <div class="dialog-title">Publish Trade</div>
+          <div class="dialog-title">Publish to AMVGG</div>
+          <div class="pub-summary" v-if="selectedSuggestion">
+            <span class="pub-offering">{{ offeredPets.map(o => o.pet.name).join(', ') }}</span>
+            <span class="pub-arrow">→</span>
+            <span class="pub-wanting">{{ FORM_LABELS[selectedSuggestion.form] }} {{ selectedSuggestion.name }}</span>
+          </div>
         </div>
-        <div class="pub-body" style="text-align:center;padding:24px 0;color:var(--text-3);font-size:13px">
-          Coming soon — trade publishing will be available in a future update.
+
+        <!-- Success -->
+        <div v-if="postResult?.ok" class="pub-body" style="align-items:center;text-align:center;padding:28px 20px">
+          <div style="font-size:32px;color:var(--positive)">✓</div>
+          <div style="font-size:15px;font-weight:800;color:var(--text-1);margin-top:4px">Trade posted!</div>
+          <a href="https://amvgg.com/trades" target="_blank" rel="noopener" class="btn-sm-link" style="margin-top:6px">View on AMVGG ↗</a>
         </div>
+
+        <!-- Error -->
+        <div v-else-if="postResult?.ok === false" class="pub-body">
+          <div style="font-size:13px;color:var(--negative);font-weight:600;line-height:1.5">
+            Failed to post: {{ postResult.error }}
+          </div>
+          <button class="btn-search" style="width:auto;padding:8px 20px;margin-top:4px" @click="postResult = null">Try again</button>
+        </div>
+
+        <!-- Main form -->
+        <div v-else class="pub-body">
+          <div class="pub-platform">
+            <div class="pub-plat-info">
+              <span class="pub-plat-logo">🐾</span>
+              <div>
+                <div class="pub-plat-name">AMVGG</div>
+                <div class="pub-plat-status" :class="amvggCookie ? 'status--on' : 'status--off'">
+                  {{ amvggCookie ? 'Connected' : 'Not connected' }}
+                </div>
+              </div>
+            </div>
+            <button v-if="amvggCookie" class="btn-sm-link" style="color:var(--negative)" @click="disconnectAmvgg">Disconnect</button>
+          </div>
+
+          <template v-if="!amvggCookie">
+            <div style="font-size:12px;color:var(--text-3);line-height:1.6">
+              Paste your AMVGG session cookie to enable posting.<br>
+              DevTools (F12) → <b>Network</b> → any <i>amvgg.com</i> request → Request Headers → copy the <b>Cookie</b> value.
+            </div>
+            <q-input
+              v-model="cookieInput"
+              type="password"
+              dense outlined
+              placeholder="Paste cookie here…"
+              style="font-size:12px"
+            />
+            <button class="btn-search" style="width:auto;padding:8px 20px;margin-top:0" :disabled="!cookieInput.trim()" @click="saveAmvggCookie">
+              Save & Connect
+            </button>
+          </template>
+        </div>
+
         <div class="pub-footer">
-          <button class="btn-ghost" @click="showPublish = false">Close</button>
+          <button class="btn-ghost" @click="showPublish = false">{{ postResult?.ok ? 'Close' : 'Cancel' }}</button>
+          <button
+            v-if="!postResult && amvggCookie"
+            class="btn-search"
+            style="width:auto;padding:8px 20px"
+            :disabled="posting"
+            @click="publishTrade"
+          >
+            <q-spinner v-if="posting" size="14px" color="white" />
+            <span>{{ posting ? 'Posting…' : 'Post Trade' }}</span>
+          </button>
         </div>
       </q-card>
     </q-dialog>
@@ -309,7 +370,6 @@
 
 <script setup lang="ts">
 import { ref, computed, watch, onMounted } from 'vue'
-import { useRouter } from 'vue-router'
 import {
   matUpload, matAdd, matMonetizationOn, matClose, matSwapHoriz,
   matAutoAwesome, matAddCircleOutline, matSearch, matWarning, matPublish,
@@ -324,7 +384,6 @@ import {
 
 const inventory = useInventoryStore()
 const values    = useValuesStore()
-const router    = useRouter()
 
 // ── State ─────────────────────────────────────────────────────────────────────
 interface OfferedItem {
@@ -605,11 +664,56 @@ async function search () {
 // ── Publish trade ─────────────────────────────────────────────────────────────
 
 const selectedSuggestion = ref<SuggestionWithDemand | null>(null)
-const showPublish = ref(false)
+const showPublish        = ref(false)
+const amvggCookie        = ref('')
+const cookieInput        = ref('')
+const posting            = ref(false)
+const postResult         = ref<{ ok: boolean; error?: string } | null>(null)
 
-function goToAccounts () {
-  showPublish.value = false
-  void router.push({ name: 'my-trades' })
+onMounted(() => {
+  amvggCookie.value = localStorage.getItem('amvgg_cookie') ?? ''
+})
+
+function saveAmvggCookie () {
+  amvggCookie.value = cookieInput.value.trim()
+  localStorage.setItem('amvgg_cookie', amvggCookie.value)
+  cookieInput.value = ''
+}
+
+function disconnectAmvgg () {
+  amvggCookie.value = ''
+  localStorage.removeItem('amvgg_cookie')
+}
+
+async function publishTrade () {
+  if (!selectedSuggestion.value || !amvggCookie.value) return
+  posting.value    = true
+  postResult.value = null
+  try {
+    const res = await fetch('/api/trade/post-amvgg', {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        cookie:  amvggCookie.value,
+        offered: offeredPets.value.map(o => ({
+          name:         o.pet.name,
+          form:         o.pet.form,
+          itemCategory: o.pet.category,
+        })),
+        wanted: [{
+          name: selectedSuggestion.value!.name,
+          form: selectedSuggestion.value!.form,
+        }],
+      }),
+    })
+    const data = await res.json() as { ok: boolean; error?: string }
+    postResult.value = data
+    if (!data.ok && data.error?.includes('401')) disconnectAmvgg()
+  } catch (e) {
+    postResult.value = { ok: false, error: String(e) }
+  } finally {
+    posting.value = false
+  }
 }
 
 // ── Delta helpers ─────────────────────────────────────────────────────────────

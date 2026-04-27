@@ -570,6 +570,39 @@ async function fetchElveValue (petName: string, form: string): Promise<number | 
   return elveValuesCache.get(petName)?.[form] ?? null
 }
 
+// ── Post trade to AMVGG ───────────────────────────────────────────────────────
+
+function buildAmvggPetItem (name: string, form: string): Record<string, unknown> {
+  const details = detailsCache.get(name)
+  const item: Record<string, unknown> = {
+    id:       Math.random() * 1e13,
+    name,
+    category: 13,
+    type:     FORM_TO_AMVGG_TYPE[form] ?? '',
+    fg:       false,
+  }
+  if (details) {
+    for (const [field, formKey] of AMVGG_VALUE_FIELDS) {
+      const val = details.values[formKey]
+      item[field] = val != null ? String(val) : null
+    }
+    for (const [field, formKey] of AMVGG_DEMAND_FIELDS) {
+      item[field] = details.demands[formKey] ?? null
+    }
+  }
+  return item
+}
+
+function buildAmvggNonPetItem (name: string, itemCategory: string): Record<string, unknown> {
+  const entry = itemsCache.get(`${itemCategory}:${name}`)
+  return {
+    id:     Math.random() * 1e13,
+    name,
+    value:  entry ? String(entry.value) : '0',
+    demand: entry?.demand ?? 'Medium',
+  }
+}
+
 // ── Browse market ─────────────────────────────────────────────────────────────
 
 async function browseMarket (payload: {
@@ -827,6 +860,52 @@ export default defineSsrMiddleware(({ app }) => {
       res.json(result)
     } catch (e) {
       res.status(500).json({ trades: [], errors: [String(e)] })
+    }
+  })
+
+  app.post('/api/trade/post-amvgg', async (req, res) => {
+    interface TradeItem { name: string; form: string; itemCategory?: string }
+    const { cookie, offered, wanted } = req.body as {
+      cookie:  string
+      offered: TradeItem[]
+      wanted:  TradeItem[]
+    }
+
+    if (!cookie || !offered?.length || !wanted?.length)
+      return res.status(400).json({ ok: false, error: 'Missing required fields' })
+
+    await Promise.all([warmDetailsCache(), warmItemsCache()])
+
+    const buildItem = (item: TradeItem) =>
+      (!item.itemCategory || item.itemCategory === 'pet')
+        ? buildAmvggPetItem(item.name, item.form)
+        : buildAmvggNonPetItem(item.name, item.itemCategory)
+
+    const payload = {
+      leftGridItems:  offered.map(buildItem),
+      rightGridItems: wanted.map(buildItem),
+    }
+
+    try {
+      const amvResp = await fetch('https://amvgg.com/api/createPost', {
+        method:  'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Cookie':       cookie,
+          'Referer':      'https://amvgg.com/trades/create',
+          'User-Agent':   USER_AGENT,
+        },
+        body: JSON.stringify(payload),
+      })
+
+      const text = await amvResp.text()
+      if (!amvResp.ok) return res.status(amvResp.status).json({ ok: false, error: text })
+
+      let data: unknown
+      try { data = JSON.parse(text) } catch { data = text }
+      return res.json({ ok: true, data })
+    } catch (e) {
+      return res.status(500).json({ ok: false, error: String(e) })
     }
   })
 })
