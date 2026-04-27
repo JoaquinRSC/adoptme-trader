@@ -147,6 +147,7 @@
             <span v-if="scoreCount('unknown')" class="score-pill score-pill--unknown">{{ scoreCount('unknown') }} unknown</span>
           </div>
           <div class="score-filter">
+            <button class="filter-btn" :class="{ 'filter-btn--active': minScore === 'all' }"  @click="minScore = 'all'">All</button>
             <button class="filter-btn" :class="{ 'filter-btn--active': minScore === 'fair' }" @click="minScore = 'fair'">Good & Fair</button>
             <button class="filter-btn" :class="{ 'filter-btn--active': minScore === 'good' }" @click="minScore = 'good'">Good only</button>
             <button class="filter-btn" :class="{ 'filter-btn--active': minScore === 'op' }"   @click="minScore = 'op'">OP</button>
@@ -383,7 +384,7 @@ function clearSelection () {
 }
 
 // ── Score + pet filter ───────────────────────────────────────────────────────
-const minScore    = ref<'fair' | 'good' | 'op'>('fair')
+const minScore    = ref<'all' | 'fair' | 'good' | 'op'>('fair')
 const opThreshold = ref(30)
 const myPetOnly   = ref(false)
 
@@ -391,6 +392,8 @@ const filteredTrades = computed(() => {
   let result: BrowsedTrade[]
   if (minScore.value === 'op') {
     result = trades.value.filter(t => t.ratio !== null && t.ratio >= (1 + opThreshold.value / 100))
+  } else if (minScore.value === 'all') {
+    result = [...trades.value]
   } else {
     result = trades.value.filter(t => t.score === 'good' || t.score === 'fair')
     if (minScore.value === 'good') result = result.filter(t => t.score === 'good')
