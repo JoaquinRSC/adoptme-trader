@@ -925,18 +925,31 @@ export default defineSsrMiddleware(({ app }) => {
       const userName = session?.user?.name
       if (!userId) return res.status(401).json({ ok: false, error: 'Not authenticated' })
 
-      const tradesRes = await fetch(
-        'https://amvgg.com/api/trades?limit=100',
-        { headers: { 'Cookie': cookie, 'User-Agent': USER_AGENT, 'Referer': 'https://amvgg.com/trades' } },
-      )
-      const raw = await tradesRes.json() as unknown
-      const all = (Array.isArray(raw) ? raw : ((raw as Record<string, unknown>)?.trades ?? (raw as Record<string, unknown>)?.data ?? [])) as Record<string, unknown>[]
-      const trades = all.filter(t =>
-        t['authorId'] === userId ||
-        t['userId']   === userId ||
-        (userName && t['authorName'] === userName)
-      )
-      return res.json({ ok: true, trades })
+      const headers = { 'Cookie': cookie, 'User-Agent': USER_AGENT, 'Referer': 'https://amvgg.com/trades' }
+      const myTrades: Record<string, unknown>[] = []
+      let cursor: string | undefined
+      const MAX_PAGES = 10
+
+      for (let page = 0; page < MAX_PAGES; page++) {
+        const url = cursor
+          ? `https://amvgg.com/api/trades?limit=100&cursor=${encodeURIComponent(cursor)}`
+          : 'https://amvgg.com/api/trades?limit=100'
+        const pageRes = await fetch(url, { headers })
+        const raw = await pageRes.json() as Record<string, unknown>
+        const pageTrades = (Array.isArray(raw) ? raw : (raw['trades'] ?? raw['data'] ?? [])) as Record<string, unknown>[]
+
+        for (const t of pageTrades) {
+          if (t['authorName'] === userName || t['authorId'] === userId || t['userId'] === userId)
+            myTrades.push(t)
+        }
+
+        const pagination = raw['pagination'] as Record<string, unknown> | undefined
+        if (!pagination?.['hasMore']) break
+        cursor = pagination['nextCursor'] as string | undefined
+        if (!cursor) break
+      }
+
+      return res.json({ ok: true, trades: myTrades })
     } catch (e) {
       return res.status(500).json({ ok: false, error: String(e) })
     }
