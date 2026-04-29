@@ -912,4 +912,27 @@ export default defineSsrMiddleware(({ app }) => {
       return res.status(500).json({ ok: false, error: String(e) })
     }
   })
+
+  app.post('/api/my-amv-trades', parseJson(), async (req, res) => {
+    const { cookie } = req.body as { cookie: string }
+    if (!cookie) return res.status(400).json({ ok: false, error: 'Missing cookie' })
+    try {
+      const sessionRes = await fetch('https://amvgg.com/api/auth/get-session', {
+        headers: { 'Cookie': cookie, 'User-Agent': USER_AGENT },
+      })
+      const session = await sessionRes.json() as { user?: { id?: string } }
+      const userId = session?.user?.id
+      if (!userId) return res.status(401).json({ ok: false, error: 'Not authenticated' })
+
+      const tradesRes = await fetch(
+        `https://amvgg.com/api/trades?limit=100&authorId=${userId}`,
+        { headers: { 'Cookie': cookie, 'User-Agent': USER_AGENT, 'Referer': 'https://amvgg.com/trades' } },
+      )
+      const raw = await tradesRes.json() as unknown
+      const trades = Array.isArray(raw) ? raw : ((raw as Record<string, unknown>)?.trades ?? (raw as Record<string, unknown>)?.data ?? [])
+      return res.json({ ok: true, trades })
+    } catch (e) {
+      return res.status(500).json({ ok: false, error: String(e) })
+    }
+  })
 })
