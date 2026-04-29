@@ -925,31 +925,79 @@ export default defineSsrMiddleware(({ app }) => {
       const userName = session?.user?.name
       if (!userId) return res.status(401).json({ ok: false, error: 'Not authenticated' })
 
-      const headers = { 'Cookie': cookie, 'User-Agent': USER_AGENT, 'Referer': 'https://amvgg.com/trades' }
-      const myTrades: Record<string, unknown>[] = []
-      let cursor: string | undefined
-      const MAX_PAGES = 10
+      const amvHeaders = { 'Cookie': cookie, 'User-Agent': USER_AGENT, 'Referer': 'https://amvgg.com/trades' }
 
-      for (let page = 0; page < MAX_PAGES; page++) {
-        const url = cursor
-          ? `https://amvgg.com/api/trades?limit=100&cursor=${encodeURIComponent(cursor)}`
-          : 'https://amvgg.com/api/trades?limit=100'
-        const pageRes = await fetch(url, { headers })
-        const raw = await pageRes.json() as Record<string, unknown>
-        const pageTrades = (Array.isArray(raw) ? raw : (raw['trades'] ?? raw['data'] ?? [])) as Record<string, unknown>[]
-
-        for (const t of pageTrades) {
-          if (t['authorName'] === userName || t['authorId'] === userId || t['userId'] === userId)
-            myTrades.push(t)
-        }
-
-        const pagination = raw['pagination'] as Record<string, unknown> | undefined
-        if (!pagination?.['hasMore']) break
-        cursor = pagination['nextCursor'] as string | undefined
-        if (!cursor) break
+      // Resolve Roblox user ID from username for reliable matching
+      let robloxId: string | null = null
+      if (userName) {
+        try {
+          const rbxRes  = await fetch('https://users.roblox.com/v1/usernames/users', {
+            method:  'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body:    JSON.stringify({ usernames: [userName], excludeBannedUsers: false }),
+          })
+          const rbxData = await rbxRes.json() as { data?: Array<{ id: number }> }
+          robloxId = String(rbxData.data?.[0]?.id ?? '')
+        } catch { /* skip */ }
       }
 
-      return res.json({ ok: true, trades: myTrades })
+      async function fetchJson (url: string, hdrs: Record<string, string>): Promise<Record<string, unknown> | null> {
+        try {
+          const r = await fetch(url, { headers: hdrs })
+          const ct = r.headers.get('content-type') ?? ''
+          if (!ct.includes('json')) return null
+          return await r.json() as Record<string, unknown>
+        } catch { return null }
+      }
+
+      function extractTrades (raw: Record<string, unknown>): Record<string, unknown>[] {
+        return (Array.isArray(raw) ? raw : (raw['trades'] ?? raw['data'] ?? [])) as Record<string, unknown>[]
+      }
+
+      function isMyTrade (t: Record<string, unknown>): boolean {
+        return (!!robloxId && String(t['authorRobloxId']) === robloxId) ||
+               (!!userName && t['authorName'] === userName)
+      }
+
+      const debug: Record<string, unknown> = { userId, userName, robloxId }
+
+      async function paginateUrl (baseUrl: string): Promise<Record<string, unknown>[]> {
+        const results: Record<string, unknown>[] = []
+        let cur: string | undefined
+        for (let p = 0; p < 20; p++) {
+          const url = cur ? `${baseUrl}&cursor=${encodeURIComponent(cur)}` : baseUrl
+          const raw = await fetchJson(url, amvHeaders)
+          if (!raw) break
+          const arr = extractTrades(raw)
+          results.push(...arr)
+          const pag = raw['pagination'] as Record<string, unknown> | undefined
+          if (!pag?.['hasMore']) break
+          cur = pag['nextCursor'] as string | undefined
+          if (!cur) break
+        }
+        return results
+      }
+
+      // Try filtered endpoints first — paginate the one that works
+      const filterBases = [
+        `https://amvgg.com/api/trades?limit=100&authorRobloxId=${robloxId ?? ''}`,
+        `https://amvgg.com/api/trades?limit=100&authorName=${encodeURIComponent(userName ?? '')}`,
+        `https://amvgg.com/api/trades?limit=100&userId=${userId}`,
+      ]
+      for (const base of filterBases) {
+        const raw = await fetchJson(base, amvHeaders)
+        if (!raw) continue
+        const arr = extractTrades(raw)
+        if (arr.length > 0 && arr.every(isMyTrade)) {
+          const pag  = raw['pagination'] as Record<string, unknown> | undefined
+          const rest = pag?.['hasMore'] ? await paginateUrl(base) : []
+          return res.json({ ok: true, trades: [...arr, ...rest] })
+        }
+      }
+
+      // Fallback: paginate global feed and collect matching trades
+      const myTrades = await paginateUrl('https://amvgg.com/api/trades?limit=100')
+      return res.json({ ok: true, trades: myTrades.filter(isMyTrade) })
     } catch (e) {
       return res.status(500).json({ ok: false, error: String(e) })
     }
