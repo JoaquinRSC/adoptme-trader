@@ -405,13 +405,19 @@
 
         <div v-else-if="autoTrades.length" class="auto-trades-list">
           <div class="auto-trade-row" v-for="(trade, i) in autoTrades" :key="i">
-            <div class="auto-side">
-              <div class="auto-imgs">
-                <img v-for="p in trade.offered" :key="p.id"
-                  :src="`https://amvgg.com/items/${encodeURIComponent(p.name)}.webp`"
-                  class="auto-pet-img"
-                  @error="(e) => (e.target as HTMLImageElement).style.display='none'"
-                />
+            <div class="auto-side auto-side--offered">
+              <div class="auto-offered-list">
+                <div class="auto-offered-pet" v-for="p in trade.offered" :key="p.id">
+                  <img
+                    :src="`https://amvgg.com/items/${encodeURIComponent(p.name)}.webp`"
+                    class="auto-pet-img"
+                    @error="(e) => (e.target as HTMLImageElement).style.display='none'"
+                  />
+                  <div class="auto-offered-info">
+                    <span class="auto-offered-name">{{ p.name }}</span>
+                    <span class="auto-offered-form" :style="{ color: FORM_COLOR_HEX[p.form] }">{{ FORM_LABELS[p.form] }}</span>
+                  </div>
+                </div>
               </div>
               <span class="auto-val">{{ trade.offeredAmv.toFixed(4) }}</span>
             </div>
@@ -890,8 +896,8 @@ async function generateAutoTrades () {
 
       const offeredAmv = offered.reduce((s, p) => s + (invAmvMap.get(`${p.name}|${p.form}`) ?? 0), 0)
       const elveVals   = offered.map(p => invElveMap.get(`${p.name}|${p.form}`) ?? null)
-      const hasElve    = elveVals.some(v => v != null)
-      const offeredElve = hasElve ? elveVals.reduce<number>((s, v) => s + (v ?? 0), 0) : null
+      const allHaveElve = elveVals.every(v => v != null)
+      const offeredElve = allHaveElve ? elveVals.reduce<number>((s, v) => s + (v ?? 0), 0) : null
 
       if (offeredAmv === 0) continue
 
@@ -1721,8 +1727,13 @@ function deltaChipClass (delta: number) {
   border: 1px solid var(--border);
 }
 .auto-side { display: flex; align-items: center; gap: 6px; flex: 1; min-width: 0; }
-.auto-imgs { display: flex; gap: 2px; flex-wrap: wrap; max-width: 120px; }
-.auto-pet-img { width: 28px; height: 28px; object-fit: contain; border-radius: 4px; background: var(--surface-3); }
+.auto-side--offered { align-items: flex-start; flex-direction: column; gap: 4px; }
+.auto-offered-list { display: flex; flex-direction: column; gap: 3px; width: 100%; }
+.auto-offered-pet { display: flex; align-items: center; gap: 5px; }
+.auto-offered-info { display: flex; flex-direction: column; min-width: 0; }
+.auto-offered-name { font-size: 10px; font-weight: 700; color: var(--text-1); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 120px; }
+.auto-offered-form { font-size: 9px; font-weight: 800; letter-spacing: 0.3px; }
+.auto-pet-img { width: 28px; height: 28px; object-fit: contain; border-radius: 4px; background: var(--surface-3); flex-shrink: 0; }
 .auto-val { font-size: 10px; font-weight: 700; color: var(--gold); flex-shrink: 0; }
 .auto-arrow { color: var(--text-3); font-size: 16px; flex-shrink: 0; }
 .auto-wanted-info { flex: 1; min-width: 0; }
