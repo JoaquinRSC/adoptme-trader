@@ -294,12 +294,19 @@
             No pets available — add some in My Pets first.
           </div>
           <div class="picker-grid" v-else>
-            <button
+            <div
               class="picker-card-item"
+              :class="{ 'picker-card-item--excluded': excludedPetIds.includes(pet.id) }"
               v-for="pet in sortedAvailableInventory"
               :key="pet.id"
               @click="addOffered(pet); showInventoryPicker = false"
             >
+              <button
+                class="picker-exclude-btn"
+                :class="{ 'picker-exclude-btn--active': excludedPetIds.includes(pet.id) }"
+                :title="excludedPetIds.includes(pet.id) ? 'Include in Auto' : 'Exclude from Auto'"
+                @click.stop="toggleExcluded(pet.id)"
+              >⊘</button>
               <img
                 :src="`https://amvgg.com/items/${encodeURIComponent(pet.name)}.webp`"
                 class="picker-card-img"
@@ -314,7 +321,7 @@
                   {{ values.getCached(pet.name, pet.form) }}
                 </span>
               </div>
-            </button>
+            </div>
           </div>
         </q-card-section>
 
@@ -544,6 +551,15 @@ const searching           = ref(false)
 const searchDone          = ref(false)
 
 const valueSource         = ref<'amvgg' | 'elvebredd'>('amvgg')
+
+const excludedPetIds = ref<string[]>(JSON.parse(localStorage.getItem('excluded_pet_ids') ?? '[]'))
+
+function toggleExcluded (petId: string) {
+  const idx = excludedPetIds.value.indexOf(petId)
+  if (idx !== -1) excludedPetIds.value.splice(idx, 1)
+  else excludedPetIds.value.push(petId)
+  localStorage.setItem('excluded_pet_ids', JSON.stringify(excludedPetIds.value))
+}
 
 // Picker state
 const pickerTab      = ref<'mine' | 'other'>('mine')
@@ -940,6 +956,7 @@ async function generateAutoTrades () {
       .then(r => r.json()) as Record<string, Record<string, DemandLevel>>
 
     const valued = inventory.pets.filter(p => {
+      if (excludedPetIds.value.includes(p.id)) return false
       const v = invAmvMap.get(`${p.name}|${p.form}`)
       return v != null && v > 0
     })
@@ -1624,6 +1641,7 @@ function deltaChipClass (delta: number) {
 }
 
 .picker-card-item {
+  position: relative;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -1636,6 +1654,31 @@ function deltaChipClass (delta: number) {
   transition: border-color 0.12s, background 0.12s;
 }
 .picker-card-item:hover { border-color: var(--primary); background: var(--primary-dim); }
+.picker-card-item--excluded { opacity: 0.4; }
+.picker-card-item--excluded:hover { border-color: var(--border-hi); background: var(--surface-3); opacity: 0.65; }
+
+.picker-exclude-btn {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  border: none;
+  background: transparent;
+  color: var(--text-3);
+  font-size: 13px;
+  line-height: 1;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  transition: color 0.15s, background 0.15s;
+  z-index: 2;
+}
+.picker-exclude-btn:hover { color: var(--negative); background: rgba(248,113,113,0.15); }
+.picker-exclude-btn--active { color: var(--negative); }
 
 .picker-card-img {
   width: 56px;
