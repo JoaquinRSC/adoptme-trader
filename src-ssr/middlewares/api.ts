@@ -920,16 +920,22 @@ export default defineSsrMiddleware(({ app }) => {
       const sessionRes = await fetch('https://amvgg.com/api/auth/get-session', {
         headers: { 'Cookie': cookie, 'User-Agent': USER_AGENT },
       })
-      const session = await sessionRes.json() as { user?: { id?: string } }
-      const userId = session?.user?.id
+      const session = await sessionRes.json() as { user?: { id?: string; name?: string } }
+      const userId   = session?.user?.id
+      const userName = session?.user?.name
       if (!userId) return res.status(401).json({ ok: false, error: 'Not authenticated' })
 
       const tradesRes = await fetch(
-        `https://amvgg.com/api/trades?limit=100&authorId=${userId}`,
+        'https://amvgg.com/api/trades?limit=100',
         { headers: { 'Cookie': cookie, 'User-Agent': USER_AGENT, 'Referer': 'https://amvgg.com/trades' } },
       )
       const raw = await tradesRes.json() as unknown
-      const trades = Array.isArray(raw) ? raw : ((raw as Record<string, unknown>)?.trades ?? (raw as Record<string, unknown>)?.data ?? [])
+      const all = (Array.isArray(raw) ? raw : ((raw as Record<string, unknown>)?.trades ?? (raw as Record<string, unknown>)?.data ?? [])) as Record<string, unknown>[]
+      const trades = all.filter(t =>
+        t['authorId'] === userId ||
+        t['userId']   === userId ||
+        (userName && t['authorName'] === userName)
+      )
       return res.json({ ok: true, trades })
     } catch (e) {
       return res.status(500).json({ ok: false, error: String(e) })
