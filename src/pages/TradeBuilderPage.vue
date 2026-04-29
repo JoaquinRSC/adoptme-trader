@@ -6,6 +6,11 @@
         <div class="page-title">Trade Builder</div>
         <div class="page-sub">AMVGG values + demand cross-check</div>
       </div>
+      <div style="display:flex;align-items:center;gap:8px">
+      <button class="btn-auto" @click="startAuto" :disabled="!inventory.pets.length">
+        <q-icon :name="matAutoAwesome" size="15px" />
+        Auto
+      </button>
       <div class="source-toggle">
         <button
           class="source-btn"
@@ -17,6 +22,7 @@
           :class="{ 'source-btn--active': valueSource === 'elvebredd' }"
           @click="valueSource = 'elvebredd'"
         >Elve</button>
+      </div>
       </div>
     </div>
 
@@ -379,6 +385,87 @@
       </q-card>
     </q-dialog>
 
+    <!-- Auto Publish dialog -->
+    <q-dialog v-model="showAutoDialog" @hide="() => { if (!autoPublishing) { autoTrades.value = []; autoGenError.value = '' } }">
+      <q-card class="auto-card">
+        <div class="pub-header">
+          <div class="dialog-title">Auto Publish</div>
+          <div class="auto-form-row">
+            <span class="control-label" style="font-size:11px">Want form</span>
+            <q-select v-model="desiredForm" :options="formOptions" outlined dense emit-value map-options style="width:110px" :disable="autoGenerating || autoPublishing" />
+          </div>
+        </div>
+
+        <div v-if="autoGenerating" class="auto-generating">
+          <q-spinner size="22px" color="primary" />
+          <span>Finding fair trades…</span>
+        </div>
+
+        <div v-else-if="autoGenError" class="auto-error">{{ autoGenError }}</div>
+
+        <div v-else-if="autoTrades.length" class="auto-trades-list">
+          <div class="auto-trade-row" v-for="(trade, i) in autoTrades" :key="i">
+            <div class="auto-side">
+              <div class="auto-imgs">
+                <img v-for="p in trade.offered" :key="p.id"
+                  :src="`https://amvgg.com/items/${encodeURIComponent(p.name)}.webp`"
+                  class="auto-pet-img"
+                  @error="(e) => (e.target as HTMLImageElement).style.display='none'"
+                />
+              </div>
+              <span class="auto-val">{{ trade.offeredAmv.toFixed(4) }}</span>
+            </div>
+
+            <div class="auto-arrow">→</div>
+
+            <div class="auto-side">
+              <img
+                :src="`https://amvgg.com/items/${encodeURIComponent(trade.wanted.name)}.webp`"
+                class="auto-pet-img"
+                @error="(e) => (e.target as HTMLImageElement).style.display='none'"
+              />
+              <div class="auto-wanted-info">
+                <span class="auto-wanted-name">{{ trade.wanted.name }}</span>
+                <span class="auto-wanted-form" :style="{ color: FORM_COLOR_HEX[trade.wanted.form] }">{{ FORM_LABELS[trade.wanted.form] }}</span>
+              </div>
+              <span class="auto-val">{{ trade.wantedAmv.toFixed(4) }}</span>
+            </div>
+
+            <div class="auto-deltas">
+              <span class="auto-delta-chip" :class="trade.amvDelta >= -1 ? 'chip--green' : 'chip--amber'">
+                AMV {{ trade.amvDelta.toFixed(1) }}%
+              </span>
+              <span v-if="trade.elveDelta != null" class="auto-delta-chip" :class="trade.elveDelta >= -1 ? 'chip--green' : 'chip--amber'">
+                Elve {{ trade.elveDelta.toFixed(1) }}%
+              </span>
+            </div>
+
+            <div class="auto-status">
+              <q-spinner v-if="trade.status === 'posting'" size="14px" color="primary" />
+              <span v-else-if="trade.status === 'ok'" class="status-ok">✓</span>
+              <span v-else-if="trade.status === 'error'" class="status-err" :title="trade.error">✗</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="pub-footer">
+          <button class="btn-ghost" :disabled="autoGenerating || autoPublishing" @click="showAutoDialog = false">Close</button>
+          <button v-if="!autoGenerating && autoTrades.length && !autoPublishing" class="btn-ghost" @click="generateAutoTrades">
+            Regenerate
+          </button>
+          <button
+            v-if="!autoGenerating && autoTrades.length && autoTrades.some(t => t.status === 'pending')"
+            class="btn-search" style="width:auto;padding:8px 20px"
+            :disabled="autoPublishing || !amvggCookie"
+            @click="publishAutoTrades"
+          >
+            <q-spinner v-if="autoPublishing" size="14px" color="white" />
+            <span>{{ autoPublishing ? 'Publishing…' : `Publish ${autoTrades.filter(t => t.status === 'pending').length} trades` }}</span>
+          </button>
+        </div>
+      </q-card>
+    </q-dialog>
+
   </q-page>
 </template>
 
@@ -388,6 +475,19 @@ import {
   matUpload, matAdd, matMonetizationOn, matClose, matSwapHoriz,
   matAutoAwesome, matAddCircleOutline, matSearch, matWarning, matPublish,
 } from '@quasar/extras/material-icons'
+
+interface AutoTrade {
+  offered:      InventoryPet[]
+  offeredAmv:   number
+  offeredElve:  number | null
+  wanted:       { name: string; form: PetForm }
+  wantedAmv:    number
+  wantedElve:   number | null
+  amvDelta:     number
+  elveDelta:    number | null
+  status:       'pending' | 'posting' | 'ok' | 'error'
+  error?:       string
+}
 import { useInventoryStore } from 'src/stores/inventory'
 import { useValuesStore, type DemandLevel } from 'src/stores/values'
 import { useFormPicker } from 'src/composables/useFormPicker'
@@ -731,6 +831,138 @@ async function publishTrade () {
   } finally {
     posting.value = false
   }
+}
+
+// ── Auto Publish ──────────────────────────────────────────────────────────────
+
+const showAutoDialog = ref(false)
+const autoGenerating = ref(false)
+const autoPublishing = ref(false)
+const autoTrades     = ref<AutoTrade[]>([])
+const autoGenError   = ref('')
+
+function startAuto () {
+  if (!amvggCookie.value) { showPublish.value = true; return }
+  showAutoDialog.value = true
+  autoTrades.value     = []
+  autoGenError.value   = ''
+  void generateAutoTrades()
+}
+
+async function generateAutoTrades () {
+  autoGenerating.value = true
+  autoTrades.value     = []
+  autoGenError.value   = ''
+  try {
+    await values.loadAllPets()
+
+    const invReqs = inventory.pets.map(p => ({ name: p.name, form: p.form }))
+    const [invAmvBatch, invElveBatch] = await Promise.all([
+      values.getBatch(invReqs),
+      values.getElveBatch(invReqs),
+    ])
+    const invAmvMap  = new Map(invAmvBatch.map(r  => [`${r.name}|${r.form}`, r.value]))
+    const invElveMap = new Map(invElveBatch.map(r => [`${r.name}|${r.form}`, r.value]))
+
+    const valued = inventory.pets.filter(p => {
+      const v = invAmvMap.get(`${p.name}|${p.form}`)
+      return v != null && v > 0
+    })
+    if (valued.length < 2) { autoGenError.value = 'Need at least 2 inventory pets with known values.'; return }
+
+    const wantReqs = values.allPets.map(p => ({ name: p.name, form: desiredForm.value }))
+    const [wantAmvBatch, wantElveBatch] = await Promise.all([
+      values.getBatch(wantReqs),
+      values.getElveBatch(wantReqs),
+    ])
+    const wantAmvMap  = new Map(wantAmvBatch.map(r  => [r.name, r.value]))
+    const wantElveMap = new Map(wantElveBatch.map(r => [r.name, r.value]))
+
+    const usedWanted = new Set<string>()
+    let attempts = 0
+
+    while (autoTrades.value.length < 5 && attempts < 300) {
+      attempts++
+
+      const shuffled = [...valued].sort(() => Math.random() - 0.5)
+      const count    = Math.min(Math.floor(Math.random() * 4) + 2, shuffled.length)
+      const offered  = shuffled.slice(0, count)
+
+      const offeredAmv = offered.reduce((s, p) => s + (invAmvMap.get(`${p.name}|${p.form}`) ?? 0), 0)
+      const elveVals   = offered.map(p => invElveMap.get(`${p.name}|${p.form}`) ?? null)
+      const hasElve    = elveVals.some(v => v != null)
+      const offeredElve = hasElve ? elveVals.reduce<number>((s, v) => s + (v ?? 0), 0) : null
+
+      if (offeredAmv === 0) continue
+
+      const candidates = values.allPets.filter(p => {
+        if (usedWanted.has(p.name)) return false
+        if (offered.some(o => o.name === p.name)) return false
+        const wa = wantAmvMap.get(p.name)
+        if (!wa || wa === 0) return false
+        const ratio = wa / offeredAmv
+        if (ratio < 0.97 || ratio > 1.0) return false
+        if (offeredElve != null && offeredElve > 0) {
+          const we = wantElveMap.get(p.name)
+          if (we != null && we / offeredElve < 0.98) return false
+        }
+        return true
+      })
+
+      if (!candidates.length) continue
+
+      const wanted     = candidates[Math.floor(Math.random() * candidates.length)]!
+      const wantedAmv  = wantAmvMap.get(wanted.name)!
+      const wantedElve = wantElveMap.get(wanted.name) ?? null
+      usedWanted.add(wanted.name)
+
+      autoTrades.value.push({
+        offered, offeredAmv, offeredElve,
+        wanted: { name: wanted.name, form: desiredForm.value },
+        wantedAmv, wantedElve,
+        amvDelta:  ((wantedAmv - offeredAmv) / offeredAmv) * 100,
+        elveDelta: offeredElve != null && wantedElve != null
+          ? ((wantedElve - offeredElve) / offeredElve) * 100 : null,
+        status: 'pending',
+      })
+    }
+
+    if (!autoTrades.value.length) {
+      autoGenError.value = 'No matching trades found. Try a different form or add more pets.'
+    }
+  } catch (e) {
+    autoGenError.value = String(e)
+  } finally {
+    autoGenerating.value = false
+  }
+}
+
+async function publishAutoTrades () {
+  autoPublishing.value = true
+  for (const trade of autoTrades.value) {
+    if (trade.status !== 'pending') continue
+    if (!amvggCookie.value) break
+    trade.status = 'posting'
+    try {
+      const res  = await fetch('/api/trade/post-amvgg', {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          cookie:  amvggCookie.value,
+          offered: trade.offered.map(o => ({ name: o.name, form: o.form, itemCategory: o.category })),
+          wanted:  [{ name: trade.wanted.name, form: trade.wanted.form }],
+        }),
+      })
+      const data = await res.json() as { ok: boolean; error?: string }
+      trade.status = data.ok ? 'ok' : 'error'
+      trade.error  = data.error
+      if (!data.ok && data.error?.includes('401')) disconnectAmvgg()
+    } catch (e) {
+      trade.status = 'error'
+      trade.error  = String(e)
+    }
+  }
+  autoPublishing.value = false
 }
 
 // ── Delta helpers ─────────────────────────────────────────────────────────────
@@ -1454,6 +1686,53 @@ function deltaChipClass (delta: number) {
   transition: background 0.15s, color 0.15s;
 }
 .btn-ghost:hover { background: var(--surface-3); color: var(--text-1); }
+
+/* Auto button */
+.btn-auto {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 14px;
+  border: 1px solid var(--primary);
+  border-radius: 10px;
+  background: var(--primary-dim);
+  color: var(--primary);
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+.btn-auto:hover:not(:disabled) { background: var(--primary); color: #fff; }
+.btn-auto:disabled { opacity: 0.35; cursor: not-allowed; }
+
+/* Auto dialog */
+.auto-card { width: 580px; max-width: 95vw; }
+.auto-form-row { display: flex; align-items: center; gap: 8px; margin-top: 8px; }
+.auto-generating { display: flex; align-items: center; gap: 10px; padding: 24px 20px; color: var(--text-2); font-size: 14px; }
+.auto-error { padding: 16px 20px; color: var(--negative); font-size: 13px; font-weight: 600; }
+.auto-trades-list { padding: 10px 16px; display: flex; flex-direction: column; gap: 6px; max-height: 380px; overflow-y: auto; }
+.auto-trade-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  background: var(--surface-2);
+  border-radius: 10px;
+  border: 1px solid var(--border);
+}
+.auto-side { display: flex; align-items: center; gap: 6px; flex: 1; min-width: 0; }
+.auto-imgs { display: flex; gap: 2px; flex-wrap: wrap; max-width: 120px; }
+.auto-pet-img { width: 28px; height: 28px; object-fit: contain; border-radius: 4px; background: var(--surface-3); }
+.auto-val { font-size: 10px; font-weight: 700; color: var(--gold); flex-shrink: 0; }
+.auto-arrow { color: var(--text-3); font-size: 16px; flex-shrink: 0; }
+.auto-wanted-info { flex: 1; min-width: 0; }
+.auto-wanted-name { font-size: 11px; font-weight: 700; color: var(--text-1); display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.auto-wanted-form { font-size: 10px; font-weight: 800; }
+.auto-deltas { display: flex; flex-direction: column; gap: 3px; flex-shrink: 0; }
+.auto-delta-chip { font-size: 9px; font-weight: 700; padding: 2px 6px; border-radius: 99px; }
+.auto-status { width: 20px; text-align: center; flex-shrink: 0; font-size: 15px; font-weight: 700; }
+.status-ok  { color: var(--positive); }
+.status-err { color: var(--negative); }
 
 /* Category picker row */
 .cat-picker-row {
