@@ -961,43 +961,22 @@ export default defineSsrMiddleware(({ app }) => {
 
       const debug: Record<string, unknown> = { userId, userName, robloxId }
 
-      async function paginateUrl (baseUrl: string): Promise<Record<string, unknown>[]> {
-        const results: Record<string, unknown>[] = []
-        let cur: string | undefined
-        for (let p = 0; p < 20; p++) {
-          const url = cur ? `${baseUrl}&cursor=${encodeURIComponent(cur)}` : baseUrl
-          const raw = await fetchJson(url, amvHeaders)
-          if (!raw) break
-          const arr = extractTrades(raw)
-          results.push(...arr)
-          const pag = raw['pagination'] as Record<string, unknown> | undefined
-          if (!pag?.['hasMore']) break
-          cur = pag['nextCursor'] as string | undefined
-          if (!cur) break
-        }
-        return results
-      }
-
-      // Try filtered endpoints — use the first one that returns any of the user's trades
-      const filterBases = [
-        `https://amvgg.com/api/trades?limit=100&authorRobloxId=${robloxId ?? ''}`,
-        `https://amvgg.com/api/trades?limit=100&authorName=${encodeURIComponent(userName ?? '')}`,
-        `https://amvgg.com/api/trades?limit=100&userId=${userId}`,
-      ]
-      for (const base of filterBases) {
-        const raw = await fetchJson(base, amvHeaders)
-        if (!raw) continue
+      // Collect trades by author across pages using authorName filter
+      const myTrades: Record<string, unknown>[] = []
+      const base = `https://amvgg.com/api/trades?limit=100&authorName=${encodeURIComponent(userName ?? '')}`
+      let cur: string | undefined
+      for (let p = 0; p < 20; p++) {
+        const url = cur ? `${base}&cursor=${encodeURIComponent(cur)}` : base
+        const raw = await fetchJson(url, amvHeaders)
+        if (!raw) break
         const arr = extractTrades(raw)
-        if (arr.some(isMyTrade)) {
-          // This endpoint works — paginate it fully (re-fetches page 1, avoids duplication issues)
-          const all = await paginateUrl(base)
-          return res.json({ ok: true, trades: all.filter(isMyTrade) })
-        }
+        for (const t of arr) { if (isMyTrade(t)) myTrades.push(t) }
+        const pag = raw['pagination'] as Record<string, unknown> | undefined
+        if (!pag?.['hasMore']) break
+        cur = pag['nextCursor'] as string | undefined
+        if (!cur) break
       }
-
-      // Fallback: paginate global feed and collect matching trades
-      const myTrades = await paginateUrl('https://amvgg.com/api/trades?limit=100')
-      return res.json({ ok: true, trades: myTrades.filter(isMyTrade) })
+      return res.json({ ok: true, trades: myTrades })
     } catch (e) {
       return res.status(500).json({ ok: false, error: String(e) })
     }
