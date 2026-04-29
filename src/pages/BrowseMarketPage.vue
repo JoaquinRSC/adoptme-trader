@@ -605,9 +605,6 @@ const _ = computed(() => selectedForm.value) // keep selectedForm reactive
 
 /* ── My Pets strip ── */
 .my-pets-strip {
-  display: flex;
-  align-items: center;
-  gap: 10px;
   margin-bottom: 12px;
 }
 
@@ -617,19 +614,14 @@ const _ = computed(() => selectedForm.value) // keep selectedForm reactive
   color: var(--text-3);
   text-transform: uppercase;
   letter-spacing: 0.5px;
-  white-space: nowrap;
-  flex-shrink: 0;
+  margin-bottom: 8px;
 }
 
 .my-pets-scroll {
   display: flex;
-  gap: 8px;
-  overflow-x: auto;
-  padding-bottom: 4px;
-  scrollbar-width: thin;
+  flex-wrap: wrap;
+  gap: 6px;
 }
-.my-pets-scroll::-webkit-scrollbar { height: 3px; }
-.my-pets-scroll::-webkit-scrollbar-thumb { background: var(--border); border-radius: 99px; }
 
 .my-pet-chip {
   display: flex;
@@ -641,7 +633,6 @@ const _ = computed(() => selectedForm.value) // keep selectedForm reactive
   border-radius: 10px;
   cursor: pointer;
   transition: border-color 0.12s, background 0.12s;
-  flex-shrink: 0;
   white-space: nowrap;
 }
 .my-pet-chip:hover { border-color: var(--primary); background: var(--surface-2); }
