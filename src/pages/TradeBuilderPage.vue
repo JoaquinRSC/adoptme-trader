@@ -442,6 +442,12 @@
                 <span class="auto-wanted-form" :style="{ color: FORM_COLOR_HEX[trade.wanted.form] }">{{ FORM_LABELS[trade.wanted.form] }}</span>
               </div>
               <span class="auto-val">{{ trade.wantedAmv.toFixed(4) }}</span>
+              <button
+                class="auto-exclude-btn"
+                :class="{ 'auto-exclude-btn--active': excludedWantedNames.includes(trade.wanted.name) }"
+                :title="excludedWantedNames.includes(trade.wanted.name) ? 'Remove from excluded' : 'Exclude from Auto'"
+                @click="toggleExcludedWanted(trade.wanted.name)"
+              >⊘</button>
             </div>
 
             <div class="auto-deltas">
@@ -559,6 +565,15 @@ function toggleExcluded (petId: string) {
   if (idx !== -1) excludedPetIds.value.splice(idx, 1)
   else excludedPetIds.value.push(petId)
   localStorage.setItem('excluded_pet_ids', JSON.stringify(excludedPetIds.value))
+}
+
+const excludedWantedNames = ref<string[]>(JSON.parse(localStorage.getItem('excluded_wanted_names') ?? '[]'))
+
+function toggleExcludedWanted (name: string) {
+  const idx = excludedWantedNames.value.indexOf(name)
+  if (idx !== -1) excludedWantedNames.value.splice(idx, 1)
+  else excludedWantedNames.value.push(name)
+  localStorage.setItem('excluded_wanted_names', JSON.stringify(excludedWantedNames.value))
 }
 
 // Picker state
@@ -989,6 +1004,7 @@ async function generateAutoTrades () {
 
       const candidates = values.allPets.filter(p => {
         if (usedWanted.has(p.name)) return false
+        if (excludedWantedNames.value.includes(p.name)) return false
         if (offered.some(o => o.name === p.name)) return false
         const wa = wantAmvMap.get(p.name)
         if (!wa || wa === 0) return false
@@ -1856,6 +1872,26 @@ function deltaChipClass (delta: number) {
 .auto-deltas { display: flex; flex-direction: column; gap: 3px; flex-shrink: 0; }
 .auto-delta-chip { font-size: 9px; font-weight: 700; padding: 2px 6px; border-radius: 99px; }
 .auto-status { width: 20px; text-align: center; flex-shrink: 0; font-size: 15px; font-weight: 700; }
+
+.auto-exclude-btn {
+  flex-shrink: 0;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  border: none;
+  background: transparent;
+  color: var(--text-3);
+  font-size: 14px;
+  line-height: 1;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  transition: color 0.15s, background 0.15s;
+}
+.auto-exclude-btn:hover { color: var(--negative); background: rgba(248,113,113,0.15); }
+.auto-exclude-btn--active { color: var(--negative); }
 .status-ok  { color: var(--positive); }
 .status-err { color: var(--negative); }
 
