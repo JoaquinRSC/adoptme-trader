@@ -884,6 +884,8 @@ function clearLoop () {
 }
 
 function scheduleNextLoop () {
+  if (_countdownTimer) { clearInterval(_countdownTimer); _countdownTimer = null }
+  if (_loopTimer)      { clearTimeout(_loopTimer);       _loopTimer      = null }
   loopCountdown.value = LOOP_INTERVAL_S
   _countdownTimer = setInterval(() => {
     loopCountdown.value--
