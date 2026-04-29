@@ -774,6 +774,15 @@ export default defineSsrMiddleware(({ app }) => {
     res.json(await fetchAllPets())
   })
 
+  app.get('/api/pets/demands', async (_req, res) => {
+    await warmDetailsCache()
+    const result: Record<string, Record<string, DemandLevel>> = {}
+    for (const [name, details] of detailsCache.entries()) {
+      result[name] = details.demands
+    }
+    res.json(result)
+  })
+
   app.get('/api/pet/value', async (req, res) => {
     res.json(await fetchAmvggValue(String(req.query['name'] ?? ''), String(req.query['form'] ?? '')))
   })

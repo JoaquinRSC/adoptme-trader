@@ -456,18 +456,35 @@
 
         <div class="pub-footer">
           <button class="btn-ghost" :disabled="autoGenerating || autoPublishing" @click="showAutoDialog = false">Close</button>
-          <button v-if="!autoGenerating && autoTrades.length && !autoPublishing" class="btn-ghost" @click="generateAutoTrades">
-            Regenerate
+          <div v-if="autoLoop && loopCountdown > 0" class="loop-countdown">
+            Next in {{ loopCountdownLabel }}
+          </div>
+          <button v-if="autoLoop" class="btn-ghost loop-stop" @click="clearLoop" :disabled="autoGenerating || autoPublishing">
+            Stop Loop
           </button>
-          <button
-            v-if="!autoGenerating && autoTrades.length && autoTrades.some(t => t.status === 'pending')"
-            class="btn-search" style="width:auto;padding:8px 20px"
-            :disabled="autoPublishing || !amvggCookie"
-            @click="publishAutoTrades"
-          >
-            <q-spinner v-if="autoPublishing" size="14px" color="white" />
-            <span>{{ autoPublishing ? 'Publishing…' : `Publish ${autoTrades.filter(t => t.status === 'pending').length} trades` }}</span>
-          </button>
+          <template v-if="!autoLoop">
+            <button v-if="!autoGenerating && autoTrades.length && !autoPublishing" class="btn-ghost" @click="generateAutoTrades">
+              Regenerate
+            </button>
+            <button
+              v-if="!autoGenerating && autoTrades.length && autoTrades.some(t => t.status === 'pending')"
+              class="btn-search" style="width:auto;padding:8px 20px"
+              :disabled="autoPublishing || !amvggCookie"
+              @click="publishAutoTrades"
+            >
+              <q-spinner v-if="autoPublishing" size="14px" color="white" />
+              <span>{{ autoPublishing ? 'Publishing…' : `Publish ${autoTrades.filter(t => t.status === 'pending').length} trades` }}</span>
+            </button>
+            <button
+              v-if="!autoGenerating && autoTrades.length && amvggCookie"
+              class="btn-search btn-loop" style="width:auto;padding:8px 20px"
+              :disabled="autoPublishing"
+              @click="startAutoLoop"
+            >
+              <q-icon :name="matAutoAwesome" size="14px" />
+              <span>Start Loop</span>
+            </button>
+          </template>
         </div>
       </q-card>
     </q-dialog>
@@ -476,7 +493,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch, onMounted } from 'vue'
+import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 import {
   matUpload, matAdd, matMonetizationOn, matClose, matSwapHoriz,
   matAutoAwesome, matAddCircleOutline, matSearch, matWarning, matPublish,
@@ -841,11 +858,58 @@ async function publishTrade () {
 
 // ── Auto Publish ──────────────────────────────────────────────────────────────
 
-const showAutoDialog = ref(false)
-const autoGenerating = ref(false)
-const autoPublishing = ref(false)
-const autoTrades     = ref<AutoTrade[]>([])
-const autoGenError   = ref('')
+const showAutoDialog  = ref(false)
+const autoGenerating  = ref(false)
+const autoPublishing  = ref(false)
+const autoTrades      = ref<AutoTrade[]>([])
+const autoGenError    = ref('')
+const autoLoop        = ref(false)
+const loopCountdown   = ref(0)
+let   _loopTimer:      ReturnType<typeof setTimeout>  | null = null
+let   _countdownTimer: ReturnType<typeof setInterval> | null = null
+
+const LOOP_INTERVAL_S = 150
+
+const loopCountdownLabel = computed(() => {
+  const m = Math.floor(loopCountdown.value / 60)
+  const s = loopCountdown.value % 60
+  return m > 0 ? `${m}m ${s}s` : `${s}s`
+})
+
+function clearLoop () {
+  autoLoop.value = false
+  if (_loopTimer)      { clearTimeout(_loopTimer);      _loopTimer      = null }
+  if (_countdownTimer) { clearInterval(_countdownTimer); _countdownTimer = null }
+  loopCountdown.value = 0
+}
+
+function scheduleNextLoop () {
+  loopCountdown.value = LOOP_INTERVAL_S
+  _countdownTimer = setInterval(() => {
+    loopCountdown.value--
+    if (loopCountdown.value <= 0 && _countdownTimer) {
+      clearInterval(_countdownTimer)
+      _countdownTimer = null
+    }
+  }, 1000)
+  _loopTimer = setTimeout(async () => {
+    if (!autoLoop.value) return
+    await generateAutoTrades()
+    if (!autoLoop.value) return
+    if (autoGenError.value || !autoTrades.value.length) { clearLoop(); return }
+    await publishAutoTrades()
+    if (autoLoop.value) scheduleNextLoop()
+  }, LOOP_INTERVAL_S * 1000)
+}
+
+async function startAutoLoop () {
+  autoLoop.value = true
+  await publishAutoTrades()
+  if (autoLoop.value) scheduleNextLoop()
+}
+
+watch(showAutoDialog, (open) => { if (!open) clearLoop() })
+onUnmounted(() => clearLoop())
 
 function startAuto () {
   if (!amvggCookie.value) { showPublish.value = true; return }
@@ -869,6 +933,9 @@ async function generateAutoTrades () {
     ])
     const invAmvMap  = new Map(invAmvBatch.map(r  => [`${r.name}|${r.form}`, r.value]))
     const invElveMap = new Map(invElveBatch.map(r => [`${r.name}|${r.form}`, r.value]))
+
+    const allDemands = await fetch('/api/pets/demands')
+      .then(r => r.json()) as Record<string, Record<string, DemandLevel>>
 
     const valued = inventory.pets.filter(p => {
       const v = invAmvMap.get(`${p.name}|${p.form}`)
@@ -908,6 +975,8 @@ async function generateAutoTrades () {
         if (!wa || wa === 0) return false
         const ratio = wa / offeredAmv
         if (ratio < 0.97 || ratio > 1.0) return false
+        const wd = allDemands[p.name]?.[desiredForm.value] ?? null
+        if (wd === 'Low' || wd === 'Very Low') return false
         if (offeredElve != null && offeredElve > 0) {
           const we = wantElveMap.get(p.name)
           if (we != null && we / offeredElve < 0.98) return false
@@ -1744,6 +1813,24 @@ function deltaChipClass (delta: number) {
 .auto-status { width: 20px; text-align: center; flex-shrink: 0; font-size: 15px; font-weight: 700; }
 .status-ok  { color: var(--positive); }
 .status-err { color: var(--negative); }
+
+.loop-countdown {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text-3);
+  margin-right: auto;
+  letter-spacing: 0.3px;
+}
+.loop-stop {
+  border-color: var(--negative);
+  color: var(--negative);
+}
+.loop-stop:hover { background: rgba(248,113,113,0.1); }
+.btn-loop {
+  background: var(--positive);
+  gap: 5px;
+}
+.btn-loop:hover:not(:disabled) { opacity: 0.85; }
 
 /* Category picker row */
 .cat-picker-row {
