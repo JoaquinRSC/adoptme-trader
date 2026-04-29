@@ -68,7 +68,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, onMounted, onUnmounted } from 'vue'
 import { matInventory2, matSwapHoriz, matBalance, matChevronLeft, matChevronRight, matReceipt, matSearch } from '@quasar/extras/material-icons'
 import { version } from '../../package.json'
 import { useTheme } from 'src/composables/useTheme'
@@ -81,6 +81,14 @@ function toggleCollapse() {
   collapsed.value = !collapsed.value
   localStorage.setItem('sidebar-collapsed', String(collapsed.value))
 }
+
+let pingInterval: ReturnType<typeof setInterval> | null = null
+onMounted(() => {
+  pingInterval = setInterval(() => { void fetch('/api/ping') }, 60_000)
+})
+onUnmounted(() => {
+  if (pingInterval !== null) clearInterval(pingInterval)
+})
 
 const navItems = [
   { name: 'inventory',     icon: matInventory2, label: 'My Pets'       },

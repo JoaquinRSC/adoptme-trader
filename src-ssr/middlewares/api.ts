@@ -748,6 +748,10 @@ export default defineSsrMiddleware(({ app }) => {
   void warmElveCache()
   void warmItemsCache()
 
+  app.get('/api/ping', (_req, res) => {
+    res.json({ ok: true })
+  })
+
   app.get('/api/pets/list', async (_req, res) => {
     res.json(await getPetNamesList())
   })
