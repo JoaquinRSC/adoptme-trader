@@ -5,7 +5,7 @@ import { FORM_GRADIENT } from 'src/types'
 type NM = 'none' | 'n' | 'm'
 
 function decompose (form: PetForm) {
-  const flyForms  = ['fly', 'fr', 'nf', 'nr', 'nfr', 'mf', 'mr', 'mfr']
+  const flyForms  = ['fly', 'fr', 'nf', 'nfr', 'mf', 'mfr']
   const rideForms = ['ride', 'fr', 'nr', 'nfr', 'mr', 'mfr']
   const neonForms = ['n', 'nf', 'nr', 'nfr']
   const megaForms = ['m', 'mf', 'mr', 'mfr']

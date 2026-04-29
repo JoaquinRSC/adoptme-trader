@@ -300,9 +300,14 @@
                 @error="(e) => (e.target as HTMLImageElement).style.display='none'"
               />
               <div class="picker-card-name">{{ pet.name }}</div>
-              <span class="picker-card-form" :style="(!pet.category || pet.category === 'pet') ? { color: FORM_COLOR_HEX[pet.form] } : {}">
-                {{ pet.category && pet.category !== 'pet' ? CATEGORY_LABELS[pet.category] : FORM_LABELS[pet.form] }}
-              </span>
+              <div class="picker-card-bottom">
+                <span class="picker-card-form" :style="(!pet.category || pet.category === 'pet') ? { color: FORM_COLOR_HEX[pet.form] } : {}">
+                  {{ pet.category && pet.category !== 'pet' ? CATEGORY_LABELS[pet.category] : FORM_LABELS[pet.form] }}
+                </span>
+                <span class="picker-card-val" v-if="values.getCached(pet.name, pet.form) != null">
+                  {{ values.getCached(pet.name, pet.form) }}
+                </span>
+              </div>
             </button>
           </div>
         </q-card-section>
@@ -1301,10 +1306,12 @@ function deltaChipClass (delta: number) {
 
 .picker-grid {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(2, 1fr);
   gap: 6px;
-  max-height: 340px;
+  max-height: 380px;
   overflow-y: auto;
+  overflow-x: hidden;
+  padding-right: 2px;
 }
 
 .picker-card-item {
@@ -1328,7 +1335,7 @@ function deltaChipClass (delta: number) {
 }
 
 .picker-card-name {
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 700;
   color: var(--text-1);
   text-align: center;
@@ -1336,10 +1343,24 @@ function deltaChipClass (delta: number) {
   word-break: break-word;
 }
 
+.picker-card-bottom {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  width: 100%;
+}
+
 .picker-card-form {
   font-size: 10px;
   font-weight: 800;
   letter-spacing: 0.3px;
+}
+
+.picker-card-val {
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--gold);
 }
 
 /* Other tab */
