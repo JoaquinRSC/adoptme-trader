@@ -77,11 +77,18 @@
             @error="() => { petImageUrl[pet.id] = null }"
           />
           <span v-else class="thumb-emoji">🐾</span>
-          <span
+          <div
             v-if="!pet.category || pet.category === 'pet'"
-            class="thumb-badge"
-            :style="{ color: FORM_COLOR_HEX[pet.form], borderColor: FORM_COLOR_HEX[pet.form] + '44' }"
-          >{{ FORM_LABELS[pet.form] }}</span>
+            class="form-badges"
+          >
+            <span
+              v-for="badge in getFormBadges(pet.form)"
+              :key="badge.letter"
+              class="form-letter-badge"
+              :class="{ 'form-letter-badge--square': badge.square }"
+              :style="{ background: badge.bg }"
+            >{{ badge.letter }}</span>
+          </div>
           <span
             v-else
             class="thumb-badge thumb-badge--category"
@@ -361,6 +368,32 @@ import {
 const $q = useQuasar()
 const inventory = useInventoryStore()
 const values = useValuesStore()
+
+const LETTER_BG: Record<string, string> = {
+  M: '#8830da',
+  F: '#3e96c8',
+  R: '#de2d75',
+  N: '#96cc5d',
+}
+
+const FORM_LETTERS: Record<PetForm, string[]> = {
+  normal: [],
+  fly:    ['F'],
+  ride:   ['R'],
+  fr:     ['F', 'R'],
+  n:      ['N'],
+  nf:     ['N', 'F'],
+  nr:     ['N', 'R'],
+  nfr:    ['N', 'F', 'R'],
+  m:      ['M'],
+  mf:     ['M', 'F'],
+  mr:     ['M', 'R'],
+  mfr:    ['M', 'F', 'R'],
+}
+
+function getFormBadges(form: PetForm) {
+  return FORM_LETTERS[form].map(l => ({ letter: l, bg: LETTER_BG[l] ?? '#6b7280', square: l === 'M' }))
+}
 
 // ── Add dialog ────────────────────────────────────────────────────────────────
 const showAdd    = ref(false)
@@ -998,24 +1031,48 @@ function confirmRemove (id: string, name: string) {
   z-index: 0;
 }
 .thumb-badge--category {
-  color: var(--text-2) !important;
-  border-color: var(--border-hi) !important;
-  font-size: 9px !important;
-}
-
-.thumb-badge {
   position: absolute;
   bottom: 8px;
-  right: 9px;
+  left: 8px;
   z-index: 3;
-  font-size: 11px;
+  font-size: 9px;
   font-weight: 800;
   letter-spacing: 0.5px;
   padding: 3px 8px;
   border-radius: 20px;
-  border: 1px solid currentColor;
+  border: 1px solid var(--border-hi);
   background: rgba(0, 0, 0, 0.45);
   backdrop-filter: blur(4px);
+  color: var(--text-2);
+}
+
+.form-badges {
+  position: absolute;
+  bottom: 8px;
+  left: 8px;
+  z-index: 3;
+  display: flex;
+  gap: 3px;
+}
+
+.form-letter-badge {
+  height: 18px;
+  min-width: 18px;
+  padding: 0 5px;
+  border-radius: 99px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  font-weight: 900;
+  line-height: 1;
+  color: #fff;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255,255,255,0.2);
+}
+
+.form-letter-badge--square {
+  border-radius: 4px;
+  padding: 0 4px;
 }
 
 /* Card body */
