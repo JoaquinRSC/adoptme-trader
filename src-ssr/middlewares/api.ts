@@ -978,7 +978,7 @@ export default defineSsrMiddleware(({ app }) => {
         return results
       }
 
-      // Try filtered endpoints first — paginate the one that works
+      // Try filtered endpoints — use the first one that returns any of the user's trades
       const filterBases = [
         `https://amvgg.com/api/trades?limit=100&authorRobloxId=${robloxId ?? ''}`,
         `https://amvgg.com/api/trades?limit=100&authorName=${encodeURIComponent(userName ?? '')}`,
@@ -988,10 +988,10 @@ export default defineSsrMiddleware(({ app }) => {
         const raw = await fetchJson(base, amvHeaders)
         if (!raw) continue
         const arr = extractTrades(raw)
-        if (arr.length > 0 && arr.every(isMyTrade)) {
-          const pag  = raw['pagination'] as Record<string, unknown> | undefined
-          const rest = pag?.['hasMore'] ? await paginateUrl(base) : []
-          return res.json({ ok: true, trades: [...arr, ...rest] })
+        if (arr.some(isMyTrade)) {
+          // This endpoint works — paginate it fully (re-fetches page 1, avoids duplication issues)
+          const all = await paginateUrl(base)
+          return res.json({ ok: true, trades: all.filter(isMyTrade) })
         }
       }
 
