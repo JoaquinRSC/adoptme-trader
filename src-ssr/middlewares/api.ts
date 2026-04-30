@@ -117,6 +117,11 @@ let   allPetsCacheFilled  = false
 
 const elveValuesCache  = new Map<string, Record<string, number>>()
 const elveIdMap        = new Map<string, number>()
+
+// Elvebredd omits periods in abbreviated titles (e.g. "Mr" instead of "Mr.")
+function getElveRecord (name: string): Record<string, number> | undefined {
+  return elveValuesCache.get(name) ?? elveValuesCache.get(name.replace(/\.(?=\s|$)/g, ''))
+}
 let   elveVersion      = 243
 let   elveFetchDone    = false
 let   elveFetchInFlight: Promise<void> | null = null
@@ -567,7 +572,7 @@ async function warmElveCache (): Promise<void> {
 
 async function fetchElveValue (petName: string, form: string): Promise<number | null> {
   await warmElveCache()
-  return elveValuesCache.get(petName)?.[form] ?? null
+  return getElveRecord(petName)?.[form] ?? null
 }
 
 // ── Post trade to AMVGG ───────────────────────────────────────────────────────
@@ -618,7 +623,7 @@ async function browseMarket (payload: {
   const errors:  string[] = []
 
   function cachedValue (name: string, petForm: string, platform: 'amvgg' | 'elvebredd'): number | null {
-    if (platform === 'elvebredd') return elveValuesCache.get(name)?.[petForm] ?? itemElveValueByName.get(name) ?? null
+    if (platform === 'elvebredd') return getElveRecord(name)?.[petForm] ?? itemElveValueByName.get(name) ?? null
     const petVal = detailsCache.get(name)?.values[petForm] ?? null
     if (petVal !== null) return petVal
     return itemValueByName.get(name) ?? null
@@ -814,7 +819,7 @@ export default defineSsrMiddleware(({ app }) => {
     await warmElveCache()
     const result: Record<string, number | null> = {}
     for (const { name, form } of requests) {
-      result[`${name}__${form}`] = elveValuesCache.get(name)?.[form] ?? null
+      result[`${name}__${form}`] = getElveRecord(name)?.[form] ?? null
     }
     res.json(result)
   })
@@ -925,7 +930,7 @@ export default defineSsrMiddleware(({ app }) => {
   function buildElvePet (item: { name: string; form: string }, side: 'your' | 'their') {
     const id    = elveIdMap.get(item.name) ?? 0
     const attrs = { ...(FORM_TO_ELVE_ATTRS[item.form] ?? FORM_TO_ELVE_ATTRS['normal']!) }
-    const value = elveValuesCache.get(item.name)?.[item.form] ?? 0
+    const value = getElveRecord(item.name)?.[item.form] ?? 0
     return {
       id,
       name:           item.name,
