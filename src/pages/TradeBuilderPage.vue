@@ -466,7 +466,7 @@
                   </div>
                 </div>
               </div>
-              <span class="auto-val">{{ trade.offeredAmv.toFixed(4) }}</span>
+              <span class="auto-val">{{ trade.platform === 'elvebredd' ? (trade.offeredElve ?? 0).toFixed(4) : trade.offeredAmv.toFixed(4) }}</span>
             </div>
 
             <div class="auto-arrow">→</div>
@@ -481,7 +481,7 @@
                 <span class="auto-wanted-name">{{ trade.wanted.name }}</span>
                 <span class="auto-wanted-form" :style="{ color: FORM_COLOR_HEX[trade.wanted.form] }">{{ FORM_LABELS[trade.wanted.form] }}</span>
               </div>
-              <span class="auto-val">{{ trade.wantedAmv.toFixed(4) }}</span>
+              <span class="auto-val">{{ trade.platform === 'elvebredd' ? (trade.wantedElve ?? 0).toFixed(4) : trade.wantedAmv.toFixed(4) }}</span>
               <button
                 class="auto-exclude-btn"
                 :class="{ 'auto-exclude-btn--active': excludedWantedNames.includes(trade.wanted.name) }"
@@ -491,12 +491,22 @@
             </div>
 
             <div class="auto-deltas">
-              <span class="auto-delta-chip" :class="trade.amvDelta >= -1 ? 'chip--green' : 'chip--amber'">
-                AMV {{ trade.amvDelta.toFixed(1) }}%
-              </span>
-              <span v-if="trade.elveDelta != null" class="auto-delta-chip" :class="trade.elveDelta >= -1 ? 'chip--green' : 'chip--amber'">
-                Elve {{ trade.elveDelta.toFixed(1) }}%
-              </span>
+              <template v-if="trade.platform === 'elvebredd'">
+                <span v-if="trade.elveDelta != null" class="auto-delta-chip" :class="trade.elveDelta >= 0 ? 'chip--green' : 'chip--amber'">
+                  Elve {{ trade.elveDelta.toFixed(1) }}%
+                </span>
+                <span class="auto-delta-chip" :class="trade.amvDelta >= -1 ? 'chip--green' : 'chip--amber'">
+                  AMV {{ trade.amvDelta.toFixed(1) }}%
+                </span>
+              </template>
+              <template v-else>
+                <span class="auto-delta-chip" :class="trade.amvDelta >= -1 ? 'chip--green' : 'chip--amber'">
+                  AMV {{ trade.amvDelta.toFixed(1) }}%
+                </span>
+                <span v-if="trade.elveDelta != null" class="auto-delta-chip" :class="trade.elveDelta >= -1 ? 'chip--green' : 'chip--amber'">
+                  Elve {{ trade.elveDelta.toFixed(1) }}%
+                </span>
+              </template>
             </div>
 
             <div class="auto-status">
@@ -924,7 +934,7 @@ function disconnectAmvgg () {
 
 function buildElveScript (payloads: unknown[]): string {
   const p = JSON.stringify(payloads)
-  return `(async()=>{const token=window.turnstile.getResponse();if(!token){alert('No hay token — recargá la página');return;}const payloads=${p};let ok=0,fail=0;for(const p of payloads){p.turnstileToken=token;try{const r=await fetch('/api/create-listing',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(p)});const d=await r.json();if(d.id||d.success){ok++;console.log('✓',p.ownerGet[0]?.name);}else{fail++;console.error('✗',d);}}catch(e){fail++;console.error(e);}}console.log('Listo: '+ok+' ok, '+fail+' fallidos');alert('Listo: '+ok+' ok, '+fail+' fallidos');})();`
+  return `(async()=>{if(!window.turnstile){alert('Corré esto en elvebredd.com/create-listing');return;}const csrf=document.cookie.split(';').map(c=>c.trim()).find(c=>c.startsWith('csrfToken='))?.replace('csrfToken=','')||'';const payloads=${p};let ok=0,fail=0;async function freshToken(){let t=window.turnstile.getResponse();if(t)return t;try{window.turnstile.reset();}catch(e){}let n=0;while(!(t=window.turnstile.getResponse())&&n<40){await new Promise(r=>setTimeout(r,200));n++;}return t||'';}for(const p of payloads){const token=await freshToken();if(!token){console.error('Sin token — abortando');fail+=payloads.length-(ok+fail);break;}p.turnstileToken=token;try{const r=await fetch('/api/create-listing',{method:'POST',credentials:'include',headers:{'Content-Type':'application/json','x-csrf-token':csrf},body:JSON.stringify(p)});const d=await r.json();if(d.id||d.success){ok++;console.log('✓',p.ownerGet[0]?.name);}else{fail++;console.error('✗',d);}}catch(e){fail++;console.error(e);}try{window.turnstile.reset();}catch(e){}await new Promise(r=>setTimeout(r,500));}console.log('Listo: '+ok+' ok, '+fail+' fallidos');alert('Listo: '+ok+' ok, '+fail+' fallidos');})();`
 }
 
 async function copyElveSingleScript () {
