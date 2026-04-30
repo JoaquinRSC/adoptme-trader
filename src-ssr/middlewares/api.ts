@@ -922,67 +922,34 @@ export default defineSsrMiddleware(({ app }) => {
     }
   })
 
-  app.post('/api/trade/post-elve', async (req, res) => {
-    interface ElveItem { name: string; form: string }
-    const { cookie, offered, wanted, turnstileToken } = req.body as {
-      cookie:          string
-      offered:         ElveItem[]
-      wanted:          ElveItem[]
-      turnstileToken?: string
+  function buildElvePet (item: { name: string; form: string }, side: 'your' | 'their') {
+    const id    = elveIdMap.get(item.name) ?? 0
+    const attrs = { ...(FORM_TO_ELVE_ATTRS[item.form] ?? FORM_TO_ELVE_ATTRS['normal']!) }
+    const value = elveValuesCache.get(item.name)?.[item.form] ?? 0
+    return {
+      id,
+      name:           item.name,
+      image:          `/images/pets/${item.name}.png`,
+      value,
+      secondaryValue: value > 0 ? value / 240 : 0,
+      game:           'Adopt Me',
+      attributes:     attrs,
+      side,
     }
+  }
 
-    if (!cookie || !offered?.length || !wanted?.length)
-      return res.status(400).json({ ok: false, error: 'Missing required fields' })
-
+  app.post('/api/trade/elve-build-payloads', async (req, res) => {
+    interface ElveTradeSpec { offered: { name: string; form: string }[]; wanted: { name: string; form: string }[] }
+    const { trades } = req.body as { trades: ElveTradeSpec[] }
+    if (!trades?.length) return res.status(400).json({ ok: false, error: 'Missing trades' })
     await warmElveCache()
-
-    const buildElvePet = (item: ElveItem, side: 'your' | 'their') => {
-      const id    = elveIdMap.get(item.name) ?? 0
-      const attrs = { ...(FORM_TO_ELVE_ATTRS[item.form] ?? FORM_TO_ELVE_ATTRS['normal']!) }
-      const value = elveValuesCache.get(item.name)?.[item.form] ?? 0
-      return {
-        id,
-        name:           item.name,
-        image:          `/images/pets/${item.name}.png`,
-        value,
-        secondaryValue: value > 0 ? value / 240 : 0,
-        game:           'Adopt Me',
-        attributes:     attrs,
-        side,
-      }
-    }
-
-    const payload: Record<string, unknown> = {
+    const payloads = trades.map(t => ({
       game:      'Adopt Me',
       version:   elveVersion,
-      ownerGive: offered.map(p => buildElvePet(p, 'your')),
-      ownerGet:  wanted.map(p => buildElvePet(p, 'their')),
-    }
-    if (turnstileToken) payload['turnstileToken'] = turnstileToken
-
-    try {
-      const elveResp = await fetch('https://elvebredd.com/api/create-listing', {
-        method:  'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Cookie':       cookie,
-          'Referer':      'https://elvebredd.com/create-listing',
-          'Origin':       'https://elvebredd.com',
-          'User-Agent':   USER_AGENT,
-        },
-        body: JSON.stringify(payload),
-      })
-
-      const text = await elveResp.text()
-      if (!elveResp.ok)
-        return res.status(elveResp.status).json({ ok: false, error: `HTTP ${elveResp.status}: ${text.slice(0, 300)}` })
-
-      let data: unknown
-      try { data = JSON.parse(text) } catch { data = text }
-      return res.json({ ok: true, data })
-    } catch (e) {
-      return res.status(500).json({ ok: false, error: String(e) })
-    }
+      ownerGive: t.offered.map(p => buildElvePet(p, 'your')),
+      ownerGet:  t.wanted.map(p => buildElvePet(p, 'their')),
+    }))
+    return res.json({ ok: true, payloads })
   })
 
   app.post('/api/my-amv-trades', parseJson(), async (req, res) => {

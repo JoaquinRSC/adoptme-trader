@@ -184,7 +184,7 @@
     </div>
 
     <!-- Publish trade dialog -->
-    <q-dialog v-model="showPublish" @hide="postResult = null; elvePostResult = null; elveTurnstile = ''">
+    <q-dialog v-model="showPublish" @hide="postResult = null; elveSingleScriptCopied = false">
       <q-card class="publish-card">
         <div class="pub-header">
           <div class="dialog-title">Publish to AMVGG</div>
@@ -257,66 +257,23 @@
           <div class="pub-platform">
             <div class="pub-plat-info">
               <span class="pub-plat-logo">🦌</span>
-              <div>
-                <div class="pub-plat-name">Elvebredd</div>
-                <div class="pub-plat-status" :class="elveCookie ? 'status--on' : 'status--off'">
-                  {{ elveCookie ? 'Connected' : 'Not connected' }}
-                </div>
-              </div>
+              <div class="pub-plat-name">Elvebredd</div>
             </div>
-            <button v-if="elveCookie" class="btn-sm-link" style="color:var(--negative)" @click="disconnectElve">Disconnect</button>
           </div>
 
-          <template v-if="!elveCookie">
-            <div style="font-size:12px;color:var(--text-3);line-height:1.6">
-              DevTools (F12) → <b>Application</b> → Cookies → <i>elvebredd.com</i><br>
-              Copiá el encabezado <b>Cookie</b> completo del request (Network tab).
-            </div>
-            <q-input
-              v-model="cookieElveInput"
-              type="password"
-              dense outlined
-              label="Cookie de sesión"
-              placeholder="Pegá el valor completo del header Cookie"
-              style="font-size:12px"
-            />
-            <button class="btn-search" style="width:auto;padding:8px 20px;margin-top:0" :disabled="!cookieElveInput.trim()" @click="saveElveCookie">
-              Save & Connect
-            </button>
-          </template>
-
-          <template v-else>
-            <div v-if="elvePostResult?.ok" style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--positive);font-weight:700">
-              <span>✓</span> Trade publicado en Elvebredd
-            </div>
-            <div v-else-if="elvePostResult?.ok === false" style="font-size:12px;color:var(--negative);font-weight:600;line-height:1.5">
-              Error: {{ elvePostResult.error }}
-            </div>
-            <template v-if="!elvePostResult?.ok">
-              <div class="elve-bookmarklet-section">
-                <div class="elve-bm-label">1. Arrastrá esto a tu barra de bookmarks:</div>
-                <a :href="ELVE_BOOKMARKLET" class="elve-bookmarklet-link" draggable="true" @click.prevent>🔑 Get Elve Token</a>
-                <div class="elve-bm-label">2. En una tab de <b>elvebredd.com/create-listing</b>, hacé click → token copiado al clipboard.</div>
-                <div class="elve-bm-label">3. Pegá el token acá (válido ~5 min):</div>
-              </div>
-              <q-input
-                v-model="elveTurnstile"
-                dense outlined
-                label="Turnstile token"
-                style="font-size:12px"
-                clearable
-              />
-              <button
-                class="btn-search"
-                style="width:auto;padding:8px 20px;margin-top:0"
-                :disabled="postingElve || !elveTurnstile.trim()"
-                @click="publishToElve"
-              >
-                <q-spinner v-if="postingElve" size="14px" color="white" />
-                <span>{{ postingElve ? 'Publicando…' : 'Post a Elvebredd' }}</span>
-              </button>
-            </template>
-          </template>
+          <div style="font-size:12px;color:var(--text-3);line-height:1.6">
+            Copiá el script y correlo en la consola de <b>elvebredd.com/create-listing</b>.<br>
+            El token de Turnstile se obtiene automáticamente.
+          </div>
+          <button
+            class="btn-search"
+            style="width:auto;padding:8px 20px;margin-top:0"
+            :disabled="elveSingleScriptLoading"
+            @click="copyElveSingleScript"
+          >
+            <q-spinner v-if="elveSingleScriptLoading" size="14px" color="white" />
+            <span>{{ elveSingleScriptCopied ? '✓ Script copiado!' : elveSingleScriptLoading ? 'Generando…' : 'Copy Elve Script' }}</span>
+          </button>
         </div>
 
         <div class="pub-footer">
@@ -556,30 +513,19 @@
           <div v-if="autoElveGenError" class="auto-elve-note">{{ autoElveGenError }}</div>
 
           <!-- Elve publish section -->
-          <div v-if="autoEnableElve && pendingElveCount > 0 && !autoLoop && !autoPublishing" class="auto-elve-publish">
+          <div v-if="autoEnableElve && pendingElveCount > 0 && !autoLoop" class="auto-elve-publish">
             <div class="auto-elve-publish-label">
-              Publicar {{ pendingElveCount }} trades en Elvebredd — pegá un token del bookmarklet:
+              {{ pendingElveCount }} trades Elve — correlo en la consola de elvebredd.com/create-listing
             </div>
-            <div class="auto-elve-publish-row">
-              <q-input
-                v-model="autoElveTurnstile"
-                dense outlined
-                label="Turnstile token"
-                style="flex:1;font-size:12px"
-                clearable
-              />
-              <button
-                class="btn-search"
-                style="width:auto;padding:8px 16px;white-space:nowrap"
-                :disabled="!elveCookie || !autoElveTurnstile.trim()"
-                @click="publishElveAutoTrades"
-              >
-                Publish {{ pendingElveCount }} Elve
-              </button>
-            </div>
-            <div v-if="!elveCookie" style="font-size:11px;color:var(--negative)">
-              Conectá Elvebredd en el diálogo Publish primero.
-            </div>
+            <button
+              class="btn-search"
+              style="width:auto;padding:7px 16px;white-space:nowrap"
+              :disabled="elveScriptLoading"
+              @click="copyElveAutoScript"
+            >
+              <q-spinner v-if="elveScriptLoading" size="13px" color="white" />
+              <span>{{ elveScriptCopied ? '✓ Script copiado!' : elveScriptLoading ? 'Generando…' : 'Copy Elve Script' }}</span>
+            </button>
           </div>
         </div>
 
@@ -956,18 +902,11 @@ const cookieSessionToken = ref('')
 const posting            = ref(false)
 const postResult         = ref<{ ok: boolean; error?: string } | null>(null)
 
-const elveCookie      = ref('')
-const cookieElveInput = ref('')
-const postingElve     = ref(false)
-const elvePostResult  = ref<{ ok: boolean; error?: string } | null>(null)
-const elveTurnstile   = ref('')
-
-// eslint-disable-next-line no-useless-escape
-const ELVE_BOOKMARKLET = `javascript:(async()=>{if(!window.turnstile){alert('Abrí esto en elvebredd.com/create-listing');return;}const t=window.turnstile.getResponse();if(!t){alert('No hay token aún, recargá la página e intentá de nuevo');return;}await navigator.clipboard.writeText(t);alert('Token copiado!');})();`
+const elveSingleScriptLoading = ref(false)
+const elveSingleScriptCopied  = ref(false)
 
 onMounted(() => {
   amvggCookie.value = localStorage.getItem('amvgg_cookie') ?? ''
-  elveCookie.value  = localStorage.getItem('elve_cookie') ?? ''
 })
 
 function saveAmvggCookie () {
@@ -983,38 +922,32 @@ function disconnectAmvgg () {
   localStorage.removeItem('amvgg_cookie')
 }
 
-function saveElveCookie () {
-  elveCookie.value = cookieElveInput.value.trim()
-  localStorage.setItem('elve_cookie', elveCookie.value)
-  cookieElveInput.value = ''
+function buildElveScript (payloads: unknown[]): string {
+  const p = JSON.stringify(payloads)
+  return `(async()=>{const token=window.turnstile.getResponse();if(!token){alert('No hay token — recargá la página');return;}const payloads=${p};let ok=0,fail=0;for(const p of payloads){p.turnstileToken=token;try{const r=await fetch('/api/create-listing',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(p)});const d=await r.json();if(d.id||d.success){ok++;console.log('✓',p.ownerGet[0]?.name);}else{fail++;console.error('✗',d);}}catch(e){fail++;console.error(e);}}console.log('Listo: '+ok+' ok, '+fail+' fallidos');alert('Listo: '+ok+' ok, '+fail+' fallidos');})();`
 }
 
-function disconnectElve () {
-  elveCookie.value = ''
-  localStorage.removeItem('elve_cookie')
-}
-
-async function publishToElve () {
-  if (!selectedSuggestion.value || !elveCookie.value) return
-  postingElve.value    = true
-  elvePostResult.value = null
+async function copyElveSingleScript () {
+  if (!selectedSuggestion.value) return
+  elveSingleScriptLoading.value = true
   try {
-    const res  = await fetch('/api/trade/post-elve', {
+    const res  = await fetch('/api/trade/elve-build-payloads', {
       method:  'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        cookie:         elveCookie.value,
-        offered:        offeredPets.value.map(o => ({ name: o.pet.name, form: o.pet.form })),
-        wanted:         [{ name: selectedSuggestion.value!.name, form: selectedSuggestion.value!.form }],
-        turnstileToken: elveTurnstile.value.trim() || undefined,
+        trades: [{
+          offered: offeredPets.value.map(o => ({ name: o.pet.name, form: o.pet.form })),
+          wanted:  [{ name: selectedSuggestion.value!.name, form: selectedSuggestion.value!.form }],
+        }],
       }),
     })
-    const data = await res.json() as { ok: boolean; error?: string }
-    elvePostResult.value = data
-  } catch (e) {
-    elvePostResult.value = { ok: false, error: String(e) }
+    const data = await res.json() as { ok: boolean; payloads?: unknown[] }
+    if (!data.ok || !data.payloads?.length) return
+    await navigator.clipboard.writeText(buildElveScript(data.payloads))
+    elveSingleScriptCopied.value = true
+    setTimeout(() => { elveSingleScriptCopied.value = false }, 4000)
   } finally {
-    postingElve.value = false
+    elveSingleScriptLoading.value = false
   }
 }
 
@@ -1057,10 +990,11 @@ const autoPublishing    = ref(false)
 const autoTrades        = ref<AutoTrade[]>([])
 const autoGenError      = ref('')
 const autoElveGenError  = ref('')
-const autoElveTurnstile = ref('')
 const autoLoop          = ref(false)
 const autoEnableAmv     = ref(true)
 const autoEnableElve    = ref(true)
+const elveScriptLoading = ref(false)
+const elveScriptCopied  = ref(false)
 
 const pendingAmvCount  = computed(() => autoTrades.value.filter(t => t.platform === 'amvgg'      && t.status === 'pending').length)
 const pendingElveCount = computed(() => autoTrades.value.filter(t => t.platform === 'elvebredd'  && t.status === 'pending').length)
@@ -1100,7 +1034,6 @@ function scheduleNextLoop () {
     if (!autoLoop.value) return
     if (autoGenError.value || !autoTrades.value.length) { clearLoop(); return }
     if (autoEnableAmv.value) await publishAutoTrades()
-    if (autoLoop.value && autoEnableElve.value && elveCookie.value && autoElveTurnstile.value.trim()) await publishElveAutoTrades()
     if (autoLoop.value) scheduleNextLoop()
   }, LOOP_INTERVAL_S * 1000)
 }
@@ -1108,7 +1041,6 @@ function scheduleNextLoop () {
 async function startAutoLoop () {
   autoLoop.value = true
   if (autoEnableAmv.value) await publishAutoTrades()
-  if (autoLoop.value && autoEnableElve.value && elveCookie.value && autoElveTurnstile.value.trim()) await publishElveAutoTrades()
   if (autoLoop.value) scheduleNextLoop()
 }
 
@@ -1310,33 +1242,29 @@ async function publishAutoTrades () {
   autoPublishing.value = false
 }
 
-async function publishElveAutoTrades () {
-  if (!elveCookie.value) return
-  autoPublishing.value = true
-  const token = autoElveTurnstile.value.trim() || undefined
-  for (const trade of autoTrades.value) {
-    if (trade.platform !== 'elvebredd' || trade.status !== 'pending') continue
-    trade.status = 'posting'
-    try {
-      const res  = await fetch('/api/trade/post-elve', {
-        method:  'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          cookie:         elveCookie.value,
-          offered:        trade.offered.map(o => ({ name: o.name, form: o.form })),
-          wanted:         [{ name: trade.wanted.name, form: trade.wanted.form }],
-          turnstileToken: token,
-        }),
-      })
-      const data = await res.json() as { ok: boolean; error?: string }
-      trade.status = data.ok ? 'ok' : 'error'
-      trade.error  = data.error
-    } catch (e) {
-      trade.status = 'error'
-      trade.error  = String(e)
-    }
+async function copyElveAutoScript () {
+  const pending = autoTrades.value.filter(t => t.platform === 'elvebredd' && t.status === 'pending')
+  if (!pending.length) return
+  elveScriptLoading.value = true
+  try {
+    const res  = await fetch('/api/trade/elve-build-payloads', {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        trades: pending.map(t => ({
+          offered: t.offered.map(o => ({ name: o.name, form: o.form })),
+          wanted:  [{ name: t.wanted.name, form: t.wanted.form }],
+        })),
+      }),
+    })
+    const data = await res.json() as { ok: boolean; payloads?: unknown[] }
+    if (!data.ok || !data.payloads?.length) return
+    await navigator.clipboard.writeText(buildElveScript(data.payloads))
+    elveScriptCopied.value = true
+    setTimeout(() => { elveScriptCopied.value = false }, 4000)
+  } finally {
+    elveScriptLoading.value = false
   }
-  autoPublishing.value = false
 }
 
 // ── Delta helpers ─────────────────────────────────────────────────────────────
@@ -1877,37 +1805,6 @@ function deltaChipClass (delta: number) {
   margin: 4px 0;
 }
 
-.elve-bookmarklet-section {
-  display: flex;
-  flex-direction: column;
-  gap: 5px;
-}
-.elve-bm-label {
-  font-size: 11px;
-  color: var(--text-3);
-  line-height: 1.5;
-}
-.elve-bookmarklet-link {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  padding: 6px 12px;
-  background: var(--surface-3);
-  border: 1.5px dashed var(--border-hi);
-  border-radius: 8px;
-  font-size: 12px;
-  font-weight: 700;
-  color: var(--primary);
-  cursor: grab;
-  user-select: none;
-  text-decoration: none;
-  width: fit-content;
-  transition: background 0.15s, border-color 0.15s;
-}
-.elve-bookmarklet-link:hover {
-  background: var(--primary-dim);
-  border-color: var(--primary);
-}
 
 .pub-footer {
   padding: 12px 20px 16px;
