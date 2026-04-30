@@ -117,7 +117,7 @@ let   allPetsCacheFilled  = false
 
 const elveValuesCache  = new Map<string, Record<string, number>>()
 const elveIdMap        = new Map<string, number>()
-let   elveVersion      = 207
+let   elveVersion      = 243
 let   elveFetchDone    = false
 let   elveFetchInFlight: Promise<void> | null = null
 
@@ -913,6 +913,69 @@ export default defineSsrMiddleware(({ app }) => {
 
       const text = await amvResp.text()
       if (!amvResp.ok) return res.status(amvResp.status).json({ ok: false, error: text })
+
+      let data: unknown
+      try { data = JSON.parse(text) } catch { data = text }
+      return res.json({ ok: true, data })
+    } catch (e) {
+      return res.status(500).json({ ok: false, error: String(e) })
+    }
+  })
+
+  app.post('/api/trade/post-elve', async (req, res) => {
+    interface ElveItem { name: string; form: string }
+    const { cookie, offered, wanted, turnstileToken } = req.body as {
+      cookie:          string
+      offered:         ElveItem[]
+      wanted:          ElveItem[]
+      turnstileToken?: string
+    }
+
+    if (!cookie || !offered?.length || !wanted?.length)
+      return res.status(400).json({ ok: false, error: 'Missing required fields' })
+
+    await warmElveCache()
+
+    const buildElvePet = (item: ElveItem, side: 'your' | 'their') => {
+      const id    = elveIdMap.get(item.name) ?? 0
+      const attrs = { ...(FORM_TO_ELVE_ATTRS[item.form] ?? FORM_TO_ELVE_ATTRS['normal']!) }
+      const value = elveValuesCache.get(item.name)?.[item.form] ?? 0
+      return {
+        id,
+        name:           item.name,
+        image:          `/images/pets/${item.name}.png`,
+        value,
+        secondaryValue: value > 0 ? value / 240 : 0,
+        game:           'Adopt Me',
+        attributes:     attrs,
+        side,
+      }
+    }
+
+    const payload: Record<string, unknown> = {
+      game:      'Adopt Me',
+      version:   elveVersion,
+      ownerGive: offered.map(p => buildElvePet(p, 'your')),
+      ownerGet:  wanted.map(p => buildElvePet(p, 'their')),
+    }
+    if (turnstileToken) payload['turnstileToken'] = turnstileToken
+
+    try {
+      const elveResp = await fetch('https://elvebredd.com/api/create-listing', {
+        method:  'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Cookie':       cookie,
+          'Referer':      'https://elvebredd.com/create-listing',
+          'Origin':       'https://elvebredd.com',
+          'User-Agent':   USER_AGENT,
+        },
+        body: JSON.stringify(payload),
+      })
+
+      const text = await elveResp.text()
+      if (!elveResp.ok)
+        return res.status(elveResp.status).json({ ok: false, error: `HTTP ${elveResp.status}: ${text.slice(0, 300)}` })
 
       let data: unknown
       try { data = JSON.parse(text) } catch { data = text }

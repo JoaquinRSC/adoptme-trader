@@ -184,7 +184,7 @@
     </div>
 
     <!-- Publish trade dialog -->
-    <q-dialog v-model="showPublish" @hide="postResult = null">
+    <q-dialog v-model="showPublish" @hide="postResult = null; elvePostResult = null; elveTurnstile = ''">
       <q-card class="publish-card">
         <div class="pub-header">
           <div class="dialog-title">Publish to AMVGG</div>
@@ -249,6 +249,73 @@
             <button class="btn-search" style="width:auto;padding:8px 20px;margin-top:0" :disabled="!cookieSessionData.trim() || !cookieSessionToken.trim()" @click="saveAmvggCookie">
               Save & Connect
             </button>
+          </template>
+
+          <!-- Elvebredd section -->
+          <div class="pub-divider" />
+
+          <div class="pub-platform">
+            <div class="pub-plat-info">
+              <span class="pub-plat-logo">🦌</span>
+              <div>
+                <div class="pub-plat-name">Elvebredd</div>
+                <div class="pub-plat-status" :class="elveCookie ? 'status--on' : 'status--off'">
+                  {{ elveCookie ? 'Connected' : 'Not connected' }}
+                </div>
+              </div>
+            </div>
+            <button v-if="elveCookie" class="btn-sm-link" style="color:var(--negative)" @click="disconnectElve">Disconnect</button>
+          </div>
+
+          <template v-if="!elveCookie">
+            <div style="font-size:12px;color:var(--text-3);line-height:1.6">
+              DevTools (F12) → <b>Application</b> → Cookies → <i>elvebredd.com</i><br>
+              Copiá el encabezado <b>Cookie</b> completo del request (Network tab).
+            </div>
+            <q-input
+              v-model="cookieElveInput"
+              type="password"
+              dense outlined
+              label="Cookie de sesión"
+              placeholder="Pegá el valor completo del header Cookie"
+              style="font-size:12px"
+            />
+            <button class="btn-search" style="width:auto;padding:8px 20px;margin-top:0" :disabled="!cookieElveInput.trim()" @click="saveElveCookie">
+              Save & Connect
+            </button>
+          </template>
+
+          <template v-else>
+            <div v-if="elvePostResult?.ok" style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--positive);font-weight:700">
+              <span>✓</span> Trade publicado en Elvebredd
+            </div>
+            <div v-else-if="elvePostResult?.ok === false" style="font-size:12px;color:var(--negative);font-weight:600;line-height:1.5">
+              Error: {{ elvePostResult.error }}
+            </div>
+            <template v-if="!elvePostResult?.ok">
+              <div class="elve-bookmarklet-section">
+                <div class="elve-bm-label">1. Arrastrá esto a tu barra de bookmarks:</div>
+                <a :href="ELVE_BOOKMARKLET" class="elve-bookmarklet-link" draggable="true" @click.prevent>🔑 Get Elve Token</a>
+                <div class="elve-bm-label">2. En cualquier tab de elvebredd.com, hacé click → token copiado al clipboard.</div>
+                <div class="elve-bm-label">3. Pegá el token acá (válido ~5 min):</div>
+              </div>
+              <q-input
+                v-model="elveTurnstile"
+                dense outlined
+                label="Turnstile token"
+                style="font-size:12px"
+                clearable
+              />
+              <button
+                class="btn-search"
+                style="width:auto;padding:8px 20px;margin-top:0"
+                :disabled="postingElve || !elveTurnstile.trim()"
+                @click="publishToElve"
+              >
+                <q-spinner v-if="postingElve" size="14px" color="white" />
+                <span>{{ postingElve ? 'Publicando…' : 'Post a Elvebredd' }}</span>
+              </button>
+            </template>
           </template>
         </div>
 
@@ -397,6 +464,20 @@
       <q-card class="auto-card">
         <div class="pub-header">
           <div class="dialog-title">Auto Publish</div>
+          <div class="auto-platform-toggles">
+            <button
+              class="auto-platform-toggle"
+              :class="{ 'auto-platform-toggle--on': autoEnableAmv }"
+              :disabled="autoGenerating || autoPublishing"
+              @click="autoEnableAmv = !autoEnableAmv"
+            >AMV</button>
+            <button
+              class="auto-platform-toggle auto-platform-toggle--elve"
+              :class="{ 'auto-platform-toggle--on': autoEnableElve }"
+              :disabled="autoGenerating || autoPublishing"
+              @click="autoEnableElve = !autoEnableElve"
+            >Elve</button>
+          </div>
           <div class="auto-form-row">
             <span class="control-label" style="font-size:11px">Want form</span>
             <q-select v-model="desiredForm" :options="formOptions" outlined dense emit-value map-options style="width:110px" :disable="autoGenerating || autoPublishing" />
@@ -411,7 +492,9 @@
         <div v-else-if="autoGenError" class="auto-error">{{ autoGenError }}</div>
 
         <div v-else-if="autoTrades.length" class="auto-trades-list">
-          <div class="auto-trade-row" v-for="(trade, i) in autoTrades" :key="i">
+          <div class="auto-trade-row" v-for="(trade, i) in autoTrades" :key="i"
+            :class="trade.platform === 'elvebredd' ? 'auto-trade-row--elve' : ''"
+          >
             <div class="auto-side auto-side--offered">
               <div class="auto-offered-list">
                 <div class="auto-offered-pet" v-for="p in trade.offered" :key="p.id">
@@ -464,6 +547,39 @@
               <span v-else-if="trade.status === 'ok'" class="status-ok">✓</span>
               <span v-else-if="trade.status === 'error'" class="status-err" :title="trade.error">✗</span>
             </div>
+            <span class="auto-plat-badge" :class="trade.platform === 'amvgg' ? 'badge--amv' : 'badge--elve'">
+              {{ trade.platform === 'amvgg' ? 'AMV' : 'Elve' }}
+            </span>
+          </div>
+
+          <!-- Elve error note -->
+          <div v-if="autoElveGenError" class="auto-elve-note">{{ autoElveGenError }}</div>
+
+          <!-- Elve publish section -->
+          <div v-if="autoEnableElve && pendingElveCount > 0 && !autoLoop && !autoPublishing" class="auto-elve-publish">
+            <div class="auto-elve-publish-label">
+              Publicar {{ pendingElveCount }} trades en Elvebredd — pegá un token del bookmarklet:
+            </div>
+            <div class="auto-elve-publish-row">
+              <q-input
+                v-model="autoElveTurnstile"
+                dense outlined
+                label="Turnstile token"
+                style="flex:1;font-size:12px"
+                clearable
+              />
+              <button
+                class="btn-search"
+                style="width:auto;padding:8px 16px;white-space:nowrap"
+                :disabled="!elveCookie || !autoElveTurnstile.trim()"
+                @click="publishElveAutoTrades"
+              >
+                Publish {{ pendingElveCount }} Elve
+              </button>
+            </div>
+            <div v-if="!elveCookie" style="font-size:11px;color:var(--negative)">
+              Conectá Elvebredd en el diálogo Publish primero.
+            </div>
           </div>
         </div>
 
@@ -480,13 +596,13 @@
               Regenerate
             </button>
             <button
-              v-if="!autoGenerating && autoTrades.length && autoTrades.some(t => t.status === 'pending')"
+              v-if="!autoGenerating && autoEnableAmv && pendingAmvCount > 0"
               class="btn-search" style="width:auto;padding:8px 20px"
               :disabled="autoPublishing || !amvggCookie"
               @click="publishAutoTrades"
             >
               <q-spinner v-if="autoPublishing" size="14px" color="white" />
-              <span>{{ autoPublishing ? 'Publishing…' : `Publish ${autoTrades.filter(t => t.status === 'pending').length} trades` }}</span>
+              <span>{{ autoPublishing ? 'Publishing…' : `Publish ${pendingAmvCount} AMV` }}</span>
             </button>
             <button
               v-if="!autoGenerating && autoTrades.length && amvggCookie"
@@ -513,6 +629,7 @@ import {
 } from '@quasar/extras/material-icons'
 
 interface AutoTrade {
+  platform:     'amvgg' | 'elvebredd'
   offered:      InventoryPet[]
   offeredAmv:   number
   offeredElve:  number | null
@@ -839,8 +956,18 @@ const cookieSessionToken = ref('')
 const posting            = ref(false)
 const postResult         = ref<{ ok: boolean; error?: string } | null>(null)
 
+const elveCookie      = ref('')
+const cookieElveInput = ref('')
+const postingElve     = ref(false)
+const elvePostResult  = ref<{ ok: boolean; error?: string } | null>(null)
+const elveTurnstile   = ref('')
+
+// eslint-disable-next-line no-useless-escape
+const ELVE_BOOKMARKLET = `javascript:(async()=>{if(!window.turnstile){alert('Abrí esto en elvebredd.com');return;}window.turnstile.execute();let t='',n=0;while(!t&&n<50){await new Promise(r=>setTimeout(r,200));t=window.turnstile.getResponse();n++;}if(!t){alert('Token fallido, intentá de nuevo');return;}await navigator.clipboard.writeText(t);alert('Token copiado al clipboard!');})();`
+
 onMounted(() => {
   amvggCookie.value = localStorage.getItem('amvgg_cookie') ?? ''
+  elveCookie.value  = localStorage.getItem('elve_cookie') ?? ''
 })
 
 function saveAmvggCookie () {
@@ -854,6 +981,41 @@ function saveAmvggCookie () {
 function disconnectAmvgg () {
   amvggCookie.value = ''
   localStorage.removeItem('amvgg_cookie')
+}
+
+function saveElveCookie () {
+  elveCookie.value = cookieElveInput.value.trim()
+  localStorage.setItem('elve_cookie', elveCookie.value)
+  cookieElveInput.value = ''
+}
+
+function disconnectElve () {
+  elveCookie.value = ''
+  localStorage.removeItem('elve_cookie')
+}
+
+async function publishToElve () {
+  if (!selectedSuggestion.value || !elveCookie.value) return
+  postingElve.value    = true
+  elvePostResult.value = null
+  try {
+    const res  = await fetch('/api/trade/post-elve', {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        cookie:         elveCookie.value,
+        offered:        offeredPets.value.map(o => ({ name: o.pet.name, form: o.pet.form })),
+        wanted:         [{ name: selectedSuggestion.value!.name, form: selectedSuggestion.value!.form }],
+        turnstileToken: elveTurnstile.value.trim() || undefined,
+      }),
+    })
+    const data = await res.json() as { ok: boolean; error?: string }
+    elvePostResult.value = data
+  } catch (e) {
+    elvePostResult.value = { ok: false, error: String(e) }
+  } finally {
+    postingElve.value = false
+  }
 }
 
 async function publishTrade () {
@@ -889,12 +1051,19 @@ async function publishTrade () {
 
 // ── Auto Publish ──────────────────────────────────────────────────────────────
 
-const showAutoDialog  = ref(false)
-const autoGenerating  = ref(false)
-const autoPublishing  = ref(false)
-const autoTrades      = ref<AutoTrade[]>([])
-const autoGenError    = ref('')
-const autoLoop        = ref(false)
+const showAutoDialog    = ref(false)
+const autoGenerating    = ref(false)
+const autoPublishing    = ref(false)
+const autoTrades        = ref<AutoTrade[]>([])
+const autoGenError      = ref('')
+const autoElveGenError  = ref('')
+const autoElveTurnstile = ref('')
+const autoLoop          = ref(false)
+const autoEnableAmv     = ref(true)
+const autoEnableElve    = ref(true)
+
+const pendingAmvCount  = computed(() => autoTrades.value.filter(t => t.platform === 'amvgg'      && t.status === 'pending').length)
+const pendingElveCount = computed(() => autoTrades.value.filter(t => t.platform === 'elvebredd'  && t.status === 'pending').length)
 const loopCountdown   = ref(0)
 let   _loopTimer:      ReturnType<typeof setTimeout>  | null = null
 let   _countdownTimer: ReturnType<typeof setInterval> | null = null
@@ -930,14 +1099,16 @@ function scheduleNextLoop () {
     await generateAutoTrades()
     if (!autoLoop.value) return
     if (autoGenError.value || !autoTrades.value.length) { clearLoop(); return }
-    await publishAutoTrades()
+    if (autoEnableAmv.value) await publishAutoTrades()
+    if (autoLoop.value && autoEnableElve.value && elveCookie.value && autoElveTurnstile.value.trim()) await publishElveAutoTrades()
     if (autoLoop.value) scheduleNextLoop()
   }, LOOP_INTERVAL_S * 1000)
 }
 
 async function startAutoLoop () {
   autoLoop.value = true
-  await publishAutoTrades()
+  if (autoEnableAmv.value) await publishAutoTrades()
+  if (autoLoop.value && autoEnableElve.value && elveCookie.value && autoElveTurnstile.value.trim()) await publishElveAutoTrades()
   if (autoLoop.value) scheduleNextLoop()
 }
 
@@ -953,9 +1124,10 @@ function startAuto () {
 }
 
 async function generateAutoTrades () {
-  autoGenerating.value = true
-  autoTrades.value     = []
-  autoGenError.value   = ''
+  autoGenerating.value  = true
+  autoTrades.value      = []
+  autoGenError.value    = ''
+  autoElveGenError.value = ''
   try {
     await values.loadAllPets()
 
@@ -986,59 +1158,122 @@ async function generateAutoTrades () {
     const wantElveMap = new Map(wantElveBatch.map(r => [r.name, r.value]))
 
     const usedWanted = new Set<string>()
-    let attempts = 0
 
-    while (autoTrades.value.length < 5 && attempts < 300) {
-      attempts++
+    if (autoEnableAmv.value) {
+      let attempts = 0
+      while (autoTrades.value.length < 5 && attempts < 300) {
+        attempts++
 
-      const shuffled = [...valued].sort(() => Math.random() - 0.5)
-      const count    = Math.min(Math.floor(Math.random() * 4) + 2, shuffled.length)
-      const offered  = shuffled.slice(0, count)
+        const shuffled = [...valued].sort(() => Math.random() - 0.5)
+        const count    = Math.min(Math.floor(Math.random() * 4) + 2, shuffled.length)
+        const offered  = shuffled.slice(0, count)
 
-      const offeredAmv = offered.reduce((s, p) => s + (invAmvMap.get(`${p.name}|${p.form}`) ?? 0), 0)
-      const elveVals   = offered.map(p => invElveMap.get(`${p.name}|${p.form}`) ?? null)
-      const allHaveElve = elveVals.every(v => v != null)
-      const offeredElve = allHaveElve ? elveVals.reduce<number>((s, v) => s + (v ?? 0), 0) : null
+        const offeredAmv = offered.reduce((s, p) => s + (invAmvMap.get(`${p.name}|${p.form}`) ?? 0), 0)
+        const elveVals   = offered.map(p => invElveMap.get(`${p.name}|${p.form}`) ?? null)
+        const allHaveElve = elveVals.every(v => v != null)
+        const offeredElve = allHaveElve ? elveVals.reduce<number>((s, v) => s + (v ?? 0), 0) : null
 
-      if (offeredAmv === 0) continue
+        if (offeredAmv === 0) continue
 
-      const candidates = values.allPets.filter(p => {
-        if (usedWanted.has(p.name)) return false
-        if (excludedWantedNames.value.includes(p.name)) return false
-        if (offered.some(o => o.name === p.name)) return false
-        const wa = wantAmvMap.get(p.name)
-        if (!wa || wa === 0) return false
-        const ratio = wa / offeredAmv
-        if (ratio < 0.97 || ratio > 1.0) return false
-        const wd = allDemands[p.name]?.[desiredForm.value] ?? null
-        if (wd === 'Low' || wd === 'Very Low') return false
-        if (offeredElve != null && offeredElve > 0) {
-          const we = wantElveMap.get(p.name)
-          if (we != null && we / offeredElve < 0.98) return false
-        }
-        return true
-      })
+        const candidates = values.allPets.filter(p => {
+          if (usedWanted.has(p.name)) return false
+          if (excludedWantedNames.value.includes(p.name)) return false
+          if (offered.some(o => o.name === p.name)) return false
+          const wa = wantAmvMap.get(p.name)
+          if (!wa || wa === 0) return false
+          const ratio = wa / offeredAmv
+          if (ratio < 0.97 || ratio > 1.0) return false
+          const wd = allDemands[p.name]?.[desiredForm.value] ?? null
+          if (wd === 'Low' || wd === 'Very Low') return false
+          if (offeredElve != null && offeredElve > 0) {
+            const we = wantElveMap.get(p.name)
+            if (we != null && we / offeredElve < 0.98) return false
+          }
+          return true
+        })
 
-      if (!candidates.length) continue
+        if (!candidates.length) continue
 
-      const wanted     = candidates[Math.floor(Math.random() * candidates.length)]!
-      const wantedAmv  = wantAmvMap.get(wanted.name)!
-      const wantedElve = wantElveMap.get(wanted.name) ?? null
-      usedWanted.add(wanted.name)
+        const wanted     = candidates[Math.floor(Math.random() * candidates.length)]!
+        const wantedAmv  = wantAmvMap.get(wanted.name)!
+        const wantedElve = wantElveMap.get(wanted.name) ?? null
+        usedWanted.add(wanted.name)
 
-      autoTrades.value.push({
-        offered, offeredAmv, offeredElve,
-        wanted: { name: wanted.name, form: desiredForm.value },
-        wantedAmv, wantedElve,
-        amvDelta:  ((wantedAmv - offeredAmv) / offeredAmv) * 100,
-        elveDelta: offeredElve != null && wantedElve != null
-          ? ((wantedElve - offeredElve) / offeredElve) * 100 : null,
-        status: 'pending',
-      })
+        autoTrades.value.push({
+          platform: 'amvgg',
+          offered, offeredAmv, offeredElve,
+          wanted: { name: wanted.name, form: desiredForm.value },
+          wantedAmv, wantedElve,
+          amvDelta:  ((wantedAmv - offeredAmv) / offeredAmv) * 100,
+          elveDelta: offeredElve != null && wantedElve != null
+            ? ((wantedElve - offeredElve) / offeredElve) * 100 : null,
+          status: 'pending',
+        })
+      }
+
+      if (!autoTrades.value.some(t => t.platform === 'amvgg')) {
+        autoGenError.value = 'No matching trades found. Try a different form or add more pets.'
+      }
     }
 
-    if (!autoTrades.value.length) {
-      autoGenError.value = 'No matching trades found. Try a different form or add more pets.'
+    // ── Elve trades (10, criteria: 0% elve loss, max -1% amv loss) ──────────
+    if (autoEnableElve.value) {
+      const elveValued = inventory.pets.filter(p => {
+        if (excludedPetIds.value.includes(p.id)) return false
+        const va = invAmvMap.get(`${p.name}|${p.form}`)
+        const ve = invElveMap.get(`${p.name}|${p.form}`)
+        return va != null && va > 0 && ve != null && ve > 0
+      })
+
+      if (elveValued.length >= 2) {
+        let elveAttempts = 0
+        while (autoTrades.value.filter(t => t.platform === 'elvebredd').length < 10 && elveAttempts < 400) {
+          elveAttempts++
+          const shuffled   = [...elveValued].sort(() => Math.random() - 0.5)
+          const count      = Math.min(Math.floor(Math.random() * 4) + 2, shuffled.length)
+          const offered    = shuffled.slice(0, count)
+          const offeredAmv  = offered.reduce((s, p) => s + (invAmvMap.get(`${p.name}|${p.form}`) ?? 0), 0)
+          const offeredElve = offered.reduce((s, p) => s + (invElveMap.get(`${p.name}|${p.form}`) ?? 0), 0)
+          if (offeredAmv === 0 || offeredElve === 0) continue
+
+          const candidates = values.allPets.filter(p => {
+            if (usedWanted.has(p.name)) return false
+            if (excludedWantedNames.value.includes(p.name)) return false
+            if (offered.some(o => o.name === p.name)) return false
+            const wa = wantAmvMap.get(p.name)
+            if (!wa || wa === 0) return false
+            if (wa / offeredAmv < 0.99) return false
+            const we = wantElveMap.get(p.name)
+            if (we == null || we === 0) return false
+            if (we / offeredElve < 1.0) return false
+            const wd = allDemands[p.name]?.[desiredForm.value] ?? null
+            if (wd === 'Low' || wd === 'Very Low') return false
+            return true
+          })
+
+          if (!candidates.length) continue
+          const wanted     = candidates[Math.floor(Math.random() * candidates.length)]!
+          const wantedAmv  = wantAmvMap.get(wanted.name)!
+          const wantedElve = wantElveMap.get(wanted.name)!
+          usedWanted.add(wanted.name)
+
+          autoTrades.value.push({
+            platform: 'elvebredd',
+            offered, offeredAmv, offeredElve,
+            wanted: { name: wanted.name, form: desiredForm.value },
+            wantedAmv, wantedElve,
+            amvDelta:  ((wantedAmv - offeredAmv) / offeredAmv) * 100,
+            elveDelta: ((wantedElve - offeredElve) / offeredElve) * 100,
+            status: 'pending',
+          })
+        }
+        if (!autoTrades.value.some(t => t.platform === 'elvebredd'))
+          autoElveGenError.value = 'No Elve trades found (0% Elve loss + max -1% AMV). Try another form.'
+      } else {
+        autoElveGenError.value = elveValued.length === 0
+          ? 'No inventory pets with Elve values — Elve trades skipped.'
+          : 'Need at least 2 inventory pets with Elve values for Elve trades.'
+      }
     }
   } catch (e) {
     autoGenError.value = String(e)
@@ -1050,7 +1285,7 @@ async function generateAutoTrades () {
 async function publishAutoTrades () {
   autoPublishing.value = true
   for (const trade of autoTrades.value) {
-    if (trade.status !== 'pending') continue
+    if (trade.platform !== 'amvgg' || trade.status !== 'pending') continue
     if (!amvggCookie.value) break
     trade.status = 'posting'
     try {
@@ -1067,6 +1302,35 @@ async function publishAutoTrades () {
       trade.status = data.ok ? 'ok' : 'error'
       trade.error  = data.error
       if (!data.ok && data.error?.includes('401')) disconnectAmvgg()
+    } catch (e) {
+      trade.status = 'error'
+      trade.error  = String(e)
+    }
+  }
+  autoPublishing.value = false
+}
+
+async function publishElveAutoTrades () {
+  if (!elveCookie.value) return
+  autoPublishing.value = true
+  const token = autoElveTurnstile.value.trim() || undefined
+  for (const trade of autoTrades.value) {
+    if (trade.platform !== 'elvebredd' || trade.status !== 'pending') continue
+    trade.status = 'posting'
+    try {
+      const res  = await fetch('/api/trade/post-elve', {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          cookie:         elveCookie.value,
+          offered:        trade.offered.map(o => ({ name: o.name, form: o.form })),
+          wanted:         [{ name: trade.wanted.name, form: trade.wanted.form }],
+          turnstileToken: token,
+        }),
+      })
+      const data = await res.json() as { ok: boolean; error?: string }
+      trade.status = data.ok ? 'ok' : 'error'
+      trade.error  = data.error
     } catch (e) {
       trade.status = 'error'
       trade.error  = String(e)
@@ -1607,6 +1871,44 @@ function deltaChipClass (delta: number) {
 }
 .pub-result-icon { font-size: 14px; }
 
+.pub-divider {
+  border: none;
+  border-top: 1px solid var(--border);
+  margin: 4px 0;
+}
+
+.elve-bookmarklet-section {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+.elve-bm-label {
+  font-size: 11px;
+  color: var(--text-3);
+  line-height: 1.5;
+}
+.elve-bookmarklet-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 6px 12px;
+  background: var(--surface-3);
+  border: 1.5px dashed var(--border-hi);
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--primary);
+  cursor: grab;
+  user-select: none;
+  text-decoration: none;
+  width: fit-content;
+  transition: background 0.15s, border-color 0.15s;
+}
+.elve-bookmarklet-link:hover {
+  background: var(--primary-dim);
+  border-color: var(--primary);
+}
+
 .pub-footer {
   padding: 12px 20px 16px;
   display: flex;
@@ -1844,6 +2146,23 @@ function deltaChipClass (delta: number) {
 /* Auto dialog */
 .auto-card { width: 580px; max-width: 95vw; }
 .auto-form-row { display: flex; align-items: center; gap: 8px; margin-top: 8px; }
+
+.auto-platform-toggles { display: flex; gap: 6px; margin-top: 10px; }
+.auto-platform-toggle {
+  padding: 3px 12px;
+  border-radius: 99px;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text-3);
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: color 0.15s, background 0.15s, border-color 0.15s;
+  letter-spacing: 0.04em;
+}
+.auto-platform-toggle:disabled { opacity: 0.4; cursor: not-allowed; }
+.auto-platform-toggle--on { background: var(--primary); border-color: var(--primary); color: #fff; }
+.auto-platform-toggle--elve.auto-platform-toggle--on { background: #0d9488; border-color: #0d9488; }
 .auto-generating { display: flex; align-items: center; gap: 10px; padding: 24px 20px; color: var(--text-2); font-size: 14px; }
 .auto-error { padding: 16px 20px; color: var(--negative); font-size: 13px; font-weight: 600; }
 .auto-trades-list { padding: 10px 16px; display: flex; flex-direction: column; gap: 6px; max-height: 380px; overflow-y: auto; }
@@ -1894,6 +2213,40 @@ function deltaChipClass (delta: number) {
 .auto-exclude-btn--active { color: var(--negative); }
 .status-ok  { color: var(--positive); }
 .status-err { color: var(--negative); }
+
+.auto-trade-row--elve { border-color: rgba(99, 210, 190, 0.25); }
+
+.auto-plat-badge {
+  flex-shrink: 0;
+  font-size: 8px;
+  font-weight: 800;
+  letter-spacing: 0.5px;
+  padding: 2px 5px;
+  border-radius: 4px;
+  text-transform: uppercase;
+}
+.badge--amv  { background: rgba(99, 132, 255, 0.2); color: #6384ff; }
+.badge--elve { background: rgba(99, 210, 190, 0.2); color: #63d2be; }
+
+.auto-elve-note {
+  font-size: 11px;
+  color: var(--text-3);
+  padding: 6px 4px 2px;
+  font-weight: 600;
+}
+
+.auto-elve-publish {
+  margin-top: 10px;
+  padding: 10px 12px;
+  background: rgba(99, 210, 190, 0.06);
+  border: 1px solid rgba(99, 210, 190, 0.2);
+  border-radius: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.auto-elve-publish-label { font-size: 11px; color: var(--text-2); font-weight: 600; }
+.auto-elve-publish-row { display: flex; gap: 8px; align-items: center; }
 
 .loop-countdown {
   font-size: 12px;
