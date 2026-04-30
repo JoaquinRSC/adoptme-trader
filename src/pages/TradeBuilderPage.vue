@@ -296,7 +296,7 @@
               <div class="elve-bookmarklet-section">
                 <div class="elve-bm-label">1. Arrastrá esto a tu barra de bookmarks:</div>
                 <a :href="ELVE_BOOKMARKLET" class="elve-bookmarklet-link" draggable="true" @click.prevent>🔑 Get Elve Token</a>
-                <div class="elve-bm-label">2. En cualquier tab de elvebredd.com, hacé click → token copiado al clipboard.</div>
+                <div class="elve-bm-label">2. En una tab de <b>elvebredd.com/create-listing</b>, hacé click → token copiado al clipboard.</div>
                 <div class="elve-bm-label">3. Pegá el token acá (válido ~5 min):</div>
               </div>
               <q-input
@@ -963,7 +963,7 @@ const elvePostResult  = ref<{ ok: boolean; error?: string } | null>(null)
 const elveTurnstile   = ref('')
 
 // eslint-disable-next-line no-useless-escape
-const ELVE_BOOKMARKLET = `javascript:(async()=>{if(!window.turnstile){alert('Abrí esto en elvebredd.com');return;}window.turnstile.execute();let t='',n=0;while(!t&&n<50){await new Promise(r=>setTimeout(r,200));t=window.turnstile.getResponse();n++;}if(!t){alert('Token fallido, intentá de nuevo');return;}await navigator.clipboard.writeText(t);alert('Token copiado al clipboard!');})();`
+const ELVE_BOOKMARKLET = `javascript:(async()=>{if(!window.turnstile){alert('Abrí esto en elvebredd.com/create-listing');return;}const t=window.turnstile.getResponse();if(!t){alert('No hay token aún, recargá la página e intentá de nuevo');return;}await navigator.clipboard.writeText(t);alert('Token copiado!');})();`
 
 onMounted(() => {
   amvggCookie.value = localStorage.getItem('amvgg_cookie') ?? ''
