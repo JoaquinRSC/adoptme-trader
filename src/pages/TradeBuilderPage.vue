@@ -1184,10 +1184,12 @@ async function generateAutoTrades () {
             if (offered.some(o => o.name === p.name)) return false
             const wa = wantAmvMap.get(p.name)
             if (!wa || wa === 0) return false
-            if (wa / offeredAmv < 0.99) return false
+            const amvRatio = wa / offeredAmv
+            if (amvRatio < 0.97 || amvRatio > 1.03) return false
             const we = wantElveMap.get(p.name)
             if (we == null || we === 0) return false
-            if (we / offeredElve < 1.0) return false
+            const elveRatio = we / offeredElve
+            if (elveRatio < 1.0 || elveRatio > 1.10) return false
             const wd = allDemands[p.name]?.[desiredForm.value] ?? null
             if (wd === 'Low' || wd === 'Very Low') return false
             return true
