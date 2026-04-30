@@ -523,14 +523,14 @@
           <div v-if="autoElveGenError" class="auto-elve-note">{{ autoElveGenError }}</div>
 
           <!-- Elve publish section -->
-          <div v-if="autoEnableElve && pendingElveCount > 0 && !autoLoop" class="auto-elve-publish">
+          <div v-if="autoEnableElve && pendingElveCount > 0" class="auto-elve-publish">
             <div class="auto-elve-publish-label">
               {{ pendingElveCount }} trades Elve — correlo en la consola de elvebredd.com/create-listing
             </div>
             <button
               class="btn-search"
               style="width:auto;padding:7px 16px;white-space:nowrap"
-              :disabled="elveScriptLoading"
+              :disabled="elveScriptLoading || autoGenerating"
               @click="copyElveAutoScript"
             >
               <q-spinner v-if="elveScriptLoading" size="13px" color="white" />
