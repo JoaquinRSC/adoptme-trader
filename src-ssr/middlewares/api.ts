@@ -119,7 +119,8 @@ const elveValuesCache  = new Map<string, Record<string, number>>()
 const elveIdMap        = new Map<string, number>()
 
 // Elvebredd omits periods in abbreviated titles (e.g. "Mr" instead of "Mr.")
-function getElveRecord (name: string): Record<string, number> | undefined {
+function getElveRecord (name: string | undefined): Record<string, number> | undefined {
+  if (!name) return undefined
   return elveValuesCache.get(name) ?? elveValuesCache.get(name.replace(/\.(?=\s|$)/g, ''))
 }
 let   elveVersion      = 243
@@ -622,7 +623,8 @@ async function browseMarket (payload: {
   const results: BrowsedTrade[] = []
   const errors:  string[] = []
 
-  function cachedValue (name: string, petForm: string, platform: 'amvgg' | 'elvebredd'): number | null {
+  function cachedValue (name: string | undefined, petForm: string, platform: 'amvgg' | 'elvebredd'): number | null {
+    if (!name) return null
     if (platform === 'elvebredd') return getElveRecord(name)?.[petForm] ?? itemElveValueByName.get(name) ?? null
     const petVal = detailsCache.get(name)?.values[petForm] ?? null
     if (petVal !== null) return petVal
