@@ -137,11 +137,11 @@ let   itemsCacheFilled = false
 
 // ── Fetch helpers ─────────────────────────────────────────────────────────────
 
-function fetchWithTimeout (url: string, timeoutMs = 12000): Promise<Response> {
+function fetchWithTimeout (url: string, timeoutMs = 12000, extraHeaders: Record<string, string> = {}): Promise<Response> {
   const controller = new AbortController()
   const id = setTimeout(() => controller.abort(), timeoutMs)
   return fetch(url, {
-    headers: { 'User-Agent': USER_AGENT },
+    headers: { 'User-Agent': USER_AGENT, ...extraHeaders },
     signal: controller.signal,
   }).finally(() => clearTimeout(id))
 }
@@ -655,7 +655,7 @@ async function browseMarket (payload: {
     for (let p = 0; p < pages; p++) {
       const url = cursor ? `${baseUrl}&cursor=${encodeURIComponent(cursor)}` : baseUrl
       let res: Response
-      try { res = await fetchWithTimeout(url) } catch (e) { errors.push(`AMVGG fetch error: ${e}`); break }
+      try { res = await fetchWithTimeout(url, 12000, { 'Referer': 'https://amvgg.com/trades' }) } catch (e) { errors.push(`AMVGG fetch error: ${e}`); break }
       if (!res.ok) { errors.push(`AMVGG HTTP ${res.status} for ${url}`); break }
       const data = await res.json() as AmvggResp
 
