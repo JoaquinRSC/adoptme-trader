@@ -150,11 +150,15 @@ function curlFetch (url: string, timeoutMs = 12000, extraHeaders: string[] = [])
   return new Promise((resolve, reject) => {
     const timer = setTimeout(() => reject(new Error('curl timeout')), timeoutMs)
     const headerArgs = extraHeaders.flatMap(h => ['-H', h])
-    execFile('curl', ['-s', '--max-time', String(Math.floor(timeoutMs / 1000)), '-A', USER_AGENT, ...headerArgs, url], { maxBuffer: 10 * 1024 * 1024 }, (err, stdout) => {
+    execFile('curl', ['-s', '-w', '\n%{http_code}', '--max-time', String(Math.floor(timeoutMs / 1000)), '-A', USER_AGENT, ...headerArgs, url], { maxBuffer: 10 * 1024 * 1024 }, (err, stdout) => {
       clearTimeout(timer)
       if (err) { reject(err); return }
-      if (!stdout || stdout.length < 2) { resolve({ ok: false, status: 0, json: async () => { throw new Error('empty') } }); return }
-      resolve({ ok: true, status: 200, json: async <T>() => JSON.parse(stdout) as T })
+      const lastNl  = stdout.lastIndexOf('\n')
+      const body    = lastNl >= 0 ? stdout.slice(0, lastNl) : stdout
+      const status  = parseInt(lastNl >= 0 ? stdout.slice(lastNl + 1).trim() : '0') || 0
+      const ok      = status >= 200 && status < 300
+      if (!ok || !body) { resolve({ ok: false, status, json: async () => { throw new Error('empty') } }); return }
+      resolve({ ok: true, status, json: async <T>() => JSON.parse(body) as T })
     })
   })
 }
@@ -654,10 +658,10 @@ async function browseMarket (payload: {
     let cursor: string | undefined
     for (let p = 0; p < pages; p++) {
       const url = cursor ? `${baseUrl}&cursor=${encodeURIComponent(cursor)}` : baseUrl
-      let res: Response
-      try { res = await fetchWithTimeout(url, 12000, { 'Referer': 'https://amvgg.com/trades' }) } catch (e) { errors.push(`AMVGG fetch error: ${e}`); break }
+      let res: { ok: boolean; status: number; json: <T>() => Promise<T> }
+      try { res = await curlFetch(url, 12000, ['Referer: https://amvgg.com/trades', 'Accept: application/json']) } catch (e) { errors.push(`AMVGG fetch error: ${e}`); break }
       if (!res.ok) { errors.push(`AMVGG HTTP ${res.status} for ${url}`); break }
-      const data = await res.json() as AmvggResp
+      const data = await res.json<AmvggResp>()
 
       for (const trade of data.trades) {
         const mapItem = (item: AmvggItem, emptyFallback: string): BrowsedTradePet => {
