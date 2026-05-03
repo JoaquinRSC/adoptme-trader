@@ -163,6 +163,21 @@ function curlFetch (url: string, timeoutMs = 12000, extraHeaders: string[] = [])
   })
 }
 
+function curlPost (url: string, jsonBody: string, headers: string[] = [], timeoutMs = 12000): Promise<{ ok: boolean; status: number; text: () => string }> {
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error('curl timeout')), timeoutMs)
+    const headerArgs = headers.flatMap(h => ['-H', h])
+    execFile('curl', ['-s', '-w', '\n%{http_code}', '-X', 'POST', '--data-binary', jsonBody, '--max-time', String(Math.floor(timeoutMs / 1000)), '-A', USER_AGENT, ...headerArgs, url], { maxBuffer: 10 * 1024 * 1024 }, (err, stdout) => {
+      clearTimeout(timer)
+      if (err) { reject(err); return }
+      const lastNl = stdout.lastIndexOf('\n')
+      const body   = lastNl >= 0 ? stdout.slice(0, lastNl) : stdout
+      const status = parseInt(lastNl >= 0 ? stdout.slice(lastNl + 1).trim() : '0') || 0
+      resolve({ ok: status >= 200 && status < 300, status, text: () => body })
+    })
+  })
+}
+
 // ── Items cache (non-pet categories) ─────────────────────────────────────────
 
 async function warmItemsCache (): Promise<void> {
@@ -911,18 +926,18 @@ export default defineSsrMiddleware(({ app }) => {
     }
 
     try {
-      const amvResp = await fetch('https://amvgg.com/api/createPost', {
-        method:  'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Cookie':       cookie,
-          'Referer':      'https://amvgg.com/trades/create',
-          'User-Agent':   USER_AGENT,
-        },
-        body: JSON.stringify(payload),
-      })
+      const amvResp = await curlPost(
+        'https://amvgg.com/api/createPost',
+        JSON.stringify(payload),
+        [
+          'Content-Type: application/json',
+          `Cookie: ${cookie}`,
+          'Referer: https://amvgg.com/trades/create',
+          'Origin: https://amvgg.com',
+        ],
+      )
 
-      const text = await amvResp.text()
+      const text = amvResp.text()
       if (!amvResp.ok) return res.status(amvResp.status).json({ ok: false, error: text })
 
       let data: unknown
