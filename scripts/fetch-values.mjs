@@ -20,15 +20,11 @@ mkdirSync(DATA_DIR, { recursive: true })
 
 const UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36'
 
-async function get (url, timeoutMs = 20000) {
-  const ctrl  = new AbortController()
-  const timer = setTimeout(() => ctrl.abort(), timeoutMs)
-  try {
-    const res = await fetch(url, { headers: { 'User-Agent': UA }, signal: ctrl.signal })
-    return res
-  } finally {
-    clearTimeout(timer)
-  }
+function curlGet (url, maxBufferMB = 50) {
+  return execSync(
+    `curl -s -A "${UA}" "${url}"`,
+    { maxBuffer: maxBufferMB * 1024 * 1024 }
+  ).toString()
 }
 
 // ── AMVGG ─────────────────────────────────────────────────────────────────────
@@ -94,9 +90,13 @@ function applyAmvggFormula (v, category) {
 
 async function fetchAmvgg () {
   process.stdout.write('Fetching AMVGG values... ')
-  const res = await get('https://amvgg.com/values/pets')
-  if (!res.ok) throw new Error(`HTTP ${res.status}`)
-  const html = await res.text()
+  let html
+  try {
+    html = curlGet('https://amvgg.com/values/pets')
+  } catch (e) {
+    throw new Error(`curl failed: ${e.message}`)
+  }
+  if (!html || html.length < 1000) throw new Error('Empty or too-short response from curl')
 
   const namePositions = []
   const nameRe = /\\"name\\":\\"([^"\\]+)\\"/g
@@ -290,9 +290,13 @@ const NON_PET_CATEGORIES = [
 ]
 
 async function fetchAmvggCategory (slug) {
-  const res = await get(`https://amvgg.com/values/${slug}`)
-  if (!res.ok) throw new Error(`HTTP ${res.status}`)
-  const html = await res.text()
+  let html
+  try {
+    html = curlGet(`https://amvgg.com/values/${slug}`, 10)
+  } catch (e) {
+    throw new Error(`curl failed: ${e.message}`)
+  }
+  if (!html || html.length < 1000) throw new Error('Empty or too-short response')
 
   const result = {}
   const nameRe = /\\"name\\":\\"([^"\\]+)\\"/g
