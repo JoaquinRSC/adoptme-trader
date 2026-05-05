@@ -302,7 +302,7 @@
               class="picker-tab"
               :class="{ 'picker-tab--active': pickerTab === 'mine' }"
               @click="pickerTab = 'mine'"
-            >My Pets</button>
+            >My Items</button>
             <button
               class="picker-tab"
               :class="{ 'picker-tab--active': pickerTab === 'other' }"
@@ -312,16 +312,33 @@
         </q-card-section>
         <q-separator style="border-color: var(--border)" />
 
-        <!-- My Pets tab -->
+        <!-- My Items tab -->
         <q-card-section v-if="pickerTab === 'mine'">
+          <div class="cat-picker-row" v-if="myItemsAvailableCategories.size > 1">
+            <button
+              class="cat-picker-btn"
+              :class="{ 'cat-picker-btn--active': myItemsCategoryFilter === 'all' }"
+              @click="myItemsCategoryFilter = 'all'"
+            >All</button>
+            <button
+              v-for="cat in myItemsCategoryFilterOptions"
+              :key="cat.value"
+              class="cat-picker-btn"
+              :class="{ 'cat-picker-btn--active': myItemsCategoryFilter === cat.value }"
+              @click="myItemsCategoryFilter = cat.value"
+            >{{ cat.label }}</button>
+          </div>
           <div class="empty-panel" v-if="!availableInventory.length">
-            No pets available — add some in My Pets first.
+            No items in inventory — add pets or items from My Pets first.
+          </div>
+          <div class="empty-panel" v-else-if="!filteredSortedAvailableInventory.length">
+            No items in this category.
           </div>
           <div class="picker-grid" v-else>
             <div
               class="picker-card-item"
               :class="{ 'picker-card-item--excluded': excludedPetIds.includes(pet.id) }"
-              v-for="pet in sortedAvailableInventory"
+              v-for="pet in filteredSortedAvailableInventory"
               :key="pet.id"
               @click="addOffered(pet); showInventoryPicker = false"
             >
@@ -690,10 +707,11 @@ watch(petSearch, async (q) => {
 })
 
 function resetPicker () {
-  pickerTab.value      = 'mine'
-  pickerCategory.value = 'pet'
-  petSearch.value      = ''
-  searchResults.value  = []
+  pickerTab.value            = 'mine'
+  pickerCategory.value       = 'pet'
+  myItemsCategoryFilter.value = 'all'
+  petSearch.value            = ''
+  searchResults.value        = []
   otherResetForm()
 }
 
@@ -710,17 +728,43 @@ function addOtherPet (name: string) {
 
 const formOptions = Object.entries(FORM_LABELS).map(([value, label]) => ({ value, label }))
 
+const myItemsCategoryFilter = ref<'all' | ItemCategory>('all')
+
 const availableInventory = computed(() =>
   inventory.pets.filter(p => !offeredPets.value.some(o => o.pet.id === p.id))
 )
 
-const sortedAvailableInventory = computed(() =>
-  [...availableInventory.value].sort((a, b) => {
+const myItemsAvailableCategories = computed(() => {
+  const cats = new Set<ItemCategory>()
+  for (const p of availableInventory.value) cats.add(p.category ?? 'pet')
+  return cats
+})
+
+const myItemsCategoryFilterOptions = computed(() =>
+  [
+    { label: 'Pets', value: 'pet' as ItemCategory },
+    { label: 'Pet Wear', value: 'petWear' as ItemCategory },
+    { label: 'Eggs', value: 'egg' as ItemCategory },
+    { label: 'Strollers', value: 'stroller' as ItemCategory },
+    { label: 'Food', value: 'food' as ItemCategory },
+    { label: 'Vehicles', value: 'vehicle' as ItemCategory },
+    { label: 'Toys', value: 'toy' as ItemCategory },
+    { label: 'Gifts', value: 'gift' as ItemCategory },
+    { label: 'Stickers', value: 'sticker' as ItemCategory },
+    { label: 'Houses', value: 'house' as ItemCategory },
+  ].filter(opt => myItemsAvailableCategories.value.has(opt.value))
+)
+
+const filteredSortedAvailableInventory = computed(() => {
+  const base = myItemsCategoryFilter.value === 'all'
+    ? availableInventory.value
+    : availableInventory.value.filter(p => (p.category ?? 'pet') === myItemsCategoryFilter.value)
+  return [...base].sort((a, b) => {
     const va = values.getCached(a.name, a.form) ?? -1
     const vb = values.getCached(b.name, b.form) ?? -1
     return vb - va
   })
-)
+})
 
 watch(showInventoryPicker, async (open) => {
   if (open && inventory.pets.length) {
