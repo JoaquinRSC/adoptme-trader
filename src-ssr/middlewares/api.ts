@@ -137,6 +137,8 @@ let   itemsCacheFilled = false
 
 // ── Fetch helpers ─────────────────────────────────────────────────────────────
 
+const sleep = (ms: number) => new Promise<void>(r => setTimeout(r, ms))
+
 function fetchWithTimeout (url: string, timeoutMs = 12000, extraHeaders: Record<string, string> = {}): Promise<Response> {
   const controller = new AbortController()
   const id = setTimeout(() => controller.abort(), timeoutMs)
@@ -721,8 +723,9 @@ async function browseMarket (payload: {
     for (let p = 0; p < elvePages; p++) {
       let data: ElveResp | null = null
       try {
-        const r = await curlFetch(`${elveBaseUrl}&offset=${p * 50}`, 12000, elveHeaders)
-        if (!r.ok) { errors.push(`Elvebredd HTTP ${r.status} (offset ${p * 50})`); break }
+        let r = await curlFetch(`${elveBaseUrl}&offset=${p * 50}`, 12000, elveHeaders)
+        if (r.status === 429) { await sleep(3000); r = await curlFetch(`${elveBaseUrl}&offset=${p * 50}`, 12000, elveHeaders) }
+        if (!r.ok) { errors.push(r.status === 429 ? 'Elvebredd rate limited — try again shortly' : `Elvebredd error (HTTP ${r.status})`); break }
         data = await r.json<ElveResp>()
       } catch (e) { errors.push(`Elvebredd fetch error: ${e}`); break }
       if (!data || (data as { ok?: boolean }).ok === false || !Array.isArray(data.listings)) break
