@@ -1098,15 +1098,14 @@ async function startAutoLoop () {
   if (autoLoop.value) scheduleNextLoop()
 }
 
-watch(showAutoDialog, (open) => { if (!open) clearLoop() })
 onUnmounted(() => clearLoop())
 
 function startAuto () {
   if (!amvggCookie.value) { showPublish.value = true; return }
   showAutoDialog.value = true
-  autoTrades.value     = []
-  autoGenError.value   = ''
-  void generateAutoTrades()
+  if (!autoTrades.value.length && !autoGenerating.value) {
+    void generateAutoTrades()
+  }
 }
 
 async function generateAutoTrades () {
