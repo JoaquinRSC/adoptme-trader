@@ -434,7 +434,7 @@
     </q-dialog>
 
     <!-- Auto Publish dialog -->
-    <q-dialog v-model="showAutoDialog" persistent @hide="() => { if (!autoPublishing) { autoTrades.value = []; autoGenError.value = '' } }">
+    <q-dialog v-model="showAutoDialog" persistent>
       <q-card class="auto-card">
         <div class="pub-header">
           <div class="dialog-title">Auto Publish</div>
