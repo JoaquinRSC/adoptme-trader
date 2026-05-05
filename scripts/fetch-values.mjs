@@ -263,7 +263,7 @@ async function fetchElve () {
     if (!catKey) continue
     const before = html.slice(Math.max(0, tm.index - 250), tm.index)
     const after  = html.slice(tm.index, Math.min(html.length, tm.index + 250))
-    const valMatch  = before.match(/\\"value\\":([\d.]+)(?![\d.])/)
+    const valMatch  = before.match(/\\"(?:value|rvalue)\\":([\d.]+)(?![\d.])/)
     const nameMatch = after.match(/\\"name\\":\\"([^"\\]+)\\"/)
     if (!valMatch || !nameMatch) continue
     const name = ELVE_NAME_MAP[nameMatch[1]] ?? nameMatch[1]
