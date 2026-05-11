@@ -22,11 +22,12 @@ pets-full.json
 # Playwright MCP session data
 .playwright-mcp/
 
-# Sensitive: session cookies / auth tokens (future phases)
+# Sensitive: session cookies / auth tokens
 *.cookie
 *.session
 auth-tokens.json
 sessions/
+godmode-state.json     # godmode worker state (encrypted AMVGG cookie + config) — lives on the /data volume in prod, here only in local dev
 
 # Sensitive: environment / secrets
 .env

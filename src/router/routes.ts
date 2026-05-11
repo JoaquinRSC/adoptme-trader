@@ -11,6 +11,7 @@ const routes: RouteRecordRaw[] = [
       { name: 'trade-builder', path: 'trade-builder', component: () => import('pages/TradeBuilderPage.vue') },
       { name: 'my-trades',     path: 'my-trades',     component: () => import('pages/MyTradesPage.vue')     },
       { name: 'browse-market', path: 'browse-market', component: () => import('pages/BrowseMarketPage.vue')  },
+      { name: 'godmode',       path: 'godmode',       component: () => import('pages/GodmodePage.vue')      },
     ],
   },
   { path: '/login', component: () => import('pages/LoginPage.vue') },
