@@ -11,13 +11,21 @@ primary_region = 'gru'
 [http_service]
   internal_port = 3000
   force_https = true
+  # Keep one machine running 24/7 so the godmode worker's scheduled tick keeps firing
+  # (a stopped machine runs no JS). Auto-start still spins extras up under load.
   auto_stop_machines = 'stop'
   auto_start_machines = true
-  min_machines_running = 0
+  min_machines_running = 1
   processes = ['app']
 
+# Persistent storage for the godmode worker state (encrypted AMVGG cookie + config + log).
+# Create once:  flyctl volumes create godmode_data --size 1 --region gru
+[[mounts]]
+  source = 'godmode_data'
+  destination = '/data'
+
 [[vm]]
-  memory = '256mb'
+  memory = '512mb'
   cpu_kind = 'shared'
   cpus = 1
-  memory_mb = 256
+  memory_mb = 512

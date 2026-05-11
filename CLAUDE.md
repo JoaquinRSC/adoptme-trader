@@ -56,6 +56,9 @@ The `Dockerfile` copies these into the Fly.io image. The server loads them at st
 | `GET /api/pets/list` | GET | full pet name list |
 | `GET /api/pets/search?q=` | GET | filtered pet name list |
 | `POST /api/trade/browse` | POST | browse AMVGG trades for a searched pet |
+| `GET/POST /api/godmode/*` | — | godmode worker control (status, log SSE, config, enable, dry-run, cookie, run-once) — see below |
+
+`/api/pet/*`, `/api/pets/*` and `/api/item(s)/*` are **public** (no app password — read-only value data); everything else under `/api/` requires the `amt_session` cookie (`src-ssr/middlewares/auth.ts`).
 
 ### Key files
 
@@ -69,10 +72,12 @@ The `Dockerfile` copies these into the Fly.io image. The server loads them at st
 - `src/pages/TradeBuilderPage.vue` — Offered pets + form selector + demand-adjusted fairness score + suggestions (±20% tolerance); My Pets picker sorted by cached value
 - `src/pages/BrowseMarketPage.vue` — Browse AMVGG trades for a pet you want to offer; layout: You give (left) ↔ They offer (right); filters: Good & Fair / Good only / OP (adjustable % threshold); "My pet only" toggle; shows AMV + ELV values per pet; "View ↗" button links to AMVGG user profile
 - `src/layouts/MainLayout.vue` — Sidebar nav (My Pets, Check Values, Trade Builder, Browse Market, My Trades) + theme swatch picker + collapse
-- `src-ssr/middlewares/api.ts` — All API handlers, AMVGG/Elvebredd cache warming, trade browsing logic
+- `src-ssr/middlewares/api.ts` — All API handlers, AMVGG/Elvebredd cache warming, trade browsing logic; exports `detailsCache` + `warmDetailsCache` for the godmode worker
+- `src-ssr/middlewares/auth.ts` — single shared-password gate (`amt_session` HMAC cookie); exempts `/login`, `/api/auth/*` and the public value endpoints
+- `src-ssr/middlewares/godmode.ts` — AMVGG godmode worker: encrypted cookie store, AMVGG API client (curl), scheduled engine (auto-repost + value-scored auto-accept), `/api/godmode/*` routes — see below
 - `scripts/fetch-values.mjs` — Pre-fetch script: fetches AMVGG (Node fetch) + Elvebredd (curl) and saves to `src/data/*.json`
 - `Dockerfile` — Multi-stage build for Fly.io; copies `src/data/` into the image
-- `fly.toml` — Fly.io app config (app: dawn-thunder-3296, region: gru, 256MB RAM)
+- `fly.toml` — Fly.io app config (app: dawn-thunder-3296, region: gru, 512MB RAM, `min_machines_running=1` so the godmode tick keeps firing, `/data` volume `godmode_data`)
 
 ### AMVGG value fetching (server)
 
@@ -81,6 +86,19 @@ The `Dockerfile` copies these into the Fly.io image. The server loads them at st
 ### Elvebredd value fetching (server)
 
 `warmElveCache()` loads from `src/data/elve-cache.json` at startup. Values stored in `elveValuesCache` Map. No demand data from Elvebredd.
+
+### Godmode worker (`src-ssr/middlewares/godmode.ts`)
+
+A scheduled worker that runs in the SSR process. It holds an AMVGG session cookie **encrypted at rest** (AES-256-GCM, key = `GODMODE_SECRET`) in `godmode-state.json` on the `/data` Fly volume (`STATE_DIR` falls back to `process.cwd()` in local dev), plus `godmode.log`. A 1-minute tick runs due tasks (gated on `enabled` + not in `quietHours`):
+
+- **auto-repost** — `POST /api/repostTrade {tradeId}` for the account's own listings once each is older than `repostIntervalMinutes`; rate-limited (`maxRepostsPerHour`), exponential backoff on AMVGG 429s.
+- **scan / auto-accept** — finds feed trades whose `lookingFor` includes a pet my own listings offer (accepting one = I hand over that pet, receive their `offering`). Values both sides against `detailsCache` (AMVGG values, from `api.ts`). A non-pet item, a value sign, or a pet with a blank/unknown form makes the trade *unvaluable* → logged for manual review, never auto-accepted. When `autoAccept` is on and not in `dryRun`: `POST /api/acceptTrade {tradeId}` if advantage `(get-give)/give` ≥ `acceptThresholdPct`, within `maxAcceptsPerDay`, and not in 429 backoff.
+
+`dryRun` (default **true**) makes every mutating call a no-op log line. `enabled` (default **false**) is the kill switch. Config is persisted and editable via `POST /api/godmode/config` (partial merge). Audit log: in-memory ring (200 entries, streamed by `GET /api/godmode/log` SSE) + appended to `godmode.log`.
+
+Reverse-engineered AMVGG trade API (from the client bundle): `GET /api/auth/get-session`; `GET /api/trades?...` (filters `lookingForItem/Type/Exclusive`, `offeringItem/Type/Exclusive`, `showMyTrades=true&sessionUsername=`, `limit`, `cursor`); `POST /api/createPost {leftGridItems,rightGridItems}`, `/api/repostTrade`, `/api/deletePost`, `/api/acceptTrade`, `/api/cancelAccept`, `/api/markAsCompleted`, `/api/markAsFailed {tradeId,failReason}` (all `{tradeId}` bodies); `GET /api/trade-activity`; `GET /api/notifications?limit=`, `POST /api/notifications/read|delete`, `GET /api/notifications/stream` (SSE). `repostTrade`/`createPost` are 429-rate-limited. AMVGG uses curl (not Node fetch) to clear Cloudflare's TLS fingerprint check.
+
+UI: **`src/pages/GodmodePage.vue` not built yet** — drive via `/api/godmode/*` for now.
 
 ### Theming
 
@@ -94,6 +112,12 @@ Fly.io app: `dawn-thunder-3296` (https://dawn-thunder-3296.fly.dev). After every
 flyctl deploy
 ```
 
+One-time setup for the godmode worker (already done):
+- `flyctl volumes create godmode_data --size 1 --region gru` — the `/data` volume mounted in `fly.toml`
+- `flyctl secrets set GODMODE_SECRET=<32-byte hex>` — key encrypting the stored AMVGG cookie
+
+`fly.toml` has `min_machines_running = 1` (the machine stays up 24/7 so the worker's tick keeps firing) and `512mb` RAM.
+
 ### Value cache update workflow
 
 When AMVGG/Elvebredd values need refreshing:
@@ -106,4 +130,4 @@ When AMVGG/Elvebredd values need refreshing:
 - **Phase 1 (done):** Inventory management + trade builder (AMVGG values + demand)
 - **Phase 1.5 (done):** Elvebredd cross-check in Check Values; color themes
 - **Phase 1.8 (done):** SSR migration to Fly.io; static value cache; Browse Market; OP filter; Elve values in trade cards; non-pet item categories (Pet Wear, Eggs, Strollers, Food, Vehicles, Toys, Gifts, Stickers, Houses)
-- **Phase 2:** Auto-publish trades to AMVGG/Elvebredd; trade renewal
+- **Phase 2 — godmode (in progress):** autonomous AMVGG worker — auto-repost own listings + value-scored auto-accept of OP feed trades (`src-ssr/middlewares/godmode.ts`, backend done; `GodmodePage.vue` UI + nav link pending; then: notification-stream watcher, push notifications, auto-publish optimal listings from inventory; later Elvebredd)

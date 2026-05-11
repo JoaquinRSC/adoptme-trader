@@ -28,6 +28,7 @@ export default configure(function (/* ctx */) {
       middlewares: [
         'auth',
         'api',
+        'godmode',
         'render',
       ],
       prodPort: 3000,

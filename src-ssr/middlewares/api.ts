@@ -111,7 +111,7 @@ function loadStaticCache<T> (filename: string): T | null {
 
 // ── In-memory caches ──────────────────────────────────────────────────────────
 
-const detailsCache        = new Map<string, PetDetails>()
+export const detailsCache = new Map<string, PetDetails>()
 const individualFetchDone = new Set<string>()
 let   allPetsCacheFilled  = false
 
@@ -312,7 +312,7 @@ function applyFormFallbacks (details: PetDetails): PetDetails {
 
 // ── AMVGG warm cache ──────────────────────────────────────────────────────────
 
-async function warmDetailsCache (): Promise<void> {
+export async function warmDetailsCache (): Promise<void> {
   if (allPetsCacheFilled) return
   allPetsCacheFilled = true
 
