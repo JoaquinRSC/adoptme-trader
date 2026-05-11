@@ -125,7 +125,11 @@
             <q-input v-model.number="draft.maxAcceptsPerDay" type="number" outlined dense />
           </div>
           <div class="set-num">
-            <label>Accept advantage threshold (%)</label>
+            <label>Max pets offered <span class="hint-inline">(reject junk-dumps)</span></label>
+            <q-input v-model.number="draft.maxOfferedPets" type="number" outlined dense />
+          </div>
+          <div class="set-num">
+            <label>Accept advantage threshold (%) <span class="hint-inline">(demand-adjusted)</span></label>
             <q-input v-model.number="draft.acceptThresholdPct" type="number" outlined dense />
           </div>
           <div class="set-num">
@@ -173,6 +177,7 @@ interface GodmodeConfig {
   scanIntervalMinutes: number
   maxRepostsPerHour: number
   maxAcceptsPerDay: number
+  maxOfferedPets: number
   acceptThresholdPct: number
   quietHours: { start: number; end: number }
 }
@@ -195,7 +200,7 @@ function settingsFrom (c: GodmodeConfig): SettingsDraft {
     autoRepost: c.autoRepost, autoAccept: c.autoAccept,
     repostIntervalMinutes: c.repostIntervalMinutes, scanIntervalMinutes: c.scanIntervalMinutes,
     maxRepostsPerHour: c.maxRepostsPerHour, maxAcceptsPerDay: c.maxAcceptsPerDay,
-    acceptThresholdPct: c.acceptThresholdPct, quietHours: c.quietHours,
+    maxOfferedPets: c.maxOfferedPets, acceptThresholdPct: c.acceptThresholdPct, quietHours: c.quietHours,
   })) as SettingsDraft
 }
 

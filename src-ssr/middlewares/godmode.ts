@@ -20,7 +20,7 @@ import { execFile } from 'node:child_process'
 import { createCipheriv, createDecipheriv, randomBytes, scryptSync } from 'node:crypto'
 import fs from 'node:fs'
 import path from 'node:path'
-import { detailsCache, warmDetailsCache } from './api'
+import { detailsCache, warmDetailsCache, type DemandLevel } from './api'
 
 // ── config / types ────────────────────────────────────────────────────────────
 
@@ -44,6 +44,7 @@ interface GodmodeConfig {
   scanIntervalMinutes: number
   maxRepostsPerHour: number
   maxAcceptsPerDay: number
+  maxOfferedPets: number   // reject a trade if the other side offers more than this many pets (junk-dump guard)
   acceptThresholdPct: number
   quietHours: QuietHours
 }
@@ -57,9 +58,17 @@ const DEFAULT_CONFIG: GodmodeConfig = {
   scanIntervalMinutes:   15,
   maxRepostsPerHour:     6,
   maxAcceptsPerDay:      10,
+  maxOfferedPets:        8,
   acceptThresholdPct:    15,
   quietHours:            { start: 3, end: 8 },
 }
+
+// Demand discount applied to a pet's AMVGG value (same table the Trade Builder
+// uses) — low-demand "junk" pets count for less, so a pile of them won't clear
+// the accept threshold. null/unknown demand is treated as Medium.
+const DEMAND_MULT: Record<string, number> = { High: 1.0, Medium: 0.88, Low: 0.70, 'Very Low': 0.50 }
+function demandMult (d: DemandLevel): number { return DEMAND_MULT[d ?? 'Medium'] ?? 0.88 }
+function demandTag (d: DemandLevel): string { return d === 'High' ? 'H' : d === 'Medium' ? 'M' : d === 'Low' ? 'L' : d === 'Very Low' ? 'VL' : '?' }
 
 interface EncBox { iv: string; tag: string; data: string }
 interface GodmodeStats {
@@ -244,8 +253,15 @@ function isSignItem (it: AmvggTradeItem): boolean { return !!it && (it.sign != n
 function petValue (name: string, form: string): number | null {
   return form ? (detailsCache.get(name)?.values[form] ?? null) : null
 }
+function petDemand (name: string, form: string): DemandLevel {
+  return (form ? (detailsCache.get(name)?.demands[form] ?? null) : null) as DemandLevel
+}
+function petCount (items: AmvggTradeItem[] | undefined): number {
+  return (items ?? []).filter(isPetItem).length
+}
 
 interface SideValue { total: number; unvaluable: boolean; label: string }
+// `total` is demand-adjusted (rawValue × demandMult) so low-demand pets count for less.
 function valueOfSide (items: AmvggTradeItem[] | undefined): SideValue {
   let total = 0, unvaluable = false
   const parts: string[] = []
@@ -253,9 +269,14 @@ function valueOfSide (items: AmvggTradeItem[] | undefined): SideValue {
     if (isSignItem(it)) {
       unvaluable = true; parts.push(`sign(${it.signValue ?? '?'})`)
     } else if (isPetItem(it)) {
-      const v = petValue(it.name as string, it.type ?? '')
-      if (v == null) { unvaluable = true; parts.push(`${it.name}${it.type ? ` (${it.type})` : ' (?form)'}=?`) }
-      else { total += v; parts.push(`${it.name} (${it.type})=${v}`) }
+      const raw = petValue(it.name as string, it.type ?? '')
+      if (raw == null) { unvaluable = true; parts.push(`${it.name}${it.type ? ` (${it.type})` : ' (?form)'}=?`) }
+      else {
+        const d = petDemand(it.name as string, it.type ?? '')
+        const adj = raw * demandMult(d)
+        total += adj
+        parts.push(`${it.name} (${it.type}/${demandTag(d)})=${adj.toFixed(3)}`)
+      }
     } else if (it && it.name) {
       unvaluable = true; parts.push(`${it.name} [item]=?`)
     }
@@ -396,6 +417,11 @@ async function doScan (): Promise<void> {
     const get  = valueOfSide(t.offering)   // I receive what they're offering
     const tag  = `trade ${t.id} by ${t.authorName ?? '?'}`
 
+    const offeredPets = petCount(t.offering)
+    if (offeredPets > state.config.maxOfferedPets) {
+      audit('candidate', 'scan', `${tag} — get [${get.label}] — ${offeredPets} pets offered (> max ${state.config.maxOfferedPets}), junk-dump guard — skipping`)
+      continue
+    }
     if (give.unvaluable || get.unvaluable || give.total <= 0) {
       audit('candidate', 'scan', `${tag} — give [${give.label}] ↔ get [${get.label}] — unvaluable, manual review`)
       continue
