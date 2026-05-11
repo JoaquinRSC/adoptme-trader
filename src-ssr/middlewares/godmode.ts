@@ -298,10 +298,12 @@ function inQuietHours (): boolean {
 }
 function noteBackoff (status: number): void {
   if (status === 429) {
+    // AMVGG's rate-limit window clears in ~2 min — wait ~3 to be safe. If we
+    // somehow 429 again while still backing off, nudge it up, capped at 10 min.
     const prev = Math.max(0, state.stats.backoffUntil - Date.now())
-    const next = Math.min(prev ? prev * 2 : 15 * 60 * 1000, 2 * 60 * 60 * 1000)
+    const next = prev > 0 ? Math.min(prev + 3 * 60 * 1000, 10 * 60 * 1000) : 3 * 60 * 1000
     state.stats.backoffUntil = Date.now() + next
-    audit('warn', 'rate-limit', `AMVGG returned 429 — backing off ${Math.round(next / 60000)}m`)
+    audit('warn', 'rate-limit', `AMVGG returned 429 — backing off ~${Math.round(next / 60000)}m`)
     saveState()
   } else if (state.stats.backoffUntil && status >= 200 && status < 300) {
     state.stats.backoffUntil = 0
