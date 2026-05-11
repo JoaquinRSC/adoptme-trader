@@ -41,6 +41,15 @@ function isAuthenticated (req: { headers: { cookie?: string } }): boolean {
   return !!token && verify(token)
 }
 
+// Read-only value-lookup endpoints. The data is just AMVGG/Elvebredd values
+// (public, regenerated locally and committed), and these handlers have no side
+// effects — open them up so the godmode worker (and anything else) can read
+// values without holding the app password. Trade/mutation endpoints stay gated.
+const PUBLIC_PREFIXES = ['/api/pet/', '/api/pets/', '/api/item/', '/api/items/']
+function isPublicPath (p: string): boolean {
+  return PUBLIC_PREFIXES.some(prefix => p.startsWith(prefix))
+}
+
 export default defineSsrMiddleware(({ app }) => {
   app.post('/api/auth/login', parseJson(), (req, res) => {
     const { password } = (req.body ?? {}) as { password?: string }
@@ -62,7 +71,7 @@ export default defineSsrMiddleware(({ app }) => {
   })
 
   app.use((req, res, next) => {
-    if (req.path === '/login' || req.path.startsWith('/api/auth/')) return next()
+    if (req.path === '/login' || req.path.startsWith('/api/auth/') || isPublicPath(req.path)) return next()
     if (!isAuthenticated(req)) {
       if (req.path.startsWith('/api/')) return res.status(401).json({ error: 'Unauthorized' })
       return res.redirect(302, '/login')
