@@ -18,16 +18,20 @@ export const THEMES: ThemeDef[] = [
 ]
 
 const STORAGE_KEY = 'app-theme'
+const hasDom = typeof document !== 'undefined' // false during SSR
 
-const current = ref<ThemeId>((localStorage.getItem(STORAGE_KEY) as ThemeId) ?? 'purple')
+const current = ref<ThemeId>(
+  (hasDom ? (localStorage.getItem(STORAGE_KEY) as ThemeId | null) : null) ?? 'purple',
+)
 
 function apply(id: ThemeId) {
+  current.value = id
+  if (!hasDom) return
   document.documentElement.dataset.theme = id === 'purple' ? '' : id
   localStorage.setItem(STORAGE_KEY, id)
-  current.value = id
 }
 
-apply(current.value)
+if (hasDom) apply(current.value)
 
 export function useTheme() {
   return { current, themes: THEMES, apply }

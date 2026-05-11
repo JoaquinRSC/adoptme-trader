@@ -78,12 +78,12 @@ import { version } from '../../package.json'
 import { useTheme } from 'src/composables/useTheme'
 
 const drawer = ref(true)
-const collapsed = ref(localStorage.getItem('sidebar-collapsed') === 'true')
+const collapsed = ref(typeof localStorage !== 'undefined' && localStorage.getItem('sidebar-collapsed') === 'true')
 const { current: currentTheme, themes, apply: applyTheme } = useTheme()
 
 function toggleCollapse() {
   collapsed.value = !collapsed.value
-  localStorage.setItem('sidebar-collapsed', String(collapsed.value))
+  if (typeof localStorage !== 'undefined') localStorage.setItem('sidebar-collapsed', String(collapsed.value))
 }
 
 let pingInterval: ReturnType<typeof setInterval> | null = null
