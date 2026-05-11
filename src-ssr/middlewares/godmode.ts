@@ -339,37 +339,57 @@ async function doRepost (force = false): Promise<void> {
   saveState()
 }
 
+// Identity of a specific pet variant — name + form + full-grown flag. Accepting
+// a trade only makes sense if I actually offer the EXACT variants it wants.
+function petKey (it: AmvggTradeItem): string | null {
+  if (!isPetItem(it) || !it.name || !it.type) return null
+  return `${it.name} ${it.type} ${it.fg ? '1' : '0'}`
+}
+
 async function doScan (): Promise<void> {
   const s = await ensureSession()
   await warmDetailsCache()
   const mine = await api.myTrades(s.user!.name!)
   if (!mine.length) { audit('info', 'scan', 'no own listings — nothing to match against'); return }
 
-  // Pets I'm offering across my listings → look for trades that want them
-  // (accepting such a trade means I hand over that pet and receive their side).
-  const offering = new Set<string>()
-  for (const t of mine) for (const it of (t.offering ?? [])) if (isPetItem(it) && it.name) offering.add(it.name)
-  if (!offering.size) { audit('info', 'scan', 'my listings offer no pets to match'); return }
-  const pets = [...offering].slice(0, MAX_SCAN_PETS)
-  if (offering.size > MAX_SCAN_PETS) audit('info', 'scan', `offering ${offering.size} pets — scanning first ${MAX_SCAN_PETS} this cycle`)
+  // Exact variants I'm offering across my own listings (name+form+fg). A trade
+  // is only a candidate if I offer every pet variant it's looking for — otherwise
+  // I'd be committing to hand over something I don't have.
+  const offerKeys  = new Set<string>()
+  const offerNames = new Set<string>()
+  for (const t of mine) for (const it of (t.offering ?? [])) {
+    const k = petKey(it)
+    if (k) { offerKeys.add(k); offerNames.add(it.name as string) }
+  }
+  if (!offerKeys.size) { audit('info', 'scan', 'my listings offer no pet variants to match (only items / unspecified forms?)'); return }
+  const names = [...offerNames].slice(0, MAX_SCAN_PETS)
+  if (offerNames.size > MAX_SCAN_PETS) audit('info', 'scan', `offering ${offerNames.size} pets — scanning first ${MAX_SCAN_PETS} this cycle`)
+
+  // Fulfillable = lookingFor is non-empty and consists entirely of pet variants I offer.
+  function fulfillable (t: AmvggTrade): boolean {
+    const want = t.lookingFor ?? []
+    if (!want.length || !(t.offering ?? []).length) return false
+    return want.every(w => { const k = petKey(w); return !!k && offerKeys.has(k) })
+  }
 
   const candidates = new Map<string, AmvggTrade>()
-  for (const name of pets) {
+  for (const name of names) {
     for (const t of await api.tradesLookingFor(name)) {
       if (!t?.id || candidates.has(t.id)) continue
       if (t.authorRobloxId && s.user!.robloxId && String(t.authorRobloxId) === String(s.user!.robloxId)) continue
-      if (!(t.lookingFor ?? []).some(w => !!w.name && offering.has(w.name)) || !(t.offering ?? []).length) continue
+      if (!fulfillable(t)) continue
       candidates.set(t.id, t)
     }
   }
   if (!candidates.size) {
-    audit('info', 'scan', `scanned feed for ${pets.length} of my pets — no matching trades`)
+    audit('info', 'scan', `scanned feed for ${names.length} of my pets — no fulfillable matching trades`)
     state.stats.lastScanAt = Date.now(); saveState(); return
   }
 
   const threshold = state.config.acceptThresholdPct
   state.stats.acceptsToday = pruneWindow(state.stats.acceptsToday ?? [], 24 * 60 * 60 * 1000)
   let acceptBudget = state.config.maxAcceptsPerDay - state.stats.acceptsToday.length
+  const committedThisRun = new Set<string>() // pet variants already promised in this pass — don't double-commit
 
   for (const t of candidates.values()) {
     const give = valueOfSide(t.lookingFor) // I provide what they're looking for
@@ -386,6 +406,9 @@ async function doScan (): Promise<void> {
     if (advPct < threshold) { audit('candidate', 'scan', `${summary} (below ${threshold}% threshold)`); continue }
     if (!state.config.autoAccept) { audit('candidate', 'scan', `${summary} ✓ would qualify (autoAccept off)`); continue }
     if (state.config.dryRun)      { audit('dry-run', 'scan', `would accept ${summary}`); continue }
+
+    const wantKeys = (t.lookingFor ?? []).map(petKey).filter((k): k is string => !!k)
+    if (wantKeys.some(k => committedThisRun.has(k))) { audit('warn', 'scan', `${summary} ✓ qualifies but a wanted pet is already committed to another accept this pass — skipping`); continue }
     if (Date.now() < state.stats.backoffUntil) { audit('warn', 'scan', `${summary} ✓ qualifies but backing off — skipping`); continue }
     if (acceptBudget <= 0)        { audit('warn', 'scan', `${summary} ✓ qualifies but daily accept budget (${state.config.maxAcceptsPerDay}) exhausted`); continue }
 
@@ -393,6 +416,7 @@ async function doScan (): Promise<void> {
     noteBackoff(r.status)
     if (r.status >= 200 && r.status < 300) {
       state.stats.acceptsToday.push(Date.now())
+      for (const k of wantKeys) committedThisRun.add(k)
       acceptBudget--
       audit('action', 'scan', `ACCEPTED ${summary}`)
     } else {
