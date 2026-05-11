@@ -186,8 +186,21 @@ interface Status {
 }
 interface LogEntry { ts: number; level: string; action: string; msg: string; _id: number }
 
+// The settings panel never edits enabled/dryRun — those are the Controls toggles
+// (their own endpoints). Keeping them out of the draft means saving settings
+// can't reset the kill switch / dry-run flag.
+type SettingsDraft = Omit<GodmodeConfig, 'enabled' | 'dryRun'>
+function settingsFrom (c: GodmodeConfig): SettingsDraft {
+  return JSON.parse(JSON.stringify({
+    autoRepost: c.autoRepost, autoAccept: c.autoAccept,
+    repostIntervalMinutes: c.repostIntervalMinutes, scanIntervalMinutes: c.scanIntervalMinutes,
+    maxRepostsPerHour: c.maxRepostsPerHour, maxAcceptsPerDay: c.maxAcceptsPerDay,
+    acceptThresholdPct: c.acceptThresholdPct, quietHours: c.quietHours,
+  })) as SettingsDraft
+}
+
 const status      = ref<Status | null>(null)
-const draft        = ref<GodmodeConfig | null>(null)
+const draft       = ref<SettingsDraft | null>(null)
 const log         = ref<LogEntry[]>([])
 const cookieInput = ref('')
 const busy        = ref('')
@@ -198,7 +211,7 @@ let es: EventSource | null = null
 let poll: ReturnType<typeof setInterval> | null = null
 
 const reversedLog = computed(() => log.value.slice().reverse())
-const configDirty = computed(() => !!draft.value && !!status.value && JSON.stringify(draft.value) !== JSON.stringify(status.value.config))
+const configDirty = computed(() => !!draft.value && !!status.value && JSON.stringify(draft.value) !== JSON.stringify(settingsFrom(status.value.config)))
 
 function flash (kind: 'ok' | 'err', text: string) {
   msg.value = { kind, text }
@@ -220,7 +233,7 @@ async function loadStatus () {
     if (!r.ok) return
     const s = await r.json() as Status
     status.value = s
-    if (!draft.value) draft.value = JSON.parse(JSON.stringify(s.config)) as GodmodeConfig
+    if (!draft.value) draft.value = settingsFrom(s.config)
   } catch { /* keep last */ }
 }
 
@@ -268,7 +281,7 @@ async function saveConfig () {
   busy.value = 'save'
   try {
     const d = await postJson('/api/godmode/config', draft.value)
-    if (d.ok) { flash('ok', 'Settings saved'); await loadStatus() }
+    if (d.ok) { flash('ok', 'Settings saved'); await loadStatus(); if (status.value) draft.value = settingsFrom(status.value.config) }
     else flash('err', d.error ?? 'Save failed')
   } catch (e) { flash('err', String(e)) } finally { busy.value = '' }
 }

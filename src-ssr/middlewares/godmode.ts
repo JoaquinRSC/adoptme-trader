@@ -303,17 +303,18 @@ async function ensureSession (): Promise<AmvggSession> {
   return session
 }
 
-async function doRepost (): Promise<void> {
-  if (Date.now() < state.stats.backoffUntil) return
+// `force` (used by run-once) reposts every listing up to the rate-limit budget,
+// ignoring the per-listing staleness window.
+async function doRepost (force = false): Promise<void> {
+  if (Date.now() < state.stats.backoffUntil) { audit('info', 'repost', 'in 429 backoff — skipping'); return }
   const s = await ensureSession()
   const mine = await api.myTrades(s.user!.name!)
   if (!mine.length) { audit('info', 'repost', 'no own listings to repost'); return }
 
+  const byOldest = mine.slice().sort((a, b) => new Date(a.publishedAt || 0).getTime() - new Date(b.publishedAt || 0).getTime())
   const cutoff = Date.now() - state.config.repostIntervalMinutes * 60 * 1000
-  const stale = mine
-    .filter(t => new Date(t.publishedAt || t.createdAt || 0).getTime() < cutoff)
-    .sort((a, b) => new Date(a.publishedAt || 0).getTime() - new Date(b.publishedAt || 0).getTime())
-  if (!stale.length) { audit('info', 'repost', `${mine.length} listings, none stale enough yet`); return }
+  const stale = force ? byOldest : byOldest.filter(t => new Date(t.publishedAt || t.createdAt || 0).getTime() < cutoff)
+  if (!stale.length) { audit('info', 'repost', `${mine.length} listings, none stale enough yet (interval ${state.config.repostIntervalMinutes}m)`); return }
 
   state.stats.repostsThisHour = pruneWindow(state.stats.repostsThisHour ?? [], 60 * 60 * 1000)
   let budget = state.config.maxRepostsPerHour - state.stats.repostsThisHour.length
@@ -455,10 +456,17 @@ function getStatus () {
 }
 
 function setConfig (patch: Partial<GodmodeConfig>): GodmodeConfig {
-  state.config = { ...state.config, ...patch }
-  if (patch.quietHours) state.config.quietHours = { ...DEFAULT_CONFIG.quietHours, ...patch.quietHours }
+  // `enabled` and `dryRun` are only changed via their own endpoints — ignore them
+  // here so saving the settings panel can't reset the kill switch / dry-run flag.
+  const rest: Partial<GodmodeConfig> = { ...patch }
+  delete rest.enabled
+  delete rest.dryRun
+  const quietHours = rest.quietHours
+  delete rest.quietHours
+  state.config = { ...state.config, ...rest }
+  if (quietHours) state.config.quietHours = { ...DEFAULT_CONFIG.quietHours, ...quietHours }
   saveState()
-  audit('info', 'config', `updated: ${Object.keys(patch).join(', ')}`)
+  audit('info', 'config', `updated: ${[...Object.keys(rest), ...(quietHours ? ['quietHours'] : [])].join(', ') || '(nothing)'}`)
   return state.config
 }
 function setEnabled (on: boolean): boolean {
@@ -500,13 +508,13 @@ function clearCookie (): void {
   audit('info', 'config', 'AMVGG account unlinked')
 }
 
-// One engine pass now (ignores per-task cadence; still honours dryRun, quiet
-// hours and rate limits). Returns the log entries it produced.
+// One engine pass now (ignores per-task cadence and the repost staleness window;
+// still honours dryRun, quiet hours and rate limits). Returns the log it produced.
 async function runOnce (): Promise<AuditEntry[]> {
   if (!state.encryptedCookie) throw new Error('No AMVGG cookie set')
   const before = log.length
-  audit('info', 'engine', 'manual run-once triggered')
-  if (state.config.autoRepost) await doRepost().catch(e => audit('error', 'repost', (e as Error).message))
+  audit('info', 'engine', `manual run-once triggered (dryRun=${state.config.dryRun}, autoRepost=${state.config.autoRepost}, autoAccept=${state.config.autoAccept})`)
+  if (state.config.autoRepost) await doRepost(true).catch(e => audit('error', 'repost', (e as Error).message))
   await doScan().catch(e => audit('error', 'scan', (e as Error).message))
   return log.slice(before)
 }
