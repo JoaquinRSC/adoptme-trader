@@ -255,20 +255,17 @@ async function fetchElve () {
     'Fly A Pet Potion Forever': 'Fly-A-Pet Potion',
     'Ride A Pet Potion Forever': 'Ride-A-Pet Potion',
   }
+  // Each non-pet item is a contiguous object: "value":N,"status":..,"rarity":..,"type":"X","name":"Y"
+  // Match value/type/name together so each item keeps its own value (not the previous item's).
   const elveItems = {}
-  const typeRe = /\\"type\\":\\"([^"\\]+)\\"/g
-  let tm
-  while ((tm = typeRe.exec(html)) !== null) {
-    const catKey = ELVE_ITEM_TYPE_MAP[tm[1]]
+  const itemRe = /\\"value\\":([\d.]+),(?:\\"status\\":\\"[^"\\]*\\",)?(?:\\"rarity\\":\\"[^"\\]*\\",)?\\"type\\":\\"([^"\\]+)\\",\\"name\\":\\"([^"\\]+)\\"/g
+  let im
+  while ((im = itemRe.exec(html)) !== null) {
+    const catKey = ELVE_ITEM_TYPE_MAP[im[2]]
     if (!catKey) continue
-    const before = html.slice(Math.max(0, tm.index - 250), tm.index)
-    const after  = html.slice(tm.index, Math.min(html.length, tm.index + 250))
-    const valMatch  = before.match(/\\"(?:value|rvalue)\\":([\d.]+)(?![\d.])/)
-    const nameMatch = after.match(/\\"name\\":\\"([^"\\]+)\\"/)
-    if (!valMatch || !nameMatch) continue
-    const name = ELVE_NAME_MAP[nameMatch[1]] ?? nameMatch[1]
+    const name = ELVE_NAME_MAP[im[3]] ?? im[3]
     if (!elveItems[catKey]) elveItems[catKey] = {}
-    elveItems[catKey][name] = parseFloat(valMatch[1])
+    elveItems[catKey][name] = parseFloat(im[1])
   }
   const itemCount = Object.values(elveItems).reduce((s, c) => s + Object.keys(c).length, 0)
   console.log(`${Object.keys(result).length} pets, ${itemCount} items, ${Object.keys(idMap).length} IDs`)
