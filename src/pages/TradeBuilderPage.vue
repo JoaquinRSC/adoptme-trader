@@ -458,6 +458,11 @@
           </div>
         </div>
 
+        <div v-if="autoSessionError" class="auto-session-error">
+          <q-icon :name="matWarning" size="15px" />
+          <span>{{ autoSessionError }}</span>
+        </div>
+
         <div v-if="autoGenerating" class="auto-generating">
           <q-spinner size="22px" color="primary" />
           <span>Finding fair trades…</span>
@@ -969,11 +974,20 @@ function saveAmvggCookie () {
   localStorage.setItem('amvgg_cookie', combined)
   cookieSessionData.value  = ''
   cookieSessionToken.value = ''
+  autoSessionError.value   = ''
+  postResult.value         = null
 }
 
 function disconnectAmvgg () {
   amvggCookie.value = ''
   localStorage.removeItem('amvgg_cookie')
+}
+
+// AMVGG returned 401 (expired/invalid session): drop the dead cookie and stop
+// the loop so it doesn't keep firing failed posts. The user must re-link.
+function handleAmvSessionExpired () {
+  disconnectAmvgg()
+  clearLoop()
 }
 
 function buildElveScript (payloads: unknown[]): string {
@@ -1027,8 +1041,12 @@ async function publishTrade () {
       }),
     })
     const data = await res.json() as { ok: boolean; error?: string }
-    postResult.value = data
-    if (!data.ok && data.error?.includes('401')) disconnectAmvgg()
+    if (!data.ok && res.status === 401) {
+      handleAmvSessionExpired()
+      postResult.value = { ok: false, error: 'Sesión AMVGG expirada — reconectá tu cuenta.' }
+    } else {
+      postResult.value = data
+    }
   } catch (e) {
     postResult.value = { ok: false, error: String(e) }
   } finally {
@@ -1044,6 +1062,7 @@ const autoPublishing    = ref(false)
 const autoTrades        = ref<AutoTrade[]>([])
 const autoGenError      = ref('')
 const autoElveGenError  = ref('')
+const autoSessionError  = ref('')
 const autoLoop          = ref(false)
 const autoEnableAmv     = ref(true)
 const autoEnableElve    = ref(true)
@@ -1113,6 +1132,7 @@ async function generateAutoTrades () {
   autoTrades.value      = []
   autoGenError.value    = ''
   autoElveGenError.value = ''
+  autoSessionError.value = ''
   try {
     await values.loadAllPets()
 
@@ -1288,7 +1308,12 @@ async function publishAutoTrades () {
       const data = await res.json() as { ok: boolean; error?: string }
       trade.status = data.ok ? 'ok' : 'error'
       trade.error  = data.error
-      if (!data.ok && data.error?.includes('401')) disconnectAmvgg()
+      if (!data.ok && res.status === 401) {
+        trade.error = 'Sesión AMVGG expirada'
+        autoSessionError.value = 'Sesión AMVGG expirada — reconectá tu cuenta desde Publish y volvé a arrancar.'
+        handleAmvSessionExpired()
+        break
+      }
     } catch (e) {
       trade.status = 'error'
       trade.error  = String(e)
@@ -2117,6 +2142,14 @@ function deltaChipClass (delta: number) {
 .auto-platform-toggle--elve.auto-platform-toggle--on { background: #0d9488; border-color: #0d9488; }
 .auto-generating { display: flex; align-items: center; gap: 10px; padding: 24px 20px; color: var(--text-2); font-size: 14px; }
 .auto-error { padding: 16px 20px; color: var(--negative); font-size: 13px; font-weight: 600; }
+.auto-session-error {
+  display: flex; align-items: center; gap: 8px;
+  margin: 0 16px 8px; padding: 10px 14px;
+  background: rgba(248, 113, 113, 0.12);
+  border: 1px solid rgba(248, 113, 113, 0.35);
+  border-radius: 8px;
+  color: var(--negative); font-size: 12px; font-weight: 600;
+}
 .auto-trades-list { padding: 10px 16px; display: flex; flex-direction: column; gap: 6px; max-height: 380px; overflow-y: auto; }
 .auto-trade-row {
   display: flex;
