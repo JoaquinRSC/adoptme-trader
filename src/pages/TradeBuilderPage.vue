@@ -202,8 +202,8 @@
           <a href="https://amvgg.com/trades" target="_blank" rel="noopener" class="btn-sm-link" style="margin-top:6px">View on AMVGG ↗</a>
         </div>
 
-        <!-- Error -->
-        <div v-else-if="postResult?.ok === false" class="pub-body">
+        <!-- Error (only while still connected — a 401 clears the cookie and falls through to the re-link form) -->
+        <div v-else-if="postResult?.ok === false && amvggCookie" class="pub-body">
           <div style="font-size:13px;color:var(--negative);font-weight:600;line-height:1.5">
             Failed to post: {{ postResult.error }}
           </div>
@@ -226,6 +226,9 @@
           </div>
 
           <template v-if="!amvggCookie">
+            <div v-if="postResult?.ok === false" style="font-size:12px;color:var(--negative);font-weight:600;line-height:1.5">
+              {{ postResult.error }}
+            </div>
             <div style="font-size:12px;color:var(--text-3);line-height:1.6">
               DevTools (F12) → <b>Application</b> → Cookies → <i>amvgg.com</i><br>
               Copiá el <b>Value</b> de cada cookie y pegalo abajo.
@@ -461,6 +464,7 @@
         <div v-if="autoSessionError" class="auto-session-error">
           <q-icon :name="matWarning" size="15px" />
           <span>{{ autoSessionError }}</span>
+          <button class="btn-sm-link" style="margin-left:auto;white-space:nowrap" @click="reconnectFromAuto">Reconectar</button>
         </div>
 
         <div v-if="autoGenerating" class="auto-generating">
@@ -988,6 +992,15 @@ function disconnectAmvgg () {
 function handleAmvSessionExpired () {
   disconnectAmvgg()
   clearLoop()
+}
+
+// Jump from the Auto dialog's "session expired" banner straight to the Publish
+// dialog — the only place that holds the cookie re-link form. Clears any stale
+// error so the form (not the error screen) shows.
+function reconnectFromAuto () {
+  showAutoDialog.value = false
+  postResult.value     = null
+  showPublish.value    = true
 }
 
 function buildElveScript (payloads: unknown[]): string {
