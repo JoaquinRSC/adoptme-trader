@@ -24,10 +24,21 @@ function loadFromStorage (): InventoryPet[] {
 }
 
 export const useInventoryStore = defineStore('inventory', () => {
-  const pets = ref<InventoryPet[]>(loadFromStorage())
+  // Start empty so the server and the client's first (hydration) render match.
+  // localStorage is only read after mount via hydrate() — reading it during store
+  // creation would diverge from the SSR output and break hydration (grid collapses
+  // to a single centered column until a client-side navigation re-renders it).
+  const pets = ref<InventoryPet[]>([])
+  let hydrated = false
+
+  function hydrate () {
+    if (hydrated || typeof localStorage === 'undefined') return
+    hydrated = true
+    pets.value = loadFromStorage()
+  }
 
   watch(pets, (val) => {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(val))
+    if (typeof localStorage !== 'undefined') localStorage.setItem(STORAGE_KEY, JSON.stringify(val))
   }, { deep: true })
 
   function addPet (name: string, form: PetForm, count = 1) {
@@ -52,5 +63,5 @@ export const useInventoryStore = defineStore('inventory', () => {
     if (pet) pet.form = form
   }
 
-  return { pets, addPet, addItem, removePet, updateForm }
+  return { pets, hydrate, addPet, addItem, removePet, updateForm }
 })

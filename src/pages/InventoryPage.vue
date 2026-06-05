@@ -791,6 +791,7 @@ async function fetchElveValue (pet: InventoryPet) {
 
 // Auto-fetch values, demand, and images on mount — max 3 concurrent
 onMounted(() => {
+  inventory.hydrate()
   const valueQueue = [...inventory.pets]
   const valueWorker = async () => { while (valueQueue.length) await fetchValue(valueQueue.shift()!) }
   void Promise.all([valueWorker(), valueWorker(), valueWorker()])

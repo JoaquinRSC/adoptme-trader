@@ -76,9 +76,13 @@ import { ref, onMounted, onUnmounted } from 'vue'
 import { matInventory2, matSwapHoriz, matBalance, matChevronLeft, matChevronRight, matReceipt, matSearch, matAutoAwesome } from '@quasar/extras/material-icons'
 import { version } from '../../package.json'
 import { useTheme } from 'src/composables/useTheme'
+import { useInventoryStore } from 'src/stores/inventory'
 
+const inventory = useInventoryStore()
 const drawer = ref(true)
-const collapsed = ref(typeof localStorage !== 'undefined' && localStorage.getItem('sidebar-collapsed') === 'true')
+// Read after mount (in onMounted) — reading localStorage here would diverge from
+// the SSR render (always expanded) and cause a hydration mismatch on the drawer width.
+const collapsed = ref(false)
 const { current: currentTheme, themes, apply: applyTheme } = useTheme()
 
 function toggleCollapse() {
@@ -88,6 +92,8 @@ function toggleCollapse() {
 
 let pingInterval: ReturnType<typeof setInterval> | null = null
 onMounted(() => {
+  inventory.hydrate()
+  if (localStorage.getItem('sidebar-collapsed') === 'true') collapsed.value = true
   pingInterval = setInterval(() => { void fetch('/api/ping') }, 60_000)
 })
 onUnmounted(() => {
