@@ -8,6 +8,22 @@ A trade manager for **Roblox Adopt Me** that helps players value pets and judge 
 
 ---
 
+## Screenshots
+
+**My Pets** — inventory with per-form values, demand ratings, and a running total.
+
+![My Pets](docs/screenshots/my-pets.png)
+
+**Check Values** — two-sided comparison with the value gap and a fairness verdict.
+
+![Check Values](docs/screenshots/check-values.png)
+
+**Browse Market** — scans live AMVGG trades for offers on a pet you want to give away, with AMV + ELV values per pet and Good / Fair / OP filters.
+
+![Browse Market](docs/screenshots/browse-market.png)
+
+---
+
 ## What it does
 
 Trading in Adopt Me is all about *value* and *demand*, and the numbers live across a few community sites that don't agree with each other. This app pulls them into one place:
