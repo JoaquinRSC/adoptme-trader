@@ -26,6 +26,7 @@ export default configure(function (/* ctx */) {
 
     ssr: {
       middlewares: [
+        'ratelimit',
         'auth',
         'api',
         'render',

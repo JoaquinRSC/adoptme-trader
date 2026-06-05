@@ -19,6 +19,9 @@ value-cache.json
 pet-images.json
 pets-full.json
 
+# Local reference captures of the Elvebredd site (not part of the project)
+elvebredd-*.png
+
 # Playwright MCP session data
 .playwright-mcp/
 

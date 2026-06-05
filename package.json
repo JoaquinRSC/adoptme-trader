@@ -1,9 +1,15 @@
 {
   "name": "adoptme-trader",
   "version": "0.5.0",
-  "description": "Adopt Me trade manager",
+  "description": "Trade manager for Roblox Adopt Me: inventory, two-source value comparison (AMVGG + Elvebredd), demand-adjusted fairness scoring, and market browsing. Quasar + Vue 3 SSR.",
   "productName": "AdoptMe Trader",
-  "author": "Joaquin",
+  "author": "JoaquinRSC (https://github.com/JoaquinRSC)",
+  "license": "MIT",
+  "homepage": "https://dawn-thunder-3296.fly.dev",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/JoaquinRSC/adoptme-trader"
+  },
   "private": true,
   "scripts": {
     "dev": "quasar dev -m ssr",

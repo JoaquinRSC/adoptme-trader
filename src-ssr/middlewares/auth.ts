@@ -71,6 +71,9 @@ export default defineSsrMiddleware(({ app }) => {
   })
 
   app.use((req, res, next) => {
+    // No password configured → open mode (public demo). Set the AUTH_PASSWORD
+    // env var to gate the whole app behind the shared-password login.
+    if (!PASSWORD) return next()
     if (req.path === '/login' || req.path.startsWith('/api/auth/') || isPublicPath(req.path)) return next()
     if (!isAuthenticated(req)) {
       if (req.path.startsWith('/api/')) return res.status(401).json({ error: 'Unauthorized' })
