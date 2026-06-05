@@ -73,7 +73,7 @@
 
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted } from 'vue'
-import { matInventory2, matSwapHoriz, matBalance, matChevronLeft, matChevronRight, matReceipt, matSearch, matAutoAwesome } from '@quasar/extras/material-icons'
+import { matInventory2, matSwapHoriz, matBalance, matChevronLeft, matChevronRight, matReceipt, matSearch } from '@quasar/extras/material-icons'
 import { version } from '../../package.json'
 import { useTheme } from 'src/composables/useTheme'
 import { useInventoryStore } from 'src/stores/inventory'
@@ -106,7 +106,6 @@ const navItems = [
   { name: 'trade-builder', icon: matSwapHoriz,  label: 'Trade Builder' },
   { name: 'browse-market', icon: matSearch,     label: 'Browse Market' },
   { name: 'my-trades',     icon: matReceipt,    label: 'My Trades'     },
-  { name: 'godmode',       icon: matAutoAwesome, label: 'Godmode'      },
 ]
 </script>
 

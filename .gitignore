@@ -27,7 +27,6 @@ pets-full.json
 *.session
 auth-tokens.json
 sessions/
-godmode-state.json     # godmode worker state (encrypted AMVGG cookie + config) — lives on the /data volume in prod, here only in local dev
 
 # Sensitive: environment / secrets
 .env

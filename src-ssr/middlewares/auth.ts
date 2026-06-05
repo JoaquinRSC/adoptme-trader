@@ -43,8 +43,8 @@ function isAuthenticated (req: { headers: { cookie?: string } }): boolean {
 
 // Read-only value-lookup endpoints. The data is just AMVGG/Elvebredd values
 // (public, regenerated locally and committed), and these handlers have no side
-// effects — open them up so the godmode worker (and anything else) can read
-// values without holding the app password. Trade/mutation endpoints stay gated.
+// effects — open them up so they can be read without holding the app password.
+// Trade/mutation endpoints stay gated.
 const PUBLIC_PREFIXES = ['/api/pet/', '/api/pets/', '/api/item/', '/api/items/']
 function isPublicPath (p: string): boolean {
   return PUBLIC_PREFIXES.some(prefix => p.startsWith(prefix))
