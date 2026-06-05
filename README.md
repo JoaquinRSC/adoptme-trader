@@ -2,7 +2,7 @@
 
 A trade manager for **Roblox Adopt Me** that helps players value pets and judge whether a trade is fair. It cross-checks two community value sources (**AMVGG** and **Elvebredd**), factors in each pet's demand, scores trade fairness, and lets you browse the live AMVGG market for offers on a pet you want to give away.
 
-**Live app:** https://dawn-thunder-3296.fly.dev
+**Live app:** https://amtrader.fly.dev
 
 > Built as a portfolio project. Not affiliated with Roblox, Adopt Me, AMVGG or Elvebredd — value data belongs to those communities and is used here for reference.
 

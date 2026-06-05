@@ -9,14 +9,14 @@ npm run dev            # Start Quasar SSR dev server (hot-reload)
 npm run build          # Build SSR for production (outputs to dist/ssr/)
 npm run lint           # ESLint on src/ and src-ssr/
 npm run fetch-values   # Pre-fetch AMVGG + Elvebredd values to src/data/*.json (run locally, then commit)
-flyctl deploy          # Deploy to Fly.io (app: dawn-thunder-3296, region: gru)
+flyctl deploy          # Deploy to Fly.io (app: amtrader, region: gru)
 ```
 
 No test suite exists. After code changes, run `npm run build` to verify compilation, then deploy via `flyctl deploy`.
 
 ## Architecture
 
-Quasar v2 + Vue 3 Composition API + Pinia, running as **SSR on Fly.io** (Node 22). No Electron — the app is a web app accessible at https://dawn-thunder-3296.fly.dev.
+Quasar v2 + Vue 3 Composition API + Pinia, running as **SSR on Fly.io** (Node 22). No Electron — the app is a web app accessible at https://amtrader.fly.dev.
 
 ### Request flow
 
@@ -75,7 +75,7 @@ The `Dockerfile` copies these into the Fly.io image. The server loads them at st
 - `src-ssr/middlewares/auth.ts` — single shared-password gate (`amt_session` HMAC cookie); exempts `/login`, `/api/auth/*` and the public value endpoints
 - `scripts/fetch-values.mjs` — Pre-fetch script: fetches AMVGG (Node fetch) + Elvebredd (curl) and saves to `src/data/*.json`
 - `Dockerfile` — Multi-stage build for Fly.io; copies `src/data/` into the image
-- `fly.toml` — Fly.io app config (app: dawn-thunder-3296, region: gru, 512MB RAM)
+- `fly.toml` — Fly.io app config (app: amtrader, region: gru, 512MB RAM)
 
 ### AMVGG value fetching (server)
 
@@ -91,7 +91,7 @@ CSS custom properties on `:root` in `src/css/app.scss`. Themes override the same
 
 ### Deployment
 
-Fly.io app: `dawn-thunder-3296` (https://dawn-thunder-3296.fly.dev). After every set of commits:
+Fly.io app: `amtrader` (https://amtrader.fly.dev). After every set of commits:
 
 ```bash
 flyctl deploy
