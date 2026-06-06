@@ -57,7 +57,7 @@ The `Dockerfile` copies these into the Fly.io image. The server loads them at st
 | `GET /api/pets/search?q=` | GET | filtered pet name list |
 | `POST /api/trade/browse` | POST | browse AMVGG trades for a searched pet |
 
-`/api/pet/*`, `/api/pets/*` and `/api/item(s)/*` are **public** (no app password — read-only value data); everything else under `/api/` requires the `amt_session` cookie (`src-ssr/middlewares/auth.ts`).
+All `/api/*` endpoints are public — the app has no authentication. A per-IP rate limiter (`src-ssr/middlewares/ratelimit.ts`) throttles abuse, tighter on the one endpoint that makes an outbound request (`/api/trade/browse`).
 
 ### Key files
 
@@ -72,7 +72,6 @@ The `Dockerfile` copies these into the Fly.io image. The server loads them at st
 - `src/pages/BrowseMarketPage.vue` — Browse AMVGG trades for a pet you want to offer; layout: You give (left) ↔ They offer (right); filters: Good & Fair / Good only / OP (adjustable % threshold); "My pet only" toggle; shows AMV + ELV values per pet; "View ↗" button links to AMVGG user profile
 - `src/layouts/MainLayout.vue` — Sidebar nav (My Pets, Check Values, Trade Builder, Browse Market) + theme swatch picker + collapse
 - `src-ssr/middlewares/api.ts` — All API handlers, AMVGG/Elvebredd cache warming, trade browsing logic
-- `src-ssr/middlewares/auth.ts` — single shared-password gate (`amt_session` HMAC cookie); exempts `/login`, `/api/auth/*` and the public value endpoints
 - `scripts/fetch-values.mjs` — Pre-fetch script: fetches AMVGG (Node fetch) + Elvebredd (curl) and saves to `src/data/*.json`
 - `Dockerfile` — Multi-stage build for Fly.io; copies `src/data/` into the image
 - `fly.toml` — Fly.io app config (app: amtrader, region: gru, 512MB RAM)

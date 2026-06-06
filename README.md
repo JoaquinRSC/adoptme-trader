@@ -50,7 +50,7 @@ The app is **server-side rendered**. The browser only ever talks to this app's o
 ```
 Browser (src/)                SSR middleware (src-ssr/middlewares/)
 ─────────────────             ─────────────────────────────────────────────
-fetch('/api/...')      →      ratelimit → auth → api → render
+fetch('/api/...')      →      ratelimit → api → render
                               api handlers read from in-memory caches:
                                 detailsCache    ← src/data/amv-cache.json
                                 elveValuesCache ← src/data/elve-cache.json
@@ -60,7 +60,6 @@ fetch('/api/...')      →      ratelimit → auth → api → render
 
 **Middleware chain:**
 - `ratelimit` — in-memory per-IP limiter (tighter on the one endpoint that makes an outbound request)
-- `auth` — optional shared-password gate (HMAC-signed cookie, timing-safe compare); opt-in via the `AUTH_PASSWORD` env var, off by default
 - `api` — all `/api/*` handlers + cache warming + market browsing
 - `render` — Quasar SSR renderer
 
@@ -73,7 +72,7 @@ src/
   composables/  form picker, theming
   data/         committed value caches (amv / elve / items)
 src-ssr/
-  middlewares/  ratelimit, auth, api, render
+  middlewares/  ratelimit, api, render
 scripts/
   fetch-values.mjs   regenerates the value caches
 ```
@@ -94,7 +93,7 @@ npm run build         # production SSR build → dist/ssr/
 npm run fetch-values  # regenerate src/data/*.json from AMVGG + Elvebredd
 ```
 
-The app runs open by default. To put it behind the shared-password login, set `AUTH_PASSWORD` in the environment.
+The app is public, with no authentication — all state lives client-side in `localStorage`. It is also an installable PWA (offline-capable shell, served over SSR).
 
 ## License
 

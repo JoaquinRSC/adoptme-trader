@@ -28,7 +28,6 @@ export default configure(function (/* ctx */) {
       pwa: true,
       middlewares: [
         'ratelimit',
-        'auth',
         'api',
         'render',
       ],
