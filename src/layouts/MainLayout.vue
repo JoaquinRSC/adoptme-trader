@@ -1,9 +1,5 @@
 <template>
-  <!-- data-allow-mismatch: the q-drawer renders in mobile mode during SSR (the server
-       can't know the viewport width) and switches to desktop on the client — a known,
-       benign Quasar SSR mismatch limited to class/style/attribute. Content mismatches
-       (text/children) are intentionally NOT suppressed so real bugs still surface. -->
-  <q-layout view="lHh Lpr lFf" class="app-layout" data-allow-mismatch="class,style,attribute">
+  <q-layout view="lHh Lpr lFf" class="app-layout">
     <q-drawer
       v-model="drawer"
       show-if-above
