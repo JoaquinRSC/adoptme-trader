@@ -231,14 +231,14 @@
             </div>
             <div style="font-size:12px;color:var(--text-3);line-height:1.6">
               DevTools (F12) → <b>Application</b> → Cookies → <i>amvgg.com</i><br>
-              Copiá el <b>Value</b> de cada cookie y pegalo abajo.
+              Copy the <b>Value</b> of each cookie and paste it below.
             </div>
             <q-input
               v-model="cookieSessionData"
               type="password"
               dense outlined
               label="session_data"
-              placeholder="Value de __Secure-better-auth.session_data"
+              placeholder="Value of __Secure-better-auth.session_data"
               style="font-size:12px"
             />
             <q-input
@@ -246,7 +246,7 @@
               type="password"
               dense outlined
               label="session_token"
-              placeholder="Value de __Secure-better-auth.session_token"
+              placeholder="Value of __Secure-better-auth.session_token"
               style="font-size:12px"
             />
             <button class="btn-search" style="width:auto;padding:8px 20px;margin-top:0" :disabled="!cookieSessionData.trim() || !cookieSessionToken.trim()" @click="saveAmvggCookie">
@@ -265,8 +265,8 @@
           </div>
 
           <div style="font-size:12px;color:var(--text-3);line-height:1.6">
-            Copiá el script y correlo en la consola de <b>elvebredd.com/create-listing</b>.<br>
-            El token de Turnstile se obtiene automáticamente.
+            Copy the script and run it in the console at <b>elvebredd.com/create-listing</b>.<br>
+            The Turnstile token is obtained automatically.
           </div>
           <button
             class="btn-search"
@@ -275,7 +275,7 @@
             @click="copyElveSingleScript"
           >
             <q-spinner v-if="elveSingleScriptLoading" size="14px" color="white" />
-            <span>{{ elveSingleScriptCopied ? '✓ Script copiado!' : elveSingleScriptLoading ? 'Generando…' : 'Copy Elve Script' }}</span>
+            <span>{{ elveSingleScriptCopied ? '✓ Script copied!' : elveSingleScriptLoading ? 'Generating…' : 'Copy Elve Script' }}</span>
           </button>
         </div>
 
@@ -464,7 +464,7 @@
         <div v-if="autoSessionError" class="auto-session-error">
           <q-icon :name="matWarning" size="15px" />
           <span>{{ autoSessionError }}</span>
-          <button class="btn-sm-link" style="margin-left:auto;white-space:nowrap" @click="reconnectFromAuto">Reconectar</button>
+          <button class="btn-sm-link" style="margin-left:auto;white-space:nowrap" @click="reconnectFromAuto">Reconnect</button>
         </div>
 
         <div v-if="autoGenerating" class="auto-generating">
@@ -551,7 +551,7 @@
           <!-- Elve publish section -->
           <div v-if="autoEnableElve && pendingElveCount > 0" class="auto-elve-publish">
             <div class="auto-elve-publish-label">
-              {{ pendingElveCount }} trades Elve — correlo en la consola de elvebredd.com/create-listing
+              {{ pendingElveCount }} Elve trades — run it in the console at elvebredd.com/create-listing
             </div>
             <button
               class="btn-search"
@@ -560,7 +560,7 @@
               @click="copyElveAutoScript"
             >
               <q-spinner v-if="elveScriptLoading" size="13px" color="white" />
-              <span>{{ elveScriptCopied ? '✓ Script copiado!' : elveScriptLoading ? 'Generando…' : 'Copy Elve Script' }}</span>
+              <span>{{ elveScriptCopied ? '✓ Script copied!' : elveScriptLoading ? 'Generating…' : 'Copy Elve Script' }}</span>
             </button>
           </div>
         </div>
@@ -1056,7 +1056,7 @@ async function publishTrade () {
     const data = await res.json() as { ok: boolean; error?: string }
     if (!data.ok && res.status === 401) {
       handleAmvSessionExpired()
-      postResult.value = { ok: false, error: 'Sesión AMVGG expirada — reconectá tu cuenta.' }
+      postResult.value = { ok: false, error: 'AMVGG session expired — reconnect your account.' }
     } else {
       postResult.value = data
     }
@@ -1322,8 +1322,8 @@ async function publishAutoTrades () {
       trade.status = data.ok ? 'ok' : 'error'
       trade.error  = data.error
       if (!data.ok && res.status === 401) {
-        trade.error = 'Sesión AMVGG expirada'
-        autoSessionError.value = 'Sesión AMVGG expirada — reconectá tu cuenta desde Publish y volvé a arrancar.'
+        trade.error = 'AMVGG session expired'
+        autoSessionError.value = 'AMVGG session expired — reconnect from Publish and start over.'
         handleAmvSessionExpired()
         break
       }
