@@ -1,15 +1,12 @@
 <template>
   <q-layout view="lHh Lpr lFf" class="app-layout">
-    <!-- Mobile top bar (only below 600px — gives access to the drawer on phones) -->
+    <!-- Mobile top bar (only below 600px — gives access to the drawer on phones).
+         Branding lives in the drawer, so the bar is just the menu toggle. -->
     <q-header class="mobile-header lt-sm">
       <div class="mobile-bar">
         <button class="mobile-menu-btn" aria-label="Open menu" @click="drawer = !drawer">
           <q-icon :name="matMenu" size="22px" />
         </button>
-        <span class="logo-paw">🐾</span>
-        <div class="mobile-title">
-          AdoptMe<span class="mobile-title-tag">TRADER</span>
-        </div>
       </div>
     </q-header>
 
@@ -104,7 +101,7 @@ function closeDrawerOnMobile() {
 // Read after mount (in onMounted) — reading localStorage here would diverge from
 // the SSR render (always expanded) and cause a hydration mismatch on the drawer width.
 const collapsed = ref(false)
-const { current: currentTheme, themes, apply: applyTheme } = useTheme()
+const { current: currentTheme, themes, apply: applyTheme, init: initTheme } = useTheme()
 
 function toggleCollapse() {
   collapsed.value = !collapsed.value
@@ -114,6 +111,7 @@ function toggleCollapse() {
 let pingInterval: ReturnType<typeof setInterval> | null = null
 onMounted(() => {
   inventory.hydrate()
+  initTheme()
   if (localStorage.getItem('sidebar-collapsed') === 'true') collapsed.value = true
   pingInterval = setInterval(() => { void fetch('/api/ping') }, 60_000)
 })
@@ -311,7 +309,6 @@ const navItems = [
 .mobile-bar {
   display: flex;
   align-items: center;
-  gap: 10px;
   padding: 8px 12px;
   /* keep clear of the status bar / notch on installed PWAs */
   padding-top: max(8px, env(safe-area-inset-top));
@@ -330,20 +327,5 @@ const navItems = [
 }
 .mobile-menu-btn:active {
   background: var(--surface-2);
-}
-.mobile-title {
-  display: flex;
-  align-items: baseline;
-  gap: 7px;
-  font-size: 15px;
-  font-weight: 800;
-  color: var(--text-1);
-  letter-spacing: -0.2px;
-}
-.mobile-title-tag {
-  font-size: 9px;
-  font-weight: 700;
-  color: var(--primary);
-  letter-spacing: 2px;
 }
 </style>

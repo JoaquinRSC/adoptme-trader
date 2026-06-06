@@ -20,19 +20,37 @@ export const THEMES: ThemeDef[] = [
 const STORAGE_KEY = 'app-theme'
 const hasDom = typeof document !== 'undefined' // false during SSR
 
-const current = ref<ThemeId>(
-  (hasDom ? (localStorage.getItem(STORAGE_KEY) as ThemeId | null) : null) ?? 'purple',
-)
+function stored(): ThemeId {
+  return (hasDom ? (localStorage.getItem(STORAGE_KEY) as ThemeId | null) : null) ?? 'purple'
+}
+
+function applyToDom(id: ThemeId) {
+  if (hasDom) document.documentElement.dataset.theme = id === 'purple' ? '' : id
+}
+
+// Reactive value bound to the swatch picker. It stays at the SSR default
+// ('purple') through hydration and is only synced to the stored theme in init()
+// (called after mount). Reading localStorage at module load instead would make
+// the client render a different active swatch than the server, and Vue's
+// production hydration does NOT reconcile that class mismatch — leaving the wrong
+// swatch highlighted until the next interaction.
+const current = ref<ThemeId>('purple')
 
 function apply(id: ThemeId) {
   current.value = id
-  if (!hasDom) return
-  document.documentElement.dataset.theme = id === 'purple' ? '' : id
-  localStorage.setItem(STORAGE_KEY, id)
+  applyToDom(id)
+  if (hasDom) localStorage.setItem(STORAGE_KEY, id)
 }
 
-if (hasDom) apply(current.value)
+// Apply the stored theme's COLORS immediately (no flash of the default palette).
+// This only touches <html data-theme>, never the reactive ref, so it's safe.
+applyToDom(stored())
+
+// Sync the reactive ref after hydration — a real reactive update Vue will patch.
+function init() {
+  current.value = stored()
+}
 
 export function useTheme() {
-  return { current, themes: THEMES, apply }
+  return { current, themes: THEMES, apply, init }
 }

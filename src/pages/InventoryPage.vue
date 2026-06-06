@@ -934,6 +934,22 @@ function confirmRemove (id: string, name: string) {
 }
 .btn-secondary:hover { background: var(--surface-3); border-color: var(--primary); }
 
+/* Mobile: let the header actions wrap instead of cramming into one row */
+@media (max-width: 599px) {
+  .head-right {
+    flex-wrap: wrap;
+    gap: 8px;
+    width: 100%;
+  }
+  .total-stat { margin-right: auto; }
+  .head-right .btn-primary,
+  .head-right .btn-secondary {
+    flex: 1 1 calc(50% - 4px);
+    justify-content: center;
+    padding: 11px 12px;
+  }
+}
+
 /* Category filter */
 .cat-filter {
   display: flex;
