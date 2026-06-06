@@ -25,6 +25,7 @@ export default configure(function (/* ctx */) {
     animations: [],
 
     ssr: {
+      pwa: true,
       middlewares: [
         'ratelimit',
         'auth',
@@ -32,6 +33,16 @@ export default configure(function (/* ctx */) {
         'render',
       ],
       prodPort: 3000,
+    },
+
+    pwa: {
+      // GenerateSW precaches the client bundle; SSR pages are served fresh from
+      // the server and fall back to the auto-generated offline.html when offline.
+      // Manifest lives in src-pwa/manifest.json.
+      workboxMode: 'GenerateSW',
+      injectPwaMetaTags: true,
+      swFilename: 'sw.js',
+      manifestFilename: 'manifest.json',
     },
   }
 })

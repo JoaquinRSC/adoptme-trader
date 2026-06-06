@@ -1,5 +1,18 @@
 <template>
   <q-layout view="lHh Lpr lFf" class="app-layout">
+    <!-- Mobile top bar (only below 600px — gives access to the drawer on phones) -->
+    <q-header class="mobile-header lt-sm">
+      <div class="mobile-bar">
+        <button class="mobile-menu-btn" aria-label="Open menu" @click="drawer = !drawer">
+          <q-icon :name="matMenu" size="22px" />
+        </button>
+        <span class="logo-paw">🐾</span>
+        <div class="mobile-title">
+          AdoptMe<span class="mobile-title-tag">TRADER</span>
+        </div>
+      </div>
+    </q-header>
+
     <q-drawer
       v-model="drawer"
       show-if-above
@@ -32,7 +45,7 @@
               class="nav-item"
               :class="{ 'nav-item--active': isActive, 'nav-item--mini': collapsed }"
               :title="collapsed ? item.label : undefined"
-              @click="navigate"
+              @click="() => { navigate(); closeDrawerOnMobile() }"
             >
               <q-icon :name="item.icon" size="20px" class="nav-icon" />
               <span v-if="!collapsed" class="nav-label">{{ item.label }}</span>
@@ -73,13 +86,21 @@
 
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted } from 'vue'
-import { matInventory2, matSwapHoriz, matBalance, matChevronLeft, matChevronRight, matSearch } from '@quasar/extras/material-icons'
+import { useQuasar } from 'quasar'
+import { matInventory2, matSwapHoriz, matBalance, matChevronLeft, matChevronRight, matSearch, matMenu } from '@quasar/extras/material-icons'
 import { version } from '../../package.json'
 import { useTheme } from 'src/composables/useTheme'
 import { useInventoryStore } from 'src/stores/inventory'
 
+const $q = useQuasar()
 const inventory = useInventoryStore()
-const drawer = ref(true)
+// Closed by default; `show-if-above` keeps it open on desktop (>600px) and the
+// mobile header's menu button toggles it as an overlay on phones.
+const drawer = ref(false)
+
+function closeDrawerOnMobile() {
+  if ($q.screen.lt.sm) drawer.value = false
+}
 // Read after mount (in onMounted) — reading localStorage here would diverge from
 // the SSR render (always expanded) and cause a hydration mismatch on the drawer width.
 const collapsed = ref(false)
@@ -279,5 +300,50 @@ const navItems = [
 .collapse-btn:hover {
   background: var(--surface-2);
   color: var(--text-1);
+}
+
+/* Mobile header */
+.mobile-header {
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  box-shadow: none;
+}
+.mobile-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  /* keep clear of the status bar / notch on installed PWAs */
+  padding-top: max(8px, env(safe-area-inset-top));
+}
+.mobile-menu-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  height: 38px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: transparent;
+  color: var(--text-1);
+  cursor: pointer;
+}
+.mobile-menu-btn:active {
+  background: var(--surface-2);
+}
+.mobile-title {
+  display: flex;
+  align-items: baseline;
+  gap: 7px;
+  font-size: 15px;
+  font-weight: 800;
+  color: var(--text-1);
+  letter-spacing: -0.2px;
+}
+.mobile-title-tag {
+  font-size: 9px;
+  font-weight: 700;
+  color: var(--primary);
+  letter-spacing: 2px;
 }
 </style>
