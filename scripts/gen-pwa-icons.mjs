@@ -150,23 +150,42 @@ function encodePng({ w, h, data }) {
   ])
 }
 
-// ── Run ───────────────────────────────────────────────────────────────────────
-const src = decodeIco(readFileSync(join(iconsDir, 'icon.ico')))
-const BG = [12, 14, 26] // --bg #0c0e1a
+// The source .ico has a dark navy square baked in as its background — invisible
+// on dark home screens. Repaint those dark pixels with the brand purple so the
+// result is a white "A" on a solid, high-contrast purple tile.
+function repaintDarkBackground(src, bg) {
+  const { w, h, data } = src
+  const out = Buffer.from(data)
+  for (let i = 0; i < w * h; i++) {
+    const R = data[i * 4], G = data[i * 4 + 1], B = data[i * 4 + 2], a = data[i * 4 + 3]
+    const lum = 0.299 * R + 0.587 * G + 0.114 * B
+    if (a > 0 && lum < 60) {
+      out[i * 4] = bg[0]; out[i * 4 + 1] = bg[1]; out[i * 4 + 2] = bg[2]; out[i * 4 + 3] = 255
+    }
+  }
+  return { w, h, data: out }
+}
 
+// ── Run ───────────────────────────────────────────────────────────────────────
+const BG = [124, 108, 248] // brand primary #7c6cf8
+const src = repaintDarkBackground(decodeIco(readFileSync(join(iconsDir, 'icon.ico'))), BG)
+
+// Standard icons: full-bleed on the brand color — always visible, never blank.
 const plain = [128, 192, 256, 384, 512]
 for (const s of plain) {
-  writeFileSync(join(iconsDir, `icon-${s}x${s}.png`), encodePng(resize(src, s)))
+  writeFileSync(join(iconsDir, `icon-${s}x${s}.png`), encodePng(maskable(src, s, BG, 0)))
   console.log(`icon-${s}x${s}.png`)
 }
-writeFileSync(join(iconsDir, 'icon-maskable-192x192.png'), encodePng(maskable(src, 192, BG)))
-writeFileSync(join(iconsDir, 'icon-maskable-512x512.png'), encodePng(maskable(src, 512, BG)))
 
-// Apple touch icons + MS tile use a solid background (no transparency allowed by iOS).
-writeFileSync(join(iconsDir, 'apple-touch-icon.png'), encodePng(maskable(src, 180, BG, 0.06)))
+// Maskable: extra safe-zone padding so Android's adaptive mask can't clip the mark.
+writeFileSync(join(iconsDir, 'icon-maskable-192x192.png'), encodePng(maskable(src, 192, BG, 0.18)))
+writeFileSync(join(iconsDir, 'icon-maskable-512x512.png'), encodePng(maskable(src, 512, BG, 0.18)))
+
+// Apple touch icons + MS tile must be opaque (iOS disallows transparency).
+writeFileSync(join(iconsDir, 'apple-touch-icon.png'), encodePng(maskable(src, 180, BG, 0.05)))
 for (const s of [120, 152, 167, 180]) {
-  writeFileSync(join(iconsDir, `apple-icon-${s}x${s}.png`), encodePng(maskable(src, s, BG, 0.06)))
+  writeFileSync(join(iconsDir, `apple-icon-${s}x${s}.png`), encodePng(maskable(src, s, BG, 0.05)))
 }
-writeFileSync(join(iconsDir, 'ms-icon-144x144.png'), encodePng(maskable(src, 144, BG, 0.06)))
-writeFileSync(join(iconsDir, 'favicon-32x32.png'), encodePng(resize(src, 32)))
+writeFileSync(join(iconsDir, 'ms-icon-144x144.png'), encodePng(maskable(src, 144, BG, 0.05)))
+writeFileSync(join(iconsDir, 'favicon-32x32.png'), encodePng(maskable(src, 32, BG, 0)))
 console.log('maskable + apple/ms + favicon done')

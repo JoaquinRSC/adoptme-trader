@@ -948,6 +948,23 @@ function confirmRemove (id: string, name: string) {
     justify-content: center;
     padding: 11px 12px;
   }
+
+  /* Add Pet / Add Item dialog: stack search and config vertically so neither
+     column gets crushed (the side-by-side layout overflows a phone width). */
+  .add-card { width: 96vw; max-width: 96vw; }
+  .add-body {
+    flex-direction: column;
+    height: auto;
+    max-height: 78vh;
+    overflow-y: auto;
+  }
+  .add-left {
+    width: 100%;
+    border-right: none;
+    border-bottom: 1px solid var(--border);
+  }
+  .results-panel { flex: none; height: 200px; }
+  .add-right { width: 100%; }
 }
 
 /* Category filter */
