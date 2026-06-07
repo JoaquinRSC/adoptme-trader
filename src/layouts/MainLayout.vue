@@ -14,7 +14,7 @@
       v-model="drawer"
       show-if-above
       :width="220"
-      :mini="collapsed"
+      :mini="collapsed && $q.screen.gt.xs"
       :mini-width="64"
       :breakpoint="600"
       class="sidebar"
@@ -64,7 +64,9 @@
             />
           </div>
           <div v-if="!collapsed" class="footer-version">v{{ version }}</div>
-          <button class="collapse-btn" :title="collapsed ? 'Expand' : 'Collapse'" @click="toggleCollapse">
+          <!-- Collapse/mini is a desktop-only concept; on phones the drawer is an
+               overlay, so hide it there (gt-xs = visible only ≥600px). -->
+          <button class="collapse-btn gt-xs" :title="collapsed ? 'Expand' : 'Collapse'" @click="toggleCollapse">
             <q-icon :name="collapsed ? matChevronRight : matChevronLeft" size="16px" />
           </button>
         </div>
