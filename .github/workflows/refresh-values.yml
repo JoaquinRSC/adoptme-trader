@@ -1,0 +1,57 @@
+name: Refresh values
+
+# Re-fetches AMVGG + Elvebredd values weekly, commits the updated JSON caches,
+# and redeploys to Fly.io. Runs unattended; can also be triggered manually.
+on:
+  schedule:
+    - cron: '0 6 * * *'   # daily 06:00 UTC (03:00 Uruguay)
+  workflow_dispatch: {}    # manual "Run workflow" button
+
+jobs:
+  refresh:
+    name: Fetch values and deploy
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write       # needed to push the updated caches to master
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      # ubuntu-latest ships curl, which the script uses for both AMVGG and
+      # Elvebredd (Node fetch gets 403 from Elvebredd's Cloudflare).
+      - name: Fetch latest values
+        run: node scripts/fetch-values.mjs
+
+      - name: Commit updated caches
+        id: commit
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add src/data/amv-cache.json src/data/elve-cache.json src/data/elve-ids.json src/data/items-cache.json
+          if git diff --staged --quiet; then
+            echo "No value changes — skipping commit and deploy."
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+          else
+            git commit -m "chore: refresh AMVGG + Elvebredd values"
+            git push
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Set up flyctl
+        if: steps.commit.outputs.changed == 'true'
+        # Pinned to a full commit SHA (= tag v1) to avoid supply-chain risk:
+        # this job has the FLY_API_TOKEN, so a floating @master must not be trusted.
+        uses: superfly/flyctl-actions/setup-flyctl@ed8efb33836e8b2096c7fd3ba1c8afe303ebbff1  # v1
+
+      - name: Deploy to Fly.io
+        if: steps.commit.outputs.changed == 'true'
+        run: flyctl deploy --remote-only
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
