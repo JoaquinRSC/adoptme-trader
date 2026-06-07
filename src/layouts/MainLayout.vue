@@ -75,7 +75,7 @@
 
     <q-page-container>
       <router-view v-slot="{ Component }">
-        <keep-alive :include="['TradeBuilderPage']">
+        <keep-alive :include="['TradeBuilderPage', 'InventoryPage']">
           <component :is="Component" />
         </keep-alive>
       </router-view>
