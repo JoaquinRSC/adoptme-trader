@@ -104,7 +104,7 @@
             <span class="value-lbl">{{ valueSource === 'amvgg' ? 'AMVGG' : 'Elve' }}</span>
             <q-spinner v-if="loadingValue[pet.id]" size="13px" />
             <template v-else-if="activeValue(pet) !== null && activeValue(pet) !== undefined">
-              <span class="value-num">{{ activeValue(pet) }}</span>
+              <span class="value-num">{{ displayValue(pet) }}</span>
             </template>
             <span v-else-if="pet.category && pet.category !== 'pet'" class="value-na">—</span>
             <button v-else class="value-fetch" @click="fetchActive(pet)">Fetch</button>
@@ -720,6 +720,14 @@ function cycleSortOrder () {
 
 function activeValue (pet: InventoryPet): number | null | undefined {
   return valueSource.value === 'elvebredd' ? petElveValue[pet.id] : petValue[pet.id]
+}
+
+// Elvebredd values carry float-precision noise (e.g. 0.879999…); round them like
+// the rest of the app does. AMVGG values are already clean, so show them as-is.
+function displayValue (pet: InventoryPet): string {
+  const v = activeValue(pet)
+  if (v === null || v === undefined) return ''
+  return valueSource.value === 'elvebredd' ? v.toFixed(2) : String(v)
 }
 
 function fetchActive (pet: InventoryPet) {
