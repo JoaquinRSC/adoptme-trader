@@ -148,6 +148,18 @@ body {
   border-color: var(--primary) !important;
 }
 
+// Field value / typed text — Quasar's light-mode default is near-black, which is
+// unreadable on our dark fields (e.g. the form select showing "FR"). Force the
+// theme's light text and a dim placeholder; works across every theme.
+.q-field__native,
+.q-field__input {
+  color: var(--text-1) !important;
+}
+.q-field__native::placeholder,
+.q-field__input::placeholder {
+  color: var(--text-3) !important;
+}
+
 // Quasar menu / dropdown
 .q-menu {
   background: var(--surface-2) !important;
