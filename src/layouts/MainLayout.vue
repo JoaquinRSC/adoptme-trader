@@ -22,7 +22,15 @@
       <div class="sidebar-inner">
         <!-- Logo -->
         <div class="sidebar-logo" :class="{ 'sidebar-logo--mini': collapsed }">
-          <span class="logo-paw">🐾</span>
+          <svg class="logo-paw" viewBox="30 48 196 196" aria-hidden="true">
+            <g fill="currentColor">
+              <ellipse cx="66" cy="116" rx="22" ry="27" transform="rotate(-21.8 66 116)" />
+              <ellipse cx="104" cy="90" rx="22" ry="28" transform="rotate(-6.9 104 90)" />
+              <ellipse cx="152" cy="90" rx="22" ry="28" transform="rotate(6.9 152 90)" />
+              <ellipse cx="190" cy="116" rx="22" ry="27" transform="rotate(21.8 190 116)" />
+              <ellipse cx="128" cy="178" rx="51" ry="46" />
+            </g>
+          </svg>
           <div v-if="!collapsed">
             <div class="logo-name">AdoptMe</div>
             <div class="logo-tag">TRADER</div>
@@ -159,9 +167,12 @@ const navItems = [
 }
 
 .logo-paw {
-  font-size: 26px;
-  line-height: 1;
+  width: 26px;
+  height: 26px;
+  flex-shrink: 0;
+  color: var(--primary);
   filter: drop-shadow(0 0 8px rgba(124, 108, 248, 0.5));
+  transition: color 0.2s ease;
 }
 
 .logo-name {
