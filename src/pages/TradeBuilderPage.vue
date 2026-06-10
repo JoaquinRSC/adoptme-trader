@@ -657,7 +657,7 @@ const searchDone          = ref(false)
 
 const valueSource         = ref<'amvgg' | 'elvebredd'>('amvgg')
 
-const excludedPetIds = ref<string[]>(JSON.parse(localStorage.getItem('excluded_pet_ids') ?? '[]'))
+const excludedPetIds = ref<string[]>([])
 
 function toggleExcluded (petId: string) {
   const idx = excludedPetIds.value.indexOf(petId)
@@ -666,7 +666,7 @@ function toggleExcluded (petId: string) {
   localStorage.setItem('excluded_pet_ids', JSON.stringify(excludedPetIds.value))
 }
 
-const excludedWantedNames = ref<string[]>(JSON.parse(localStorage.getItem('excluded_wanted_names') ?? '[]'))
+const excludedWantedNames = ref<string[]>([])
 
 function toggleExcludedWanted (name: string) {
   const idx = excludedWantedNames.value.indexOf(name)
@@ -969,7 +969,9 @@ const elveSingleScriptLoading = ref(false)
 const elveSingleScriptCopied  = ref(false)
 
 onMounted(() => {
-  amvggCookie.value = localStorage.getItem('amvgg_cookie') ?? ''
+  amvggCookie.value        = localStorage.getItem('amvgg_cookie') ?? ''
+  excludedPetIds.value     = JSON.parse(localStorage.getItem('excluded_pet_ids') ?? '[]')
+  excludedWantedNames.value = JSON.parse(localStorage.getItem('excluded_wanted_names') ?? '[]')
 })
 
 function saveAmvggCookie () {
