@@ -1,5 +1,19 @@
 @import url('https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;600;700;800;900&display=swap');
 
+// ── Tap & selection (mobile) ───────────────────────────────────────────────────
+// App-like feel: tapping or scrolling never selects text or triggers the
+// iOS long-press callout. Opt back in per-element with `.selectable`.
+* { -webkit-tap-highlight-color: transparent; }
+body {
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+}
+.selectable {
+  -webkit-user-select: text;
+  user-select: text;
+}
+
 // ── Design tokens ─────────────────────────────────────────────────────────────
 :root {
   --bg:           #0c0e1a;
