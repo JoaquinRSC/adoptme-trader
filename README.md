@@ -56,7 +56,9 @@ fetch('/api/...')      →      ratelimit → api → render
                                 elveValuesCache ← src/data/elve-cache.json
 ```
 
-**Static value cache.** Values are pre-fetched locally (`npm run fetch-values`) and committed as JSON, then baked into the Docker image and loaded into memory on boot. This keeps the app fast and avoids hammering the source sites on every request. Elvebredd is fetched via `curl` to get past its Cloudflare TLS fingerprint check (Node's `fetch` gets a 403).
+**Static value cache.** Values are pre-fetched (`npm run fetch-values`) and committed as JSON, then baked into the Docker image and loaded into memory on boot. This keeps the app fast and avoids hammering the source sites on every request. Elvebredd is fetched via `curl` to get past its Cloudflare TLS fingerprint check (Node's `fetch` gets a 403).
+
+**Automated refresh.** A GitHub Actions workflow ([`refresh-values.yml`](.github/workflows/refresh-values.yml)) re-fetches the values daily, commits the updated caches if anything changed, and redeploys to Fly.io — so the live app stays current without manual intervention. It can also be triggered by hand from the Actions tab.
 
 **Middleware chain:**
 - `ratelimit` — in-memory per-IP limiter (tighter on the one endpoint that makes an outbound request)
