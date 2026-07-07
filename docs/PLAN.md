@@ -1,7 +1,10 @@
 # Plan: de herramienta personal a app pública
 
-Estado del análisis: julio 2026. Este documento resume el diagnóstico y el roadmap
-acordado para hacer AM Trader publicable, útil y sostenible.
+**v1 — cerrado julio 2026.** Este documento resume el diagnóstico y el roadmap
+acordado para hacer AM Trader publicable, útil y sostenible. Regla de ejecución:
+cerrar cada fase entera antes de empezar la siguiente — una app chica, fresca y
+pulida le gana a una app grande a medio hacer. El backlog existe para anotar
+sin comprometerse.
 
 ## Diagnóstico
 
@@ -120,6 +123,22 @@ dialog SE CIERRA tras cada pet agregado → armar una oferta de 5 pets = abrirlo
 - [ ] Mobile: el dialog pasa a sheet full-screen.
 - [ ] Browse Market puede conservar su dropdown inline (es el patrón correcto
       para ese contexto) pero construido con las mismas piezas internas.
+
+**Estado y consistencia (última pasada de revisión):**
+- [ ] 🐛 **Tolerancia inconsistente en Trade Builder**: `TOLERANCE = 0.02` filtra
+      sugerencias a ±2%, pero el empty state dice "±20%" (y CLAUDE.md también).
+      Decidir la intención y, mejor, exponer el control en la UI (±5/10/20%) —
+      hoy es un número mágico que explica búsquedas con pocas sugerencias.
+- [ ] **Persistir borradores**: la oferta del Trade Builder y los lados de Check
+      Values viven en refs del componente → cambiar de página los borra. Moverlos
+      a Pinia + localStorage con botón "limpiar". Perder una oferta de 6 pets por
+      tocar el sidebar es de las peores experiencias posibles.
+- [ ] **Redefinir el fairness score**: hoy se calcula solo contra la 1ª sugerencia
+      y siempre con valores AMV aunque estés en modo Elve. Cada sugerencia ya
+      tiene su delta chip → o quitar el score grande o darle semántica clara
+      (p. ej. fairness del trade seleccionado, respetando la fuente activa).
+- [ ] Batch de demands en sugerencias: las top-20 disparan 20 GET individuales
+      a `/api/pet/details` → un endpoint batch (o incluir demands en `pet/batch`).
 
 **UX transversal** (los detalles que hacen que se sienta "bien pensado"):
 - [ ] Skeletons (cards fantasma) en vez de spinners al cargar valores —
