@@ -36,52 +36,21 @@ acordado para hacer AM Trader publicable, útil y sostenible.
 
 ## Roadmap (en orden)
 
-### Fase 1 — Refresh automático de valores 🔴 prioridad máxima — ✅ IMPLEMENTADA
+### Fase 1 — Refresh automático de valores 🔴 prioridad máxima
 Sin confianza en los valores, nada más importa.
-
-**Arquitectura final** (mejor que la idea original: ya existía un workflow diario
-`refresh-values.yml` que fetchea desde GitHub Actions, commitea y deployaba):
-
-```
-GitHub Actions (cada 4 h, runners de GitHub — sin riesgo de IP de Fly)
-  └─ fetch-values.mjs          → fetchea AMVGG + Elvebredd
-  └─ commit si cambió          → historial de git = archivo de snapshots (Fase 5)
-  └─ push-values.mjs           → POST /api/refresh-values (hot-swap, SIN redeploy)
-  └─ flyctl deploy             → SOLO como fallback si el push falla
-```
-
-- [x] Endpoint `POST /api/refresh-values` (Bearer token, env `REFRESH_TOKEN`):
-      recibe los 4 JSON y reemplaza los Maps en memoria en caliente.
-- [x] Guardrails: rechaza (422) cualquier sección vacía/parcial (mínimos absolutos
-      + no menos de la mitad del cache actual). Nunca pisa un cache bueno.
-- [x] Cron de GitHub Actions cada 4 h (`0 */4 * * *`). El push despierta la
-      máquina auto-stopped y después vuelve a dormir → compatible con scale-to-zero.
-- [x] Persistencia: lo refrescado se escribe en `APP_DATA_DIR` (o `/data` si hay
-      volumen de Fly, o `.runtime-data/` local). Al arrancar, el server prefiere
-      eso sobre los JSON bundleados → un stop/start no pierde frescura.
-- [x] `GET /api/refresh-status` para monitorear (lastRefreshAt + counts).
-- [x] Snapshots: cada refresh con cambios queda commiteado en git → el historial
-      de `src/data/*.json` es la serie temporal para la Fase 5. (Cuando llegue
-      Supabase, migrar a filas en DB.)
-- [x] Elvebredd desde IP de Fly: evitado por diseño — el fetch corre en los
-      runners de GitHub, no en Fly.
-- [x] Smoke test end-to-end: push aplica 750 pets / 735 elve / 666 items,
-      payload roto → 422 sin tocar el cache, reinicio carga lo persistido.
-
-**⚙️ Setup pendiente (manual, una sola vez):**
-1. Generar token: `openssl rand -hex 32`
-2. En Fly: `flyctl secrets set REFRESH_TOKEN=<token>` (esto redeploya solo)
-3. En GitHub: Settings → Secrets and variables → Actions → new secret
-   `REFRESH_TOKEN` con el mismo valor.
-4. (Opcional) Volumen para persistencia total entre deploys:
-   `flyctl volumes create data --size 1 --region gru` + `[mounts]` en fly.toml
-   (`source="data"`, `destination="/data"`). Sin volumen igual funciona: el peor
-   caso tras un deploy es ≤ 4 h de staleness hasta el próximo push.
-5. Probar: Actions → "Refresh values" → Run workflow, y verificar
-   `https://amtrader.fly.dev/api/refresh-status`.
-
-**Nota**: `npm run lint` está roto (no hay config de ESLint en el repo y eslint
-no está en devDependencies — preexistente). Arreglarlo en la Fase 2.
+- [ ] Endpoint `POST /api/refresh-values` protegido con token secreto (env var):
+      re-ejecuta la lógica de `fetch-values` en el server y reemplaza los Maps en memoria.
+- [ ] Nunca pisar el cache con datos parciales/vacíos: si el fetch falla, se conserva
+      el último cache bueno. Los JSON commiteados quedan como semilla/fallback de arranque.
+- [ ] Cron de GitHub Actions (gratis) cada 3-4 h que pegue al endpoint.
+      Despierta la máquina, refresca, la máquina se vuelve a dormir → compatible con
+      scale-to-zero, costo ~cero.
+- [ ] Persistir el último fetch exitoso en un volumen de Fly (~US$0.15/mes por GB)
+      para que un reinicio no vuelva a los valores del último deploy.
+- [ ] Probar Elvebredd desde la IP de Fly (curl ya bypasea el TLS fingerprint,
+      pero Cloudflare puede tratar distinto a IPs de datacenter). Backoff + fallback.
+- [ ] **Guardar snapshots desde el día uno** (fecha + valores): es la materia prima
+      del historial de tendencias de la Fase 5, se acumula solo mientras tanto.
 
 ### Fase 2 — Limpieza para público
 - [ ] Ocultar Publish / Auto / Loop detrás de un flag (p. ej. `localStorage.advanced_mode`).

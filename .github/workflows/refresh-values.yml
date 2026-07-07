@@ -1,18 +1,15 @@
 name: Refresh values
 
-# Re-fetches AMVGG + Elvebredd values every 4 hours, commits the updated JSON
-# caches (the git history doubles as a value-snapshot archive), and hot-pushes
-# them to the live app via POST /api/refresh-values — no redeploy needed.
-# A Fly deploy only runs as fallback if the hot push fails (e.g. REFRESH_TOKEN
-# not configured yet). Can also be triggered manually.
+# Re-fetches AMVGG + Elvebredd values weekly, commits the updated JSON caches,
+# and redeploys to Fly.io. Runs unattended; can also be triggered manually.
 on:
   schedule:
-    - cron: '0 */4 * * *'   # every 4 hours
-  workflow_dispatch: {}      # manual "Run workflow" button
+    - cron: '0 6 * * *'   # daily 06:00 UTC (03:00 Uruguay)
+  workflow_dispatch: {}    # manual "Run workflow" button
 
 jobs:
   refresh:
-    name: Fetch values and push to app
+    name: Fetch values and deploy
     runs-on: ubuntu-latest
     permissions:
       contents: write       # needed to push the updated caches to master
@@ -39,7 +36,7 @@ jobs:
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add src/data/amv-cache.json src/data/elve-cache.json src/data/elve-ids.json src/data/items-cache.json
           if git diff --staged --quiet; then
-            echo "No value changes — skipping commit."
+            echo "No value changes — skipping commit and deploy."
             echo "changed=false" >> "$GITHUB_OUTPUT"
           else
             git commit -m "chore: refresh AMVGG + Elvebredd values"
@@ -47,26 +44,14 @@ jobs:
             echo "changed=true" >> "$GITHUB_OUTPUT"
           fi
 
-      # Hot-swap the live app's in-memory caches. Runs even when nothing
-      # changed in git: after a machine restart or redeploy the app may hold
-      # older bundled values, and this push re-syncs it either way.
-      - name: Push values to live app
-        id: push
-        continue-on-error: true
-        run: node scripts/push-values.mjs
-        env:
-          REFRESH_TOKEN: ${{ secrets.REFRESH_TOKEN }}
-
-      # Fallback: if the hot push failed and the values changed, bake them in
-      # with a full deploy so the app never drifts stale.
       - name: Set up flyctl
-        if: steps.push.outcome == 'failure' && steps.commit.outputs.changed == 'true'
+        if: steps.commit.outputs.changed == 'true'
         # Pinned to a full commit SHA (= tag v1) to avoid supply-chain risk:
         # this job has the FLY_API_TOKEN, so a floating @master must not be trusted.
         uses: superfly/flyctl-actions/setup-flyctl@ed8efb33836e8b2096c7fd3ba1c8afe303ebbff1  # v1
 
-      - name: Deploy to Fly.io (fallback)
-        if: steps.push.outcome == 'failure' && steps.commit.outputs.changed == 'true'
+      - name: Deploy to Fly.io
+        if: steps.commit.outputs.changed == 'true'
         run: flyctl deploy --remote-only
         env:
           FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}

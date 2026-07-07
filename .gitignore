@@ -60,6 +60,3 @@ logs/
 
 # TypeScript cache
 *.tsbuildinfo
-
-# Hot-refreshed value caches persisted at runtime (see /api/refresh-values)
-.runtime-data/
