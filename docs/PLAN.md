@@ -23,6 +23,20 @@ acordado para hacer AM Trader publicable, útil y sostenible.
 - *Versión pública* = solo consulta (Publish/Auto ocultos).
 - *Modo avanzado personal* = Publish/Auto detrás de un flag (localStorage o setting oculto).
 
+**Diagnóstico visual** (verificado con screenshots del build en desktop 1440px y mobile 390px):
+- ✅ Base sólida, por encima del promedio del nicho: sistema coherente (dark navy +
+  violeta, cards, chips consistentes), sidebar profesional, empty states cuidados,
+  5 temas de color. Mobile ya colapsa a una columna con hamburger (mejor de lo temido).
+- ⚠️ Tiene el "look IA/template por defecto": dark + violeta índigo, pills, sans
+  genérica, dashboard con sidebar. Los usuarios no lo notan, pero anula el objetivo
+  de ser "distinta a las demás". La ejecución está bien; falta capa de identidad
+  (ver Fase 2.5).
+- 🐛 **Verificar posible hydration mismatch del SSR**: en renders en frío
+  (`/trade-builder` directo, incógnito) el header muestra el título de OTRA página
+  y quedan controles sin estilos. Puede ser artefacto del headless usado para los
+  screenshots, pero si se reproduce en navegador real es prioridad de Fase 2:
+  el SEO de la Fase 3 depende del primer render en frío.
+
 **Problemas transversales:**
 - Valores estáticos: se actualizan solo con `npm run fetch-values` + commit + deploy.
   Los valores cambian seguido → riesgo de recomendar trades malos. **Prioridad #1.**
@@ -59,6 +73,31 @@ Sin confianza en los valores, nada más importa.
 - [ ] Responsive/mobile: Trade Builder colapsa a una columna; revisar todas las páginas.
 - [ ] Tooltips + página corta de "cómo funciona" (formas, fuentes, demand, fairness).
 - [ ] PWA instalable (manifest + service worker básico).
+- [ ] Verificar/arreglar el posible hydration mismatch del SSR (ver diagnóstico visual).
+- [ ] Arreglar `npm run lint` (no hay config de ESLint en el repo y eslint no está
+      en devDependencies — está roto).
+
+**Pulido visual** (un día de trabajo, no un rediseño):
+- [ ] Subir tipografía y densidad ~20%: las cards usan 9-11px, hostil para
+      adolescentes en tablet/celu. Touch targets más grandes (chips F/R/D/N/M).
+- [ ] Más contraste entre fondo ↔ surface ↔ borde: hoy todo está tan cerca en
+      luminancia que en pantallas baratas se ve barroso.
+- [ ] Contenedor `max-width: ~1150px` centrado: en 1440px+ los controles se
+      estiran de borde a borde y queda espacio muerto.
+
+### Fase 2.5 — Identidad visual (que no parezca template/IA)
+La ejecución ya está; falta punto de vista. Pocas decisiones, mucho efecto:
+- [ ] **Apropiarse del sistema de colores por forma (F/R/D/N/M)** como lenguaje
+      visual central: bordes/tints de card por forma, gradientes de forma en
+      headers de trade. Es conocimiento del dominio — ninguna otra app lo tiene.
+- [ ] Tipografía display con carácter solo para títulos (redondeada/gordita,
+      onda Nunito/Baloo — pega con Adopt Me); el cuerpo queda sans limpia.
+- [ ] Logo + mascota propia (reemplaza huellita + wordmark). Clave para los
+      previews de Discord de la Fase 3 (se tiene que reconocer a 60px).
+- [ ] Decidir el nombre final ("AM Trader"?) ANTES de comprar dominio.
+- [ ] Microcopy con voz de trader (es-AR/en), no texto funcional de IA:
+      "Nadie está buscando tu Frost Dragon todavía — probá en un rato".
+- [ ] Reemplazar emojis-como-íconos (🐾, 🦌, ⊘) por íconos Material (ya está el set).
 
 ### Fase 3 — Motor de crecimiento (antes que el login: primero tráfico, después retención)
 - [ ] **Links de trade compartibles**: armar un trade → link público + imagen OG linda
