@@ -9,19 +9,29 @@ acordado para hacer AM Trader publicable, útil y sostenible.
 - My Pets (inventario) ✅
 - Check Values ✅
 - Trade Builder — la mitad consultiva (armar oferta → Find matches → sugerencias) ✅
-- Browse Market — la UX está bien, el problema es el backend (ver abajo)
 
-**Lo que NO es shippeable a usuario final (y no tiene arreglo legítimo):**
+**Lo que NO va en la versión pública:**
 - **Publish a AMVGG**: requiere que el usuario copie sus cookies de sesión desde
   DevTools, y esas cookies pasan por nuestro server (`api.ts` → `amvgg.com/api/createPost`).
   Pedirle la sesión a un desconocido es inviable; AMVGG no tiene OAuth ni API pública.
 - **Publish a Elvebredd**: pegar un script en la consola del navegador (patrón self-XSS).
 - **Auto + Loop**: publicar trades en bucle con la sesión del usuario = botting.
-  A escala pública: cuentas baneadas + IP de Fly bloqueada (mataría Browse Market).
+  A escala pública: cuentas baneadas + IP de Fly bloqueada.
+- **Browse Market** (decisión estratégica, no técnica): scrapea el *feed de trades*
+  de AMVGG/Elvebredd en vivo por cada búsqueda de cada usuario y republica su
+  marketplace dentro de nuestra UI — es espejarles el producto central, con tráfico
+  proporcional a nuestro éxito, quitándoles las pageviews con las que monetizan.
+  Distinto de los *valores* (referencia, pocas veces al día, tolerado en el nicho):
+  es la única feature con riesgo de relación con las fuentes de las que dependemos.
+  La UX está bien; queda como herramienta personal.
 
 **Decisión**: separar en dos modos.
-- *Versión pública* = solo consulta (Publish/Auto ocultos).
-- *Modo avanzado personal* = Publish/Auto detrás de un flag (localStorage o setting oculto).
+- *Versión pública* = My Pets + Check Values + Trade Builder consultivo
+  (sidebar de 3 secciones). Identidad: todo propio, nada espejado.
+- *Modo avanzado personal* = Publish/Auto + Browse Market detrás de un flag
+  (localStorage o setting oculto).
+- El motor de crecimiento (Fase 3) y los diferenciadores (Fase 5) no dependen
+  del feed de trades — no se pierde nada estratégico.
 
 **Diagnóstico visual** (verificado con screenshots del build en desktop 1440px y mobile 390px):
 - ✅ Base sólida, por encima del promedio del nicho: sistema coherente (dark navy +
@@ -40,9 +50,6 @@ acordado para hacer AM Trader publicable, útil y sostenible.
 **Problemas transversales:**
 - Valores estáticos: se actualizan solo con `npm run fetch-values` + commit + deploy.
   Los valores cambian seguido → riesgo de recomendar trades malos. **Prioridad #1.**
-- Browse Market hace scraping en vivo por cada búsqueda desde la única IP de Fly.
-  Con N usuarios: 429s, bloqueo de Cloudflare, un usuario intenso rompe todo.
-  Arreglo: cache server-side por `(pet, form)` de 2-5 min.
 - Errores crudos en pantalla (monospace) → mensajes amables.
 - Inventario solo en localStorage (por dispositivo, se pierde) → sync con login (fase 4).
 - Mobile: audiencia mayormente celular/tablet; Trade Builder es 3 columnas desktop.
@@ -67,8 +74,12 @@ Sin confianza en los valores, nada más importa.
       del historial de tendencias de la Fase 5, se acumula solo mientras tanto.
 
 ### Fase 2 — Limpieza para público
-- [ ] Ocultar Publish / Auto / Loop detrás de un flag (p. ej. `localStorage.advanced_mode`).
-- [ ] Cache server-side de `/api/trade/browse` por `(pet, form)`, TTL 2-5 min.
+- [ ] Ocultar Publish / Auto / Loop **y Browse Market** detrás de un flag
+      (p. ej. `localStorage.advanced_mode`): la sidebar pública queda con
+      3 secciones (My Pets, Check Values, Trade Builder). El código de Browse
+      Market no se borra — sigue siendo herramienta personal.
+- [ ] Rate-limit extra o auth simple en `/api/trade/browse` para que el endpoint
+      no quede usable por terceros aunque la página esté oculta.
 - [ ] Mensajes de error amables (nada de errores crudos en monospace).
 - [ ] Responsive/mobile: Trade Builder colapsa a una columna; revisar todas las páginas.
 - [ ] Tooltips + página corta de "cómo funciona" (formas, fuentes, demand, fairness).
@@ -167,6 +178,9 @@ La ejecución ya está; falta punto de vista. Pocas decisiones, mucho efecto:
 - Bot de Discord de valores (canal de crecimiento enorme, pero es otro producto).
 - Comparador de pets ("Frost Dragon vs Shadow Dragon").
 - Login with Roblox (OAuth2) como diferenciador de la Fase 4, segunda iteración.
+- Re-evaluar Browse Market público: si la app crece, escribirles a AMVGG y
+  preguntar si les molesta (argumento: el "View ↗" les manda tráfico). Habilitar
+  después es fácil; des-quemar una IP bloqueada o una mala relación, no.
 
 ## Costos (Fly.io)
 
