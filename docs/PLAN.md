@@ -143,10 +143,24 @@ La ejecución ya está; falta punto de vista. Pocas decisiones, mucho efecto:
 ### Fase 4 — Login + sync
 - [ ] Supabase (o similar): auth + Postgres, free tier. NO hacer auth artesanal.
 - [ ] Proveedores: Google (universal) + Discord (la comunidad vive ahí).
-      Roblox OAuth2 como diferenciador en segunda iteración.
+- [ ] **Login with Roblox** (OAuth2 oficial, segunda iteración): da identidad
+      verificada — username real, ID y avatar — para el perfil del trader y los
+      share links. ⚠️ NO da acceso al inventario de pets: los pets viven en los
+      DataStores privados de Uplift Games, no en Roblox. Ninguna API pública
+      los expone (ver "Carga de inventario" abajo).
 - [ ] **Login opcional**: la app funciona 100% como invitado con localStorage.
       Al loguearse, merge del inventario local a la cuenta.
 - [ ] Sync de inventario entre dispositivos.
+
+**Carga de inventario sin fricción** (el dolor real: cargar pets de a uno):
+- [ ] **Carga masiva** (barato, resuelve el 80%): picker de Add Pet con
+      multi-select/checkboxes — buscar, tildar N pets con sus formas, un solo
+      "Agregar". Puede adelantarse a Fase 2 si el onboarding lo pide.
+- [ ] **Export/import JSON** del inventario: backup contra pérdida de
+      localStorage + pasar entre dispositivos antes del login.
+- Detección automática directa: **imposible por diseño** (datos privados de
+  Uplift, sin API). No perder tiempo buscándole la vuelta por Roblox OAuth.
+- Import por screenshot → backlog (experimental, ver abajo).
 
 ### Fase 5 — Diferenciadores (la identidad de la app)
 > "El copiloto del trader: dos fuentes de valores, tu inventario, y tendencias."
@@ -181,6 +195,13 @@ La ejecución ya está; falta punto de vista. Pocas decisiones, mucho efecto:
 - Re-evaluar Browse Market público: si la app crece, escribirles a AMVGG y
   preguntar si les molesta (argumento: el "View ↗" les manda tráfico). Habilitar
   después es fácil; des-quemar una IP bloqueada o una mala relación, no.
+- **Import de inventario por screenshot** (experimental, feature "wow" que nadie
+  tiene): el usuario sube capturas de su inventario in-game y el server matchea
+  los íconos contra el set de sprites de pets ya conocido (imágenes de amvgg).
+  Diseño "best effort" obligatorio: la app propone lo reconocido y el usuario
+  corrige en una pantalla de revisión. Limitaciones conocidas: capturas de
+  calidad variable, y la forma no siempre se ve en el ícono (neon/mega sí se
+  distinguen; fly/ride no → confirmar a mano). Prototipar antes de prometer.
 
 ## Costos (Fly.io)
 
