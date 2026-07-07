@@ -7,7 +7,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ```bash
 npm run dev            # Start Quasar SSR dev server (hot-reload)
 npm run build          # Build SSR for production (outputs to dist/ssr/)
-npm run lint           # ESLint 9 flat config (eslint.config.mjs) — src/, src-ssr/, scripts//
+npm run lint           # ESLint 9 flat config (eslint.config.mjs) — src/, src-ssr/, scripts/
 npm run fetch-values   # Pre-fetch AMVGG + Elvebredd values to src/data/*.json (run locally, then commit)
 npm run snapshot-values # Write today's compact value snapshot to src/data/history/ (idempotent per UTC day)
 flyctl deploy          # Deploy to Fly.io (app: amtrader, region: gru)
@@ -67,11 +67,12 @@ All `/api/*` endpoints are public — the app has no authentication. A per-IP ra
 - `src/stores/values.ts` — In-memory value cache + `DemandLevel` type + `PetDetails` interface; wraps API fetch calls; `getBatch` for bulk pre-loading
 - `src/composables/useFormPicker.ts` — 5-button F/R/D/N/M toggle that derives `PetForm` from booleans; used in add-pet dialogs
 - `src/composables/useTheme.ts` — 5 color themes (Midnight/Ocean/Forest/Crimson/Dusk); persisted to `localStorage`, applied via `data-theme` on `<html>`
+- `src/composables/useAdvancedMode.ts` — Personal "advanced mode" flag gating owner-only tools (Publish/Auto to AMVGG & Elvebredd, Browse Market). Toggled via hidden URL param `?advanced=1` / `?advanced=0`, persisted to `localStorage.advanced_mode`. Stays `false` during SSR (never leaks to the public render); `init()` reads the real value on the client after mount.
 - `src/pages/InventoryPage.vue` — Pet cards with form badge, quantity, lazy value fetch
 - `src/pages/CheckValuesPage.vue` — Two-sided value comparison (YOU vs THEM); supports AMVGG and Elvebredd sources; shows demand ★ per slot; YOU picker has "My Pets" (sorted by value) + "Other" tabs; THEM picker has "Other" tab only (search)
-- `src/pages/TradeBuilderPage.vue` — Offered pets + form selector + demand-adjusted fairness score (reflects the selected suggestion under the active value source) + suggestions with adjustable match tolerance (±5/10/20%, default 20, persisted); My Pets picker sorted by cached value
-- `src/pages/BrowseMarketPage.vue` — Browse AMVGG trades for a pet you want to offer; layout: You give (left) ↔ They offer (right); filters: Good & Fair / Good only / OP (adjustable % threshold); "My pet only" toggle; shows AMV + ELV values per pet; "View ↗" button links to AMVGG user profile
-- `src/layouts/MainLayout.vue` — Sidebar nav (My Pets, Check Values, Trade Builder, Browse Market) + theme swatch picker + collapse
+- `src/pages/TradeBuilderPage.vue` — Offered pets + form selector + demand-adjusted fairness score (reflects the selected suggestion under the active value source) + suggestions with adjustable match tolerance (±5/10/20%, default 20, persisted); My Pets picker sorted by cached value. Publish/Auto (post trades to AMVGG/Elvebredd) are **advanced-mode only** (see `useAdvancedMode`); the public build is consultative
+- `src/pages/BrowseMarketPage.vue` — **Advanced-mode only** (see `useAdvancedMode`; redirects to My Pets otherwise). Browse AMVGG trades for a pet you want to offer; layout: You give (left) ↔ They offer (right); filters: Good & Fair / Good only / OP (adjustable % threshold); "My pet only" toggle; shows AMV + ELV values per pet; "View ↗" button links to AMVGG user profile
+- `src/layouts/MainLayout.vue` — Sidebar nav (public: My Pets, Check Values, Trade Builder; Browse Market appears only in advanced mode) + theme swatch picker + collapse
 - `src-ssr/middlewares/api.ts` — All API handlers, AMVGG/Elvebredd cache warming, trade browsing logic
 - `scripts/fetch-values.mjs` — Pre-fetch script: fetches AMVGG (Node fetch) + Elvebredd (curl) and saves to `src/data/*.json`
 - `scripts/snapshot-values.mjs` — Writes a compact daily snapshot (`{date, amv:{name:fr}, elve:{name:fr}}`) to `src/data/history/YYYY-MM-DD.json`; idempotent per UTC day, refuses to write if both sources are empty. Raw material for Phase 5 value trends. Not loaded by the server yet.

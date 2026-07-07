@@ -92,11 +92,12 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useQuasar } from 'quasar'
 import { matInventory2, matSwapHoriz, matBalance, matChevronLeft, matChevronRight, matSearch, matMenu } from '@quasar/extras/material-icons'
 import { version } from '../../package.json'
 import { useTheme } from 'src/composables/useTheme'
+import { useAdvancedMode } from 'src/composables/useAdvancedMode'
 import { useInventoryStore } from 'src/stores/inventory'
 
 const $q = useQuasar()
@@ -112,6 +113,7 @@ function closeDrawerOnMobile() {
 // the SSR render (always expanded) and cause a hydration mismatch on the drawer width.
 const collapsed = ref(false)
 const { current: currentTheme, themes, apply: applyTheme, init: initTheme } = useTheme()
+const { enabled: advancedMode, init: initAdvancedMode } = useAdvancedMode()
 
 function toggleCollapse() {
   collapsed.value = !collapsed.value
@@ -122,6 +124,7 @@ let pingInterval: ReturnType<typeof setInterval> | null = null
 onMounted(() => {
   inventory.hydrate()
   initTheme()
+  initAdvancedMode()
   if (localStorage.getItem('sidebar-collapsed') === 'true') collapsed.value = true
   pingInterval = setInterval(() => { void fetch('/api/ping') }, 60_000)
 })
@@ -129,12 +132,16 @@ onUnmounted(() => {
   if (pingInterval !== null) clearInterval(pingInterval)
 })
 
-const navItems = [
+// Browse Market is an advanced-mode-only tool (see useAdvancedMode); the public
+// sidebar is the three consultative sections.
+const navItems = computed(() => [
   { name: 'inventory',     icon: matInventory2, label: 'My Pets'       },
   { name: 'check-values',  icon: matBalance,    label: 'Check Values'  },
   { name: 'trade-builder', icon: matSwapHoriz,  label: 'Trade Builder' },
-  { name: 'browse-market', icon: matSearch,     label: 'Browse Market' },
-]
+  ...(advancedMode.value
+    ? [{ name: 'browse-market', icon: matSearch, label: 'Browse Market' }]
+    : []),
+])
 </script>
 
 <style scoped>

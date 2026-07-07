@@ -275,10 +275,12 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
+import { useRouter } from 'vue-router'
 import { matSearch, matSwapHoriz } from '@quasar/extras/material-icons'
 import { FORM_LABELS, FORM_COLOR_HEX, type PetForm } from 'src/types'
 import { useFormPicker } from 'src/composables/useFormPicker'
+import { useAdvancedMode } from 'src/composables/useAdvancedMode'
 import { ADOPT_ME_PETS } from 'src/data/pets'
 import { useInventoryStore } from 'src/stores/inventory'
 import { useValuesStore } from 'src/stores/values'
@@ -291,6 +293,15 @@ interface BrowsedTrade {
   elveOfferTotal: number | null; elveWantTotal: number | null
   score: 'good' | 'fair' | 'bad' | 'unknown'; ratio: number | null
 }
+
+// Browse Market is advanced-mode only; bounce everyone else back to My Pets.
+// Runs after mount (child hooks fire before the layout's), so the flag is set.
+const router = useRouter()
+const { enabled: advancedMode, init: initAdvancedMode } = useAdvancedMode()
+onMounted(() => {
+  initAdvancedMode()
+  if (!advancedMode.value) void router.replace({ name: 'inventory' })
+})
 
 // ── Inventory quick-pick ──────────────────────────────────────────────────────
 const inventory   = useInventoryStore()

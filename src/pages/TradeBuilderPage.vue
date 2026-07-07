@@ -7,7 +7,7 @@
         <div class="page-sub">AMVGG values + demand cross-check</div>
       </div>
       <div style="display:flex;align-items:center;gap:8px">
-      <button class="btn-auto" @click="startAuto" :disabled="!inventory.pets.length">
+      <button v-if="advancedMode" class="btn-auto" @click="startAuto" :disabled="!inventory.pets.length">
         <q-icon :name="matAutoAwesome" size="15px" />
         Auto
       </button>
@@ -137,7 +137,7 @@
           <span>Suggestions</span>
           <span class="panel-count" v-if="suggestions.length">{{ suggestions.length }}</span>
           <button
-            v-if="selectedSuggestion"
+            v-if="selectedSuggestion && advancedMode"
             class="publish-btn"
             @click="showPublish = true"
           >
@@ -358,6 +358,7 @@
               @click="addOffered(pet); showInventoryPicker = false"
             >
               <button
+                v-if="advancedMode"
                 class="picker-exclude-btn"
                 :class="{ 'picker-exclude-btn--active': excludedPetIds.includes(pet.id) }"
                 :title="excludedPetIds.includes(pet.id) ? 'Include in Auto' : 'Exclude from Auto'"
@@ -638,6 +639,7 @@ interface AutoTrade {
 import { useInventoryStore } from 'src/stores/inventory'
 import { useValuesStore, type DemandLevel } from 'src/stores/values'
 import { useFormPicker } from 'src/composables/useFormPicker'
+import { useAdvancedMode } from 'src/composables/useAdvancedMode'
 import {
   FORM_LABELS, FORM_COLOR_HEX, CATEGORY_LABELS,
   type PetForm, type InventoryPet, type ItemCategory, type PetSuggestion,
@@ -645,6 +647,7 @@ import {
 
 const inventory = useInventoryStore()
 const values    = useValuesStore()
+const { enabled: advancedMode, init: initAdvancedMode } = useAdvancedMode()
 
 // ── State ─────────────────────────────────────────────────────────────────────
 interface OfferedItem {
@@ -996,6 +999,7 @@ const elveSingleScriptLoading = ref(false)
 const elveSingleScriptCopied  = ref(false)
 
 onMounted(() => {
+  initAdvancedMode()
   amvggCookie.value        = localStorage.getItem('amvgg_cookie') ?? ''
   excludedPetIds.value     = JSON.parse(localStorage.getItem('excluded_pet_ids') ?? '[]')
   excludedWantedNames.value = JSON.parse(localStorage.getItem('excluded_wanted_names') ?? '[]')
