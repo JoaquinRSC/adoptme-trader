@@ -458,7 +458,6 @@ async function ensureAmvggList () {
 }
 
 let searchTimer: ReturnType<typeof setTimeout> | null = null
-let blurTimer:   ReturnType<typeof setTimeout> | null = null
 
 function sortResults (list: string[], q: string): string[] {
   const lower = q.toLowerCase()
@@ -527,19 +526,6 @@ function pickFirstResult () {
   } else if (searchResults.value.length) {
     selectPet(searchResults.value[0])
   }
-}
-
-function closeDropdown () {
-  showDropdown.value = false
-}
-
-function onSearchFocus () {
-  if (blurTimer) clearTimeout(blurTimer)
-  if (searchQuery.value.trim()) showDropdown.value = true
-}
-
-function onSearchBlur () {
-  blurTimer = setTimeout(() => { showDropdown.value = false }, 150)
 }
 
 function resetSearch () {
@@ -810,13 +796,6 @@ onMounted(() => {
 })
 
 // ── Actions ───────────────────────────────────────────────────────────────────
-function changeForm (id: string, form: PetForm) {
-  inventory.updateForm(id, form)
-  delete petValue[id]
-  delete petDemand[id]
-}
-
-
 function confirmRemove (id: string, name: string) {
   $q.dialog({
     title: 'Remove pet',

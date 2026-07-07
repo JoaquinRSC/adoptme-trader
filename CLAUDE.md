@@ -7,13 +7,13 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ```bash
 npm run dev            # Start Quasar SSR dev server (hot-reload)
 npm run build          # Build SSR for production (outputs to dist/ssr/)
-npm run lint           # ESLint on src/ and src-ssr/
+npm run lint           # ESLint 9 flat config (eslint.config.mjs) — src/, src-ssr/, scripts//
 npm run fetch-values   # Pre-fetch AMVGG + Elvebredd values to src/data/*.json (run locally, then commit)
 npm run snapshot-values # Write today's compact value snapshot to src/data/history/ (idempotent per UTC day)
 flyctl deploy          # Deploy to Fly.io (app: amtrader, region: gru)
 ```
 
-No test suite exists. After code changes, run `npm run build` to verify compilation, then deploy via `flyctl deploy`.
+No test suite exists. After code changes, run `npm run lint` and `npm run build` to verify, then deploy via `flyctl deploy`. CI (`.github/workflows/ci.yml`) runs lint + build on every code push and PR (data-only and doc-only commits are skipped). Lint uses `vue/flat/essential` (correctness rules, not formatting) since the codebase predates linting.
 
 ## Architecture
 

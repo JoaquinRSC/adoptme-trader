@@ -1,0 +1,31 @@
+name: CI
+
+# Lint + build on every code push and PR, so a commit that breaks the deploy
+# gets caught before it ships. Skips data-only commits (the value-refresh
+# workflow pushes those every few hours) and doc-only changes.
+on:
+  push:
+    paths-ignore:
+      - 'src/data/**'
+      - '**/*.md'
+  pull_request:
+
+jobs:
+  check:
+    name: Lint and build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '22'
+          cache: 'npm'
+
+      - run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Build (SSR)
+        run: npm run build

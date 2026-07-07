@@ -618,8 +618,8 @@
 <script setup lang="ts">
 import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 import {
-  matUpload, matAdd, matMonetizationOn, matClose, matSwapHoriz,
-  matAutoAwesome, matAddCircleOutline, matSearch, matWarning, matPublish,
+  matUpload, matSwapHoriz,
+  matAutoAwesome, matSearch, matWarning, matPublish,
 } from '@quasar/extras/material-icons'
 
 interface AutoTrade {
