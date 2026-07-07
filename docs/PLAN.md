@@ -96,6 +96,31 @@ Sin confianza en los valores, nada más importa.
 - [ ] Contenedor `max-width: ~1150px` centrado: en 1440px+ los controles se
       estiran de borde a borde y queda espacio muerto.
 
+**Unificar el selector de pets — componente único `<PetPicker>`** 🎯
+Hoy hay 5-6 implementaciones copy-pasteadas (Inventory pet + item, Check Values
+YOU + THEM, Trade Builder, Browse Market), cada una con interacción distinta:
+teclado y autofocus solo en algunas, chips de forma en 3 posiciones diferentes,
+My Pets como tab / tira / ausente. Peor: en Trade Builder y Check Values el
+dialog SE CIERRA tras cada pet agregado → armar una oferta de 5 pets = abrirlo
+5 veces. Reemplazar todo por un componente compartido con esta spec:
+- [ ] `src/components/PetPicker.vue` configurable por props (tabs mine/other,
+      categorías sí/no, formas sí/no, single/multi). Extraer también
+      `FormChips.vue` (hoy el bloque F/R/D/N/M está copy-pasteado 6+ veces).
+- [ ] Interacción idéntica SIEMPRE: autofocus al abrir, ↑↓ navega, Enter
+      selecciona, Esc cierra, mismo debounce.
+- [ ] **No cerrar al agregar** en contextos multi (Trade Builder, Check Values):
+      el pet agregado se marca con un contador/toast y el picker queda abierto;
+      botón "Listo" para cerrar. (Se conecta con la carga masiva de la Fase 4.)
+- [ ] Chips de forma: misma posición siempre, touch targets grandes, tooltip
+      con el nombre (Fly/Ride/Default/Neon/Mega) para novatos.
+- [ ] **Sección "Recientes"** antes de tipear (últimos N pets usados,
+      localStorage): los traders repiten pets todo el tiempo — mata la
+      búsqueda más común.
+- [ ] My Pets siempre igual donde aplique: primer tab, ordenado por valor.
+- [ ] Mobile: el dialog pasa a sheet full-screen.
+- [ ] Browse Market puede conservar su dropdown inline (es el patrón correcto
+      para ese contexto) pero construido con las mismas piezas internas.
+
 **UX transversal** (los detalles que hacen que se sienta "bien pensado"):
 - [ ] Skeletons (cards fantasma) en vez de spinners al cargar valores —
       la app se siente el doble de rápida sin serlo.
