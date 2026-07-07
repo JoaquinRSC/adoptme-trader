@@ -1,11 +1,12 @@
 name: Refresh values
 
-# Re-fetches AMVGG + Elvebredd values weekly, commits the updated JSON caches,
-# and redeploys to Fly.io. Runs unattended; can also be triggered manually.
+# Re-fetches AMVGG + Elvebredd values every few hours, writes a compact daily
+# value snapshot (trend history), commits the updated JSON caches, and redeploys
+# to Fly.io. Runs unattended; can also be triggered manually.
 on:
   schedule:
-    - cron: '0 6 * * *'   # daily 06:00 UTC (03:00 Uruguay)
-  workflow_dispatch: {}    # manual "Run workflow" button
+    - cron: '0 */4 * * *'   # every 4h at :00 UTC (values change often)
+  workflow_dispatch: {}     # manual "Run workflow" button
 
 jobs:
   refresh:
@@ -29,19 +30,30 @@ jobs:
       - name: Fetch latest values
         run: node scripts/fetch-values.mjs
 
+      # One compact snapshot per UTC day; skips if today's already exists.
+      - name: Write daily snapshot
+        run: node scripts/snapshot-values.mjs
+
       - name: Commit updated caches
         id: commit
         run: |
           git config user.name  "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
+          # A cache change is the only thing that warrants a redeploy; a
+          # snapshot-only change is committed for history but does not deploy.
           git add src/data/amv-cache.json src/data/elve-cache.json src/data/elve-ids.json src/data/items-cache.json
           if git diff --staged --quiet; then
-            echo "No value changes — skipping commit and deploy."
+            echo "No value changes — will not deploy."
             echo "changed=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          fi
+          git add src/data/history/
+          if git diff --staged --quiet; then
+            echo "Nothing to commit."
           else
             git commit -m "chore: refresh AMVGG + Elvebredd values"
             git push
-            echo "changed=true" >> "$GITHUB_OUTPUT"
           fi
 
       - name: Set up flyctl

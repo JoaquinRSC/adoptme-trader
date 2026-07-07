@@ -20,6 +20,9 @@ elvebredd-home.png
 elvebredd-calc.png
 elvebredd-add-pet.png
 
+# Value snapshots — committed for trend history, not read by the server yet
+src/data/history
+
 # Logs & local env
 *.log
 .env

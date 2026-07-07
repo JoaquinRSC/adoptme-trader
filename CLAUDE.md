@@ -9,6 +9,7 @@ npm run dev            # Start Quasar SSR dev server (hot-reload)
 npm run build          # Build SSR for production (outputs to dist/ssr/)
 npm run lint           # ESLint on src/ and src-ssr/
 npm run fetch-values   # Pre-fetch AMVGG + Elvebredd values to src/data/*.json (run locally, then commit)
+npm run snapshot-values # Write today's compact value snapshot to src/data/history/ (idempotent per UTC day)
 flyctl deploy          # Deploy to Fly.io (app: amtrader, region: gru)
 ```
 
@@ -73,6 +74,7 @@ All `/api/*` endpoints are public — the app has no authentication. A per-IP ra
 - `src/layouts/MainLayout.vue` — Sidebar nav (My Pets, Check Values, Trade Builder, Browse Market) + theme swatch picker + collapse
 - `src-ssr/middlewares/api.ts` — All API handlers, AMVGG/Elvebredd cache warming, trade browsing logic
 - `scripts/fetch-values.mjs` — Pre-fetch script: fetches AMVGG (Node fetch) + Elvebredd (curl) and saves to `src/data/*.json`
+- `scripts/snapshot-values.mjs` — Writes a compact daily snapshot (`{date, amv:{name:fr}, elve:{name:fr}}`) to `src/data/history/YYYY-MM-DD.json`; idempotent per UTC day, refuses to write if both sources are empty. Raw material for Phase 5 value trends. Not loaded by the server yet.
 - `Dockerfile` — Multi-stage build for Fly.io; copies `src/data/` into the image
 - `fly.toml` — Fly.io app config (app: amtrader, region: gru, 512MB RAM)
 
@@ -98,10 +100,13 @@ flyctl deploy
 
 ### Value cache update workflow
 
-When AMVGG/Elvebredd values need refreshing:
-1. `npm run fetch-values` (local, requires curl)
-2. Commit `src/data/amv-cache.json`, `src/data/elve-cache.json`, `src/data/items-cache.json`
-3. `flyctl deploy`
+Automated: `.github/workflows/refresh-values.yml` runs every 4h — fetches values, writes the daily snapshot (`snapshot-values.mjs`), commits whatever changed, and redeploys to Fly.io **only when the live caches changed** (a snapshot-only change is committed but does not deploy). Manual trigger available from the Actions tab.
+
+Manual (local) update, if ever needed:
+1. `npm run fetch-values` (requires curl)
+2. `npm run snapshot-values` (optional — normally the workflow owns snapshots)
+3. Commit `src/data/amv-cache.json`, `src/data/elve-cache.json`, `src/data/items-cache.json`, `src/data/history/`
+4. `flyctl deploy`
 
 ## Phase roadmap
 

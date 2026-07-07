@@ -58,7 +58,7 @@ fetch('/api/...')      →      ratelimit → api → render
 
 **Static value cache.** Values are pre-fetched (`npm run fetch-values`) and committed as JSON, then baked into the Docker image and loaded into memory on boot. This keeps the app fast and avoids hammering the source sites on every request. Elvebredd is fetched via `curl` to get past its Cloudflare TLS fingerprint check (Node's `fetch` gets a 403).
 
-**Automated refresh.** A GitHub Actions workflow ([`refresh-values.yml`](.github/workflows/refresh-values.yml)) re-fetches the values daily, commits the updated caches if anything changed, and redeploys to Fly.io — so the live app stays current without manual intervention. It can also be triggered by hand from the Actions tab.
+**Automated refresh.** A GitHub Actions workflow ([`refresh-values.yml`](.github/workflows/refresh-values.yml)) re-fetches the values every few hours, writes one compact daily value snapshot (trend history, in `src/data/history/`), commits whatever changed, and redeploys to Fly.io only when the live caches actually changed — so the app stays current without manual intervention. It can also be triggered by hand from the Actions tab.
 
 **Middleware chain:**
 - `ratelimit` — in-memory per-IP limiter (tighter on the one endpoint that makes an outbound request)
@@ -72,11 +72,12 @@ src/
   pages/        My Pets, Check Values, Trade Builder, Browse Market
   stores/       Pinia: inventory (localStorage-backed) + values cache
   composables/  form picker, theming
-  data/         committed value caches (amv / elve / items)
+  data/         committed value caches (amv / elve / items) + history/ snapshots
 src-ssr/
   middlewares/  ratelimit, api, render
 scripts/
-  fetch-values.mjs   regenerates the value caches
+  fetch-values.mjs     regenerates the value caches
+  snapshot-values.mjs  writes the daily value snapshot (trend history)
 ```
 
 ## Running locally
