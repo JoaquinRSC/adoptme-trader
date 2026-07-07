@@ -1,8 +1,9 @@
 import { defineSsrMiddleware } from '#q-app/wrappers'
 import { json as parseJson } from 'express'
-import { existsSync, readFileSync } from 'node:fs'
+import { existsSync, readFileSync, writeFileSync, mkdirSync } from 'node:fs'
 import { join } from 'node:path'
 import { execFile } from 'node:child_process'
+import { createHash, timingSafeEqual } from 'node:crypto'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -101,12 +102,31 @@ const FORM_TO_ELVE_ATTRS: Record<string, { fly: boolean; ride: boolean; default:
 
 const ELVE_FORMS = ['normal', 'fly', 'ride', 'fr', 'n', 'nf', 'nr', 'nfr', 'm', 'mf', 'mr', 'mfr'] as const
 
-// ── Static file cache loader ──────────────────────────────────────────────────
+// ── Cache file loading / persistence ─────────────────────────────────────────
+
+// Hot-refreshed caches (POST /api/refresh-values) are persisted here so a
+// machine stop/start doesn't lose them. Prefers a Fly volume mounted at /data
+// when one exists; otherwise a local dir, which survives auto-stop but resets
+// on deploy — the next scheduled push re-fills it within hours.
+const RUNTIME_DATA_DIR = process.env['APP_DATA_DIR']
+  ?? (existsSync('/data') ? '/data' : join(process.cwd(), '.runtime-data'))
 
 function loadStaticCache<T> (filename: string): T | null {
-  const path = join(process.cwd(), 'src/data', filename)
-  if (!existsSync(path)) return null
-  try { return JSON.parse(readFileSync(path, 'utf-8')) as T } catch { return null }
+  for (const dir of [RUNTIME_DATA_DIR, join(process.cwd(), 'src/data')]) {
+    const path = join(dir, filename)
+    if (!existsSync(path)) continue
+    try { return JSON.parse(readFileSync(path, 'utf-8')) as T } catch { /* try next source */ }
+  }
+  return null
+}
+
+function persistCacheFile (filename: string, data: unknown): void {
+  try {
+    mkdirSync(RUNTIME_DATA_DIR, { recursive: true })
+    writeFileSync(join(RUNTIME_DATA_DIR, filename), JSON.stringify(data))
+  } catch (e) {
+    console.error(`Failed to persist ${filename} to ${RUNTIME_DATA_DIR}:`, e)
+  }
 }
 
 // ── In-memory caches ──────────────────────────────────────────────────────────
@@ -767,10 +787,62 @@ async function browseMarket (payload: {
   return { trades: recent.sort((a, b) => new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime()), errors }
 }
 
+// ── Hot value refresh (POST /api/refresh-values) ─────────────────────────────
+// The scheduled GitHub Action fetches fresh AMVGG/Elvebredd data and pushes it
+// here, replacing the in-memory caches without a redeploy. Each section is
+// validated before being applied: a partial or empty upstream scrape must never
+// replace a good cache.
+
+let lastRefreshAt: string | null = null
+
+type ItemsFile = Record<string, Record<string, { value: number; demand: string | null; elveValue?: number | null }>>
+
+function applyAmvData (data: Record<string, PetDetails>): number {
+  detailsCache.clear()
+  individualFetchDone.clear()
+  petNamesCache = null
+  for (const [name, entry] of Object.entries(data)) detailsCache.set(name, applyFormFallbacks(entry))
+  allPetsCacheFilled = true
+  return detailsCache.size
+}
+
+function applyElveData (pets: Record<string, Record<string, number>>, ids?: Record<string, number>): number {
+  elveValuesCache.clear()
+  for (const [name, vals] of Object.entries(pets)) elveValuesCache.set(name, vals)
+  if (ids) {
+    elveIdMap.clear()
+    for (const [name, id] of Object.entries(ids)) elveIdMap.set(name, id)
+  }
+  elveFetchDone = true
+  return elveValuesCache.size
+}
+
+function applyItemsData (data: ItemsFile): number {
+  itemsCache.clear()
+  itemValueByName.clear()
+  itemElveValueByName.clear()
+  for (const [category, items] of Object.entries(data)) {
+    for (const [name, entry] of Object.entries(items)) {
+      itemsCache.set(`${category}:${name}`, entry)
+      itemValueByName.set(name, entry.value)
+      if (entry.elveValue != null) itemElveValueByName.set(name, entry.elveValue)
+    }
+  }
+  itemsCacheFilled = true
+  return itemsCache.size
+}
+
+function tokenMatches (provided: string, expected: string): boolean {
+  const a = createHash('sha256').update(provided).digest()
+  const b = createHash('sha256').update(expected).digest()
+  return timingSafeEqual(a, b)
+}
+
 // ── Middleware ────────────────────────────────────────────────────────────────
 
 export default defineSsrMiddleware(({ app }) => {
-  app.use(parseJson())
+  // 2mb: the refresh push carries all four cache files (~400 KB) in one body.
+  app.use(parseJson({ limit: '2mb' }))
 
   // Warm caches on server start (non-blocking)
   void warmDetailsCache()
@@ -779,6 +851,82 @@ export default defineSsrMiddleware(({ app }) => {
 
   app.get('/api/ping', (_req, res) => {
     res.json({ ok: true })
+  })
+
+  app.get('/api/refresh-status', (_req, res) => {
+    res.json({
+      lastRefreshAt,
+      pets:     detailsCache.size,
+      elvePets: elveValuesCache.size,
+      items:    itemsCache.size,
+    })
+  })
+
+  app.post('/api/refresh-values', (req, res) => {
+    const expected = process.env['REFRESH_TOKEN']
+    if (!expected) return res.status(503).json({ ok: false, error: 'REFRESH_TOKEN not configured on the server' })
+
+    const auth     = String(req.headers.authorization ?? '')
+    const provided = auth.startsWith('Bearer ') ? auth.slice(7) : ''
+    if (!provided || !tokenMatches(provided, expected)) {
+      return res.status(401).json({ ok: false, error: 'Unauthorized' })
+    }
+
+    const body = req.body as {
+      amv?:     Record<string, PetDetails>
+      elve?:    Record<string, Record<string, number>>
+      elveIds?: Record<string, number>
+      items?:   ItemsFile
+    }
+
+    const applied:  Record<string, number> = {}
+    const rejected: string[] = []
+
+    // Each section must be non-trivial in absolute terms AND not dramatically
+    // smaller than what we already hold — a broken scrape yields few entries.
+    if (body.amv !== undefined) {
+      const count = Object.keys(body.amv).length
+      if (count >= 100 && count >= detailsCache.size * 0.5) {
+        applied['amv'] = applyAmvData(body.amv)
+        persistCacheFile('amv-cache.json', body.amv)
+      } else {
+        rejected.push(`amv: got ${count} pets, cache holds ${detailsCache.size}`)
+      }
+    }
+
+    if (body.elve !== undefined) {
+      const count = Object.keys(body.elve).length
+      if (count >= 100 && count >= elveValuesCache.size * 0.5) {
+        applied['elve'] = applyElveData(body.elve, body.elveIds)
+        persistCacheFile('elve-cache.json', body.elve)
+        if (body.elveIds) persistCacheFile('elve-ids.json', body.elveIds)
+      } else {
+        rejected.push(`elve: got ${count} pets, cache holds ${elveValuesCache.size}`)
+      }
+    }
+
+    if (body.items !== undefined) {
+      const count = Object.values(body.items).reduce((s, c) => s + Object.keys(c).length, 0)
+      if (count >= 50 && count >= itemsCache.size * 0.5) {
+        applied['items'] = applyItemsData(body.items)
+        persistCacheFile('items-cache.json', body.items)
+      } else {
+        rejected.push(`items: got ${count} items, cache holds ${itemsCache.size}`)
+      }
+    }
+
+    const anyApplied = Object.keys(applied).length > 0
+    if (anyApplied) {
+      lastRefreshAt = new Date().toISOString()
+      console.log(`Values hot-refreshed: ${JSON.stringify(applied)}${rejected.length ? ` (rejected: ${rejected.join('; ')})` : ''}`)
+    }
+
+    return res.status(anyApplied || !rejected.length ? 200 : 422).json({
+      ok: anyApplied || !rejected.length,
+      applied,
+      rejected,
+      lastRefreshAt,
+    })
   })
 
   app.get('/api/pets/list', async (_req, res) => {
