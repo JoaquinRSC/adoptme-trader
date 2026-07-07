@@ -85,6 +85,18 @@ Sin confianza en los valores, nada más importa.
 - [ ] Contenedor `max-width: ~1150px` centrado: en 1440px+ los controles se
       estiran de borde a borde y queda espacio muerto.
 
+**UX transversal** (los detalles que hacen que se sienta "bien pensado"):
+- [ ] Skeletons (cards fantasma) en vez de spinners al cargar valores —
+      la app se siente el doble de rápida sin serlo.
+- [ ] Fallback de imágenes: hoy un `@error` hace `display:none` y la card queda
+      con un hueco; poner ícono placeholder para mantener la card entera.
+- [ ] Undo en vez de confirmación: al borrar del inventario, snackbar
+      "Deshacer" (5 s). Cero fricción, cero pérdidas accidentales.
+- [ ] Los 3 estados en TODA página: vacío (con CTA), cargando (skeleton),
+      error (mensaje amable + reintentar). Auditar página por página.
+- [ ] Accesibilidad básica: contraste AA (se solapa con pulido visual), focus
+      visible, touch targets ≥44px, alt/aria en controles.
+
 ### Fase 2.5 — Identidad visual (que no parezca template/IA)
 La ejecución ya está; falta punto de vista. Pocas decisiones, mucho efecto:
 - [ ] **Apropiarse del sistema de colores por forma (F/R/D/N/M)** como lenguaje
@@ -102,12 +114,20 @@ La ejecución ya está; falta punto de vista. Pocas decisiones, mucho efecto:
 ### Fase 3 — Motor de crecimiento (antes que el login: primero tráfico, después retención)
 - [ ] **Links de trade compartibles**: armar un trade → link público + imagen OG linda
       para preview en Discord. "¿Es fair este trade?" = loop viral gratis.
+- [ ] **Quick WFL pública**: página mínima "¿Win, Fair o Lose?" sin inventario ni
+      contexto — el punto de entrada natural de los share links.
 - [ ] **Páginas SSR públicas por pet** (`/pet/frost-dragon`): valor AMV + ELV + demand
       (+ tendencia cuando exista). SEO para "X pet value adopt me" → tráfico orgánico.
-      Ya tenemos SSR, es casi gratis.
+      Ya tenemos SSR, es casi gratis. + sitemap.xml y meta descriptions.
 - [ ] i18n español + inglés (comunidad hispanohablante gigante y desatendida).
 - [ ] Dominio propio + Cloudflare gratis adelante (cache de estáticos, protección,
-      analytics). Analytics livianos (Plausible/Umami).
+      analytics). Analytics livianos y cookieless (Plausible/Umami — sin banner
+      de cookies).
+- [ ] **Legal pack** (obligatorio antes de ads, importante antes de publicitar):
+      página de privacidad + términos + disclaimer "no afiliado a Roblox/Uplift
+      Games". Con audiencia <13, cuidado extra (COPPA).
+- [ ] Botón de feedback (link a Discord propio o form tipo Tally): el roadmap
+      post-lanzamiento lo escriben los usuarios.
 
 ### Fase 4 — Login + sync
 - [ ] Supabase (o similar): auth + Postgres, free tier. NO hacer auth artesanal.
@@ -121,8 +141,32 @@ La ejecución ya está; falta punto de vista. Pocas decisiones, mucho efecto:
 > "El copiloto del trader: dos fuentes de valores, tu inventario, y tendencias."
 - [ ] Historial/tendencias de valor por pet (gráfico, flechitas ↑↓ en cards)
       usando los snapshots de la Fase 1.
+- [ ] **Página "Trending"**: los que más subieron/bajaron esta semana. Sale gratis
+      de los snapshots y es máquina de contenido compartible/googleable semanal.
 - [ ] "Valor total de tu inventario en el tiempo".
 - [ ] Alertas de valor/demand (post-login): "avisame si mi Shadow Dragon cambia".
+- [ ] **Watchlist**: pets que querés conseguir; Browse Market resalta trades que
+      los incluyen y las alertas tienen objetivo natural.
+- [ ] **Trade log personal** (post-login): registrar trades hechos y ver
+      ganancia/pérdida de valor en el tiempo. Nadie del nicho lo tiene.
+- [ ] Badge de discrepancia AMV vs ELV (>25% de diferencia → "⚠ las fuentes no
+      coinciden"): convierte mostrar dos valores en dar un consejo.
+
+## Transversal — calidad e infra (lo invisible que evita incendios)
+
+- [ ] **CI mínimo**: GitHub Action con build + typecheck en cada push/PR.
+      Hoy nada avisa si un commit rompe el deploy.
+- [ ] Error tracking con Sentry (free tier): enterarse de los errores de usuarios
+      reales sin esperar que alguien los reporte.
+- [ ] Uptime monitor gratis (UptimeRobot) apuntando a `/api/ping`.
+- [ ] Security headers básicos (CSP razonable, X-Frame-Options, etc.).
+- [ ] Changelog "What's new" visible en la app: barato, construye confianza.
+
+## Backlog lejano (anotado para no perderlo, NO es prioridad)
+
+- Bot de Discord de valores (canal de crecimiento enorme, pero es otro producto).
+- Comparador de pets ("Frost Dragon vs Shadow Dragon").
+- Login with Roblox (OAuth2) como diferenciador de la Fase 4, segunda iteración.
 
 ## Costos (Fly.io)
 
