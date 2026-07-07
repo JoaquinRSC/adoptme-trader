@@ -92,6 +92,9 @@
             {{ fairness >= 0 ? '+' : '' }}{{ fairness.toFixed(1) }}%
           </div>
           <div class="fairness-label">demand-adjusted</div>
+          <div class="fairness-target" v-if="fairnessTarget" :title="fairnessTarget.name">
+            vs {{ selectedSuggestion ? fairnessTarget.name : `${fairnessTarget.name} (best)` }}
+          </div>
           <div class="demand-warning" v-if="demandWarning">
             <q-icon :name="matWarning" size="12px" />
             {{ demandWarning }}
@@ -105,6 +108,15 @@
           outlined dense
           emit-value map-options
           style="width: 130px"
+        />
+
+        <div class="control-label">Match tolerance</div>
+        <q-btn-toggle
+          v-model="tolerancePct"
+          :options="toleranceOptions"
+          unelevated dense no-caps
+          class="tolerance-toggle"
+          toggle-color="primary"
         />
 
         <button
@@ -176,7 +188,7 @@
           </div>
 
           <div class="empty-panel" v-if="searchDone && !suggestions.length">
-            No pets found within ±20% of your offer value
+            No pets found within ±{{ tolerancePct }}% of your offer value
           </div>
         </div>
       </div>
@@ -657,6 +669,10 @@ const searchDone          = ref(false)
 
 const valueSource         = ref<'amvgg' | 'elvebredd'>('amvgg')
 
+// Match tolerance: how far a candidate's value may sit from the offer total.
+const TOLERANCE_OPTIONS = [5, 10, 20]
+const tolerancePct = ref<number>(20)
+
 const excludedPetIds = ref<string[]>([])
 
 function toggleExcluded (petId: string) {
@@ -736,6 +752,7 @@ function addOtherPet (name: string) {
 }
 
 const formOptions = Object.entries(FORM_LABELS).map(([value, label]) => ({ value, label }))
+const toleranceOptions = TOLERANCE_OPTIONS.map(v => ({ label: `±${v}%`, value: v }))
 
 const myItemsCategoryFilter = ref<'all' | ItemCategory>('all')
 
@@ -820,16 +837,27 @@ function getFormDemand (details: { demands: Record<string, string | null> }, for
 }
 
 // ── Fairness ──────────────────────────────────────────────────────────────────
+// Value under the active source; demand comes from AMVGG (the only source that
+// exposes it), so the "demand-adjusted" multiplier applies to both AMV and Elve.
+function sourceValue (v: { amvggValue: number | null; elveValue: number | null }): number {
+  return (valueSource.value === 'elvebredd' ? v.elveValue : v.amvggValue) ?? 0
+}
+
+// Fairness reflects the suggestion the user picked (or the best match as fallback),
+// so the big score always describes the trade actually under consideration.
+const fairnessTarget = computed<SuggestionWithDemand | null>(
+  () => selectedSuggestion.value ?? suggestions.value[0] ?? null
+)
+
 const fairness = computed<number | null>(() => {
   if (!offeredPets.value.length || totalOfferedValue.value === 0) return null
-  if (suggestions.value.length === 0) return null
-  const top = suggestions.value[0]
-  if (top.value === null) return null
-  const offeredAdjusted = offeredPets.value.reduce((acc, item) => {
-    return acc + (item.amvggValue ?? 0) * demandMult(item.demand)
-  }, 0)
-  const receivedAdjusted = (top.amvggValue ?? 0) * demandMult(top.demand)
-  if (receivedAdjusted === 0) return null
+  const target = fairnessTarget.value
+  if (!target) return null
+  const offeredAdjusted = offeredPets.value.reduce(
+    (acc, item) => acc + sourceValue(item) * demandMult(item.demand), 0
+  )
+  const receivedAdjusted = sourceValue(target) * demandMult(target.demand)
+  if (offeredAdjusted === 0 || receivedAdjusted === 0) return null
   return ((receivedAdjusted - offeredAdjusted) / offeredAdjusted) * 100
 })
 
@@ -842,10 +870,11 @@ const fairnessClass = computed(() => {
 })
 
 const demandWarning = computed(() => {
-  if (!offeredPets.value.length || !suggestions.value.length) return null
-  const topSug = suggestions.value[0]
+  if (!offeredPets.value.length) return null
+  const target = fairnessTarget.value
+  if (!target) return null
   const highDemandOffered = offeredPets.value.some(i => i.demand === 'High')
-  const lowDemandReceived = topSug.demand === 'Low' || topSug.demand === 'Very Low'
+  const lowDemandReceived = target.demand === 'Low' || target.demand === 'Very Low'
   if (highDemandOffered && lowDemandReceived) return 'Giving High for Low demand'
   return null
 })
@@ -893,8 +922,6 @@ function removeOffered (id: string) {
 }
 
 // ── Search ────────────────────────────────────────────────────────────────────
-const TOLERANCE = 0.02
-
 async function search () {
   if (!offeredPets.value.length || totalOfferedValue.value === 0) return
   searching.value   = true
@@ -924,7 +951,7 @@ async function search () {
       const val = primaryBatch.find(r => r.name === req.name && r.form === req.form)?.value
       if (val === null || val === undefined) continue
       const delta = ((val - target) / target) * 100
-      if (Math.abs(delta) <= TOLERANCE * 100) {
+      if (Math.abs(delta) <= tolerancePct.value) {
         const amvEntry = amvBatch.find(r => r.name === req.name && r.form === req.form)
         results.push({
           name: req.name,
@@ -972,7 +999,11 @@ onMounted(() => {
   amvggCookie.value        = localStorage.getItem('amvgg_cookie') ?? ''
   excludedPetIds.value     = JSON.parse(localStorage.getItem('excluded_pet_ids') ?? '[]')
   excludedWantedNames.value = JSON.parse(localStorage.getItem('excluded_wanted_names') ?? '[]')
+  const savedTolerance = Number(localStorage.getItem('match_tolerance_pct'))
+  if (TOLERANCE_OPTIONS.includes(savedTolerance)) tolerancePct.value = savedTolerance
 })
+
+watch(tolerancePct, v => localStorage.setItem('match_tolerance_pct', String(v)))
 
 function saveAmvggCookie () {
   const combined = `__Secure-better-auth.session_data=${cookieSessionData.value.trim()}; __Secure-better-auth.session_token=${cookieSessionToken.value.trim()}`
@@ -1516,6 +1547,22 @@ function deltaChipClass (delta: number) {
   font-weight: 600;
   letter-spacing: 0.5px;
   text-transform: uppercase;
+}
+
+.fairness-target {
+  font-size: 11px;
+  color: var(--text-2);
+  font-weight: 700;
+  max-width: 140px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tolerance-toggle {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
 }
 
 .demand-warning {

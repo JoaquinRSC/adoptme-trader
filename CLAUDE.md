@@ -68,7 +68,7 @@ All `/api/*` endpoints are public — the app has no authentication. A per-IP ra
 - `src/composables/useTheme.ts` — 5 color themes (Midnight/Ocean/Forest/Crimson/Dusk); persisted to `localStorage`, applied via `data-theme` on `<html>`
 - `src/pages/InventoryPage.vue` — Pet cards with form badge, quantity, lazy value fetch
 - `src/pages/CheckValuesPage.vue` — Two-sided value comparison (YOU vs THEM); supports AMVGG and Elvebredd sources; shows demand ★ per slot; YOU picker has "My Pets" (sorted by value) + "Other" tabs; THEM picker has "Other" tab only (search)
-- `src/pages/TradeBuilderPage.vue` — Offered pets + form selector + demand-adjusted fairness score + suggestions (±20% tolerance); My Pets picker sorted by cached value
+- `src/pages/TradeBuilderPage.vue` — Offered pets + form selector + demand-adjusted fairness score (reflects the selected suggestion under the active value source) + suggestions with adjustable match tolerance (±5/10/20%, default 20, persisted); My Pets picker sorted by cached value
 - `src/pages/BrowseMarketPage.vue` — Browse AMVGG trades for a pet you want to offer; layout: You give (left) ↔ They offer (right); filters: Good & Fair / Good only / OP (adjustable % threshold); "My pet only" toggle; shows AMV + ELV values per pet; "View ↗" button links to AMVGG user profile
 - `src/layouts/MainLayout.vue` — Sidebar nav (My Pets, Check Values, Trade Builder, Browse Market) + theme swatch picker + collapse
 - `src-ssr/middlewares/api.ts` — All API handlers, AMVGG/Elvebredd cache warming, trade browsing logic
