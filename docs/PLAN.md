@@ -83,7 +83,12 @@ Sin confianza en los valores, nada más importa.
       `localStorage.advanced_mode`; después se decidió borrarlos del todo. La
       sidebar pública queda con 3 secciones (My Pets, Check Values, Trade Builder).
 - [x] ~~Rate-limit/auth en `/api/trade/browse`~~ → endpoint eliminado con el resto.
-- [ ] Mensajes de error amables (nada de errores crudos en monospace).
+- [x] Mensajes de error amables (nada de errores crudos en monospace).
+      Ya no había errores crudos (los `catch` caían a `null` en silencio → un fallo
+      de red se veía igual que "sin valor"). Se agregó `notifyLoadError()`
+      (`src/utils/notify.ts`, throttled + SSR-safe) cableado en el chokepoint del
+      store (`apiFetch`/`apiPost`) y en los `fetch` de detalles de las páginas →
+      toast amable "Couldn't load the latest values…" en vez de blanco silencioso.
 - [ ] Responsive/mobile: Trade Builder colapsa a una columna; revisar todas las páginas.
 - [x] Tooltips + página corta de "cómo funciona" (formas, fuentes, demand, fairness).
       Diálogo "How it works" en la sidebar + tooltips en el toggle AMV/Elve y en el

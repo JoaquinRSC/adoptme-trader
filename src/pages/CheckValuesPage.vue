@@ -309,6 +309,7 @@ import { useValuesStore, type DemandLevel } from 'src/stores/values'
 import { useInventoryStore } from 'src/stores/inventory'
 import { useDraftsStore, type SideEntry } from 'src/stores/drafts'
 import { useFormPicker } from 'src/composables/useFormPicker'
+import { notifyLoadError } from 'src/utils/notify'
 
 const valuesStore = useValuesStore()
 const inventory   = useInventoryStore()
@@ -389,6 +390,7 @@ async function addPetToSide(side: 'your' | 'them', name: string, form: PetForm, 
     } catch {
       const found = list.value.find(e => e.id === entry.id)
       if (found) found.loading = false
+      notifyLoadError()
     }
     return
   }

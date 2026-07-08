@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
 import type { PetForm } from 'src/types'
+import { notifyLoadError } from 'src/utils/notify'
 
 export type DemandLevel = 'Very Low' | 'Low' | 'Medium' | 'High' | null
 
@@ -11,19 +12,29 @@ export interface PetDetails {
 }
 
 async function apiFetch<T> (url: string): Promise<T> {
-  const res = await fetch(url)
-  if (!res.ok) throw new Error(`HTTP ${res.status}`)
-  return res.json() as Promise<T>
+  try {
+    const res = await fetch(url)
+    if (!res.ok) throw new Error(`HTTP ${res.status}`)
+    return await res.json() as T
+  } catch (e) {
+    notifyLoadError()
+    throw e
+  }
 }
 
 async function apiPost<T> (url: string, body: unknown): Promise<T> {
-  const res = await fetch(url, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(body),
-  })
-  if (!res.ok) throw new Error(`HTTP ${res.status}`)
-  return res.json() as Promise<T>
+  try {
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    })
+    if (!res.ok) throw new Error(`HTTP ${res.status}`)
+    return await res.json() as T
+  } catch (e) {
+    notifyLoadError()
+    throw e
+  }
 }
 
 export const useValuesStore = defineStore('values', () => {

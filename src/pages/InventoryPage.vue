@@ -360,6 +360,7 @@ import { matAdd, matDeleteOutline, matSearch, matCheck, matArrowDownward, matArr
 import { useInventoryStore } from 'src/stores/inventory'
 import { useValuesStore, type DemandLevel } from 'src/stores/values'
 import { ADOPT_ME_PETS } from 'src/data/pets'
+import { notifyLoadError } from 'src/utils/notify'
 import {
   FORM_LABELS, FORM_COLOR_HEX, CATEGORY_LABELS,
   type PetForm, type InventoryPet, type ItemCategory,
@@ -757,6 +758,7 @@ async function fetchValue (pet: InventoryPet) {
     }
   } catch {
     petValue[pet.id] = null
+    notifyLoadError()
   } finally {
     loadingValue[pet.id] = false
   }
@@ -770,6 +772,7 @@ async function fetchElveValue (pet: InventoryPet) {
       petElveValue[pet.id] = data.elveValue
     } catch {
       petElveValue[pet.id] = null
+      notifyLoadError()
     }
     return
   }
