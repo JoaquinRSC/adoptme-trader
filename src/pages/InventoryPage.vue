@@ -940,21 +940,23 @@ function confirmRemove (id: string, name: string) {
   }
 
   /* Add Pet / Add Item dialog: stack search and config vertically so neither
-     column gets crushed (the side-by-side layout overflows a phone width). */
-  .add-card { width: 96vw; max-width: 96vw; }
+     column gets crushed (the side-by-side layout overflows a phone width).
+     !important because the base `.add-*` rules are declared later in this file
+     (equal specificity → source order wins), so they'd otherwise override these. */
+  .add-card { width: 96vw !important; max-width: 96vw !important; }
   .add-body {
     flex-direction: column;
-    height: auto;
+    height: auto !important;
     max-height: 78vh;
     overflow-y: auto;
   }
   .add-left {
-    width: 100%;
+    width: 100% !important;
     border-right: none;
     border-bottom: 1px solid var(--border);
   }
-  .results-panel { flex: none; height: 200px; }
-  .add-right { width: 100%; }
+  .results-panel { flex: none !important; height: 200px !important; }
+  .add-right { width: 100% !important; }
 }
 
 /* Category filter */

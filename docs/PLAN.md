@@ -89,7 +89,11 @@ Sin confianza en los valores, nada más importa.
       (`src/utils/notify.ts`, throttled + SSR-safe) cableado en el chokepoint del
       store (`apiFetch`/`apiPost`) y en los `fetch` de detalles de las páginas →
       toast amable "Couldn't load the latest values…" en vez de blanco silencioso.
-- [ ] Responsive/mobile: Trade Builder colapsa a una columna; revisar todas las páginas.
+- [x] Responsive/mobile: Trade Builder colapsa a una columna; revisar todas las páginas.
+      Auditado a 390px (Playwright sobre el sitio live): My Pets, Check Values (YOU/THEM
+      apilados), Trade Builder (1 columna) y los pickers OK. Único bug: el diálogo Add
+      Pet/Add Item de Inventory no apilaba (base `.add-*` declarada DESPUÉS del `@media`
+      → ganaba por orden de fuente); arreglado con `!important` en los overrides mobile.
 - [x] Tooltips + página corta de "cómo funciona" (formas, fuentes, demand, fairness).
       Diálogo "How it works" en la sidebar + tooltips en el toggle AMV/Elve y en el
       fairness score (las ★ de demand ya tenían `title`). Los chips F/R/D/N/M quedan
