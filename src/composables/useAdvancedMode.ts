@@ -37,5 +37,5 @@ export function useAdvancedMode () {
     return token.value ? { 'x-advanced-token': token.value } : {}
   }
 
-  return { enabled, token, init, authHeaders }
+  return { enabled, init, authHeaders }
 }
