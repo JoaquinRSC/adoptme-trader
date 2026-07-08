@@ -16,12 +16,12 @@ body {
 
 // ── Design tokens ─────────────────────────────────────────────────────────────
 :root {
-  --bg:           #0c0e1a;
-  --surface:      #141624;
-  --surface-2:    #1c1f32;
-  --surface-3:    #252840;
-  --border:       rgba(255, 255, 255, 0.07);
-  --border-hi:    rgba(255, 255, 255, 0.13);
+  --bg:           #090b15;
+  --surface:      #151827;
+  --surface-2:    #1f2338;
+  --surface-3:    #2b3049;
+  --border:       rgba(255, 255, 255, 0.10);
+  --border-hi:    rgba(255, 255, 255, 0.17);
   --primary:      #7c6cf8;
   --primary-glow: rgba(124, 108, 248, 0.22);
   --primary-dim:  rgba(124, 108, 248, 0.1);
@@ -40,8 +40,8 @@ body {
   --surface:      #0e1a2b;
   --surface-2:    #152238;
   --surface-3:    #1c2d47;
-  --border:       rgba(56, 189, 248, 0.08);
-  --border-hi:    rgba(56, 189, 248, 0.15);
+  --border:       rgba(56, 189, 248, 0.12);
+  --border-hi:    rgba(56, 189, 248, 0.19);
   --primary:      #38bdf8;
   --primary-glow: rgba(56, 189, 248, 0.22);
   --primary-dim:  rgba(56, 189, 248, 0.1);
@@ -55,8 +55,8 @@ body {
   --surface:      #0f1f18;
   --surface-2:    #162b21;
   --surface-3:    #1d3829;
-  --border:       rgba(74, 222, 128, 0.08);
-  --border-hi:    rgba(74, 222, 128, 0.14);
+  --border:       rgba(74, 222, 128, 0.12);
+  --border-hi:    rgba(74, 222, 128, 0.19);
   --primary:      #4ade80;
   --primary-glow: rgba(74, 222, 128, 0.22);
   --primary-dim:  rgba(74, 222, 128, 0.1);
@@ -70,8 +70,8 @@ body {
   --surface:      #1f1212;
   --surface-2:    #2c1a1a;
   --surface-3:    #3a2222;
-  --border:       rgba(248, 113, 113, 0.08);
-  --border-hi:    rgba(248, 113, 113, 0.15);
+  --border:       rgba(248, 113, 113, 0.12);
+  --border-hi:    rgba(248, 113, 113, 0.19);
   --primary:      #f87171;
   --primary-glow: rgba(248, 113, 113, 0.22);
   --primary-dim:  rgba(248, 113, 113, 0.1);
@@ -86,8 +86,8 @@ body {
   --surface:      #1c190f;
   --surface-2:    #252016;
   --surface-3:    #302a1c;
-  --border:       rgba(240, 180, 41, 0.08);
-  --border-hi:    rgba(240, 180, 41, 0.15);
+  --border:       rgba(240, 180, 41, 0.12);
+  --border-hi:    rgba(240, 180, 41, 0.19);
   --primary:      #f0b429;
   --primary-glow: rgba(240, 180, 41, 0.22);
   --primary-dim:  rgba(240, 180, 41, 0.1);
@@ -102,8 +102,8 @@ body {
   --surface:      #1f1019;
   --surface-2:    #2c1524;
   --surface-3:    #3a1d30;
-  --border:       rgba(244, 114, 182, 0.08);
-  --border-hi:    rgba(244, 114, 182, 0.15);
+  --border:       rgba(244, 114, 182, 0.12);
+  --border-hi:    rgba(244, 114, 182, 0.19);
   --primary:      #f472b6;
   --primary-glow: rgba(244, 114, 182, 0.22);
   --primary-dim:  rgba(244, 114, 182, 0.1);
@@ -196,6 +196,17 @@ body {
 // Spinner color
 .q-spinner {
   color: var(--primary) !important;
+}
+
+// ── Layout width ──────────────────────────────────────────────────────────────
+// Center page content on wide screens instead of stretching edge-to-edge, which
+// leaves controls marooned at the margins on 1440px+ displays. The pages are the
+// q-page roots, so capping + auto margins centers header and body together.
+.inv-page,
+.cv-page,
+.trade-page {
+  max-width: 1180px;
+  margin-inline: auto;
 }
 
 // ── Mobile (≤599px) ───────────────────────────────────────────────────────────

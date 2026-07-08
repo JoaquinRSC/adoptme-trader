@@ -110,12 +110,17 @@ Sin confianza en los valores, nada más importa.
       en devDependencies — está roto).
 
 **Pulido visual** (un día de trabajo, no un rediseño):
-- [ ] Subir tipografía y densidad ~20%: las cards usan 9-11px, hostil para
-      adolescentes en tablet/celu. Touch targets más grandes (chips F/R/D/N/M).
-- [ ] Más contraste entre fondo ↔ surface ↔ borde: hoy todo está tan cerca en
-      luminancia que en pantallas baratas se ve barroso.
-- [ ] Contenedor `max-width: ~1150px` centrado: en 1440px+ los controles se
-      estiran de borde a borde y queda espacio muerto.
+- [~] Subir tipografía y densidad ~20%: RECONSIDERADO. El diagnóstico era pesimista
+      — el contenido primario de las cards (nombre + valor) ya es 15px, legible. Los
+      9-11px son eyebrows en MAYÚSCULA y badges intencionales; inflarlos empeoraría.
+      Los touch targets de los chips F/R/D/N/M (~28px, aceptable) se agrandan al
+      unificar en `FormChips.vue`, para no tocar las 6 copias ahora. Sin cambios netos.
+- [x] Más contraste entre fondo ↔ surface ↔ borde: ramp ensanchado en el tema default
+      (bg más profundo, surfaces levantadas) + bordes subidos (0.07→0.10, hi 0.13→0.17)
+      y en los 6 temas (0.08→0.12). Las cards ahora se leen como capas (antes casi
+      invisibles). Verificado con screenshots antes/después.
+- [x] Contenedor `max-width: 1180px` centrado en `.inv/.cv/.trade-page`: a ≥1600px el
+      contenido se centra en vez de estirarse de borde a borde. Verificado a 1920px.
 
 **Unificar el selector de pets — componente único `<PetPicker>`** 🎯
 Hoy hay 5-6 implementaciones copy-pasteadas (Inventory pet + item, Check Values
