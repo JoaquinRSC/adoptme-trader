@@ -100,7 +100,12 @@ Sin confianza en los valores, nada más importa.
       explicados en el diálogo; sus tooltips por-botón se agregan al unificar en
       `FormChips.vue` (evita tocar las 25 copias actuales).
 - [ ] PWA instalable (manifest + service worker básico).
-- [ ] Verificar/arreglar el posible hydration mismatch del SSR (ver diagnóstico visual).
+- [x] Verificar/arreglar el posible hydration mismatch del SSR (ver diagnóstico visual).
+      **Era un bug real, no artefacto del headless.** `curl` al SSR mostraba cada ruta
+      renderizando el componente de OTRA página, y el mapeo cambiaba entre corridas
+      → cross-request state pollution. Causa: `src/router/index.ts` exportaba un router
+      singleton (compartido entre requests SSR concurrentes con `createMemoryHistory`).
+      Fix: envolver en `defineRouter(() => createRouter(...))` → router fresco por request.
 - [ ] Arreglar `npm run lint` (no hay config de ESLint en el repo y eslint no está
       en devDependencies — está roto).
 
