@@ -11,11 +11,13 @@
         <button
           class="source-btn"
           :class="{ 'source-btn--active': valueSource === 'amvgg' }"
+          title="AMVGG (amvgg.com) — community value list"
           @click="valueSource = 'amvgg'"
         >AMV</button>
         <button
           class="source-btn"
           :class="{ 'source-btn--active': valueSource === 'elvebredd' }"
+          title="Elvebredd (elvebredd.com) — community value list"
           @click="valueSource = 'elvebredd'"
         >Elve</button>
       </div>
@@ -85,7 +87,11 @@
 
         <!-- Fairness indicator -->
         <div class="fairness-wrap" v-if="fairness !== null">
-          <div class="fairness-score" :class="fairnessClass">
+          <div
+            class="fairness-score"
+            :class="fairnessClass"
+            title="Value you'd get vs. value you'd give (demand-adjusted). 0% is even; + means you come out ahead, − means you overpay."
+          >
             {{ fairness >= 0 ? '+' : '' }}{{ fairness.toFixed(1) }}%
           </div>
           <div class="fairness-label">demand-adjusted</div>

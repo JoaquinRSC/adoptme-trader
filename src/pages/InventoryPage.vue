@@ -31,8 +31,8 @@
           <span>{{ sortOrder === 'desc' ? 'High → Low' : sortOrder === 'asc' ? 'Low → High' : 'Sort' }}</span>
         </button>
         <div class="source-toggle">
-          <button class="source-btn" :class="{ 'source-btn--active': valueSource === 'amvgg' }" @click="setSource('amvgg')">AMV</button>
-          <button class="source-btn" :class="{ 'source-btn--active': valueSource === 'elvebredd' }" @click="setSource('elvebredd')">Elve</button>
+          <button class="source-btn" :class="{ 'source-btn--active': valueSource === 'amvgg' }" title="AMVGG (amvgg.com) — community value list" @click="setSource('amvgg')">AMV</button>
+          <button class="source-btn" :class="{ 'source-btn--active': valueSource === 'elvebredd' }" title="Elvebredd (elvebredd.com) — community value list" @click="setSource('elvebredd')">Elve</button>
         </div>
         <button class="btn-primary" @click="openAdd">
           <q-icon :name="matAdd" size="16px" />

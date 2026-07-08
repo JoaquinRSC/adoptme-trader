@@ -19,11 +19,13 @@
           <button
             class="source-btn"
             :class="{ 'source-btn--active': valueSource === 'amvgg' }"
+            title="AMVGG (amvgg.com) — community value list"
             @click="valueSource = 'amvgg'"
           >AMV</button>
           <button
             class="source-btn"
             :class="{ 'source-btn--active': valueSource === 'elvebredd' }"
+            title="Elvebredd (elvebredd.com) — community value list"
             @click="valueSource = 'elvebredd'"
           >Elve</button>
         </div>

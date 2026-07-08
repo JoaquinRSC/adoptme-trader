@@ -144,10 +144,10 @@
         <section class="guide-section">
           <h3 class="guide-h">Fairness %</h3>
           <p class="guide-p">
-            In Trade Builder, fairness compares the total value of both sides.
-            <strong>100%</strong> is an even trade; above means you come out ahead
-            (Win), below means you're overpaying (Lose). It uses whichever value
-            source you have selected.
+            In Trade Builder, fairness compares what you'd give against what you'd get.
+            <strong>0%</strong> is an even trade; a positive number means you come out
+            ahead (Win), negative means you're overpaying (Lose). It's demand-adjusted
+            and uses whichever value source you have selected.
           </p>
         </section>
       </div>

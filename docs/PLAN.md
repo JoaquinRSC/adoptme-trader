@@ -85,7 +85,11 @@ Sin confianza en los valores, nada más importa.
 - [x] ~~Rate-limit/auth en `/api/trade/browse`~~ → endpoint eliminado con el resto.
 - [ ] Mensajes de error amables (nada de errores crudos en monospace).
 - [ ] Responsive/mobile: Trade Builder colapsa a una columna; revisar todas las páginas.
-- [ ] Tooltips + página corta de "cómo funciona" (formas, fuentes, demand, fairness).
+- [x] Tooltips + página corta de "cómo funciona" (formas, fuentes, demand, fairness).
+      Diálogo "How it works" en la sidebar + tooltips en el toggle AMV/Elve y en el
+      fairness score (las ★ de demand ya tenían `title`). Los chips F/R/D/N/M quedan
+      explicados en el diálogo; sus tooltips por-botón se agregan al unificar en
+      `FormChips.vue` (evita tocar las 25 copias actuales).
 - [ ] PWA instalable (manifest + service worker básico).
 - [ ] Verificar/arreglar el posible hydration mismatch del SSR (ver diagnóstico visual).
 - [ ] Arreglar `npm run lint` (no hay config de ESLint en el repo y eslint no está
