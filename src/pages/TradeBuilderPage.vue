@@ -30,6 +30,7 @@
           <q-icon :name="matUpload" size="16px" />
           <span>You offer</span>
           <span class="panel-count" v-if="offeredPets.length">{{ offeredPets.length }}</span>
+          <button v-if="offeredPets.length" class="clear-draft-btn" @click="clearOffer">Clear</button>
         </div>
 
         <div class="panel-body">
@@ -329,32 +330,28 @@ import {
   matAutoAwesome, matSearch, matWarning,
 } from '@quasar/extras/material-icons'
 
+import { storeToRefs } from 'pinia'
 import { useInventoryStore } from 'src/stores/inventory'
 import { useValuesStore, type DemandLevel } from 'src/stores/values'
+import { useDraftsStore, type OfferedItem } from 'src/stores/drafts'
 import { useFormPicker } from 'src/composables/useFormPicker'
 import {
   FORM_LABELS, FORM_COLOR_HEX, CATEGORY_LABELS,
   type PetForm, type InventoryPet, type ItemCategory, type PetSuggestion,
 } from 'src/types'
 
-const inventory = useInventoryStore()
-const values    = useValuesStore()
+const inventory   = useInventoryStore()
+const values      = useValuesStore()
+const draftsStore = useDraftsStore()
 
 // ── State ─────────────────────────────────────────────────────────────────────
-interface OfferedItem {
-  pet: InventoryPet
-  amvggValue: number | null
-  elveValue: number | null
-  demand: DemandLevel
-  loading: boolean
-}
-
 interface SuggestionWithDemand extends PetSuggestion {
   demand: DemandLevel
   elveValue: number | null
 }
 
-const offeredPets         = ref<OfferedItem[]>([])
+// The offer lives in the drafts store so it survives navigation + reload.
+const { tradeOffer: offeredPets } = storeToRefs(draftsStore)
 const desiredForm         = ref<PetForm>('fr')
 const suggestions         = ref<SuggestionWithDemand[]>([])
 const showInventoryPicker = ref(false)
@@ -597,6 +594,13 @@ function removeOffered (id: string) {
   searchDone.value  = false
 }
 
+function clearOffer () {
+  draftsStore.clearTrade()
+  suggestions.value        = []
+  searchDone.value         = false
+  selectedSuggestion.value = null
+}
+
 // ── Search ────────────────────────────────────────────────────────────────────
 async function search () {
   if (!offeredPets.value.length || totalOfferedValue.value === 0) return
@@ -663,6 +667,7 @@ async function search () {
 const selectedSuggestion = ref<SuggestionWithDemand | null>(null)
 
 onMounted(() => {
+  draftsStore.hydrate()
   const savedTolerance = Number(localStorage.getItem('match_tolerance_pct'))
   if (TOLERANCE_OPTIONS.includes(savedTolerance)) tolerancePct.value = savedTolerance
 })
@@ -757,6 +762,21 @@ function deltaChipClass (delta: number) {
   border-radius: 20px;
   padding: 1px 8px;
 }
+
+.clear-draft-btn {
+  margin-left: 6px;
+  background: none;
+  border: none;
+  color: var(--text-3);
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  cursor: pointer;
+  padding: 2px 4px;
+  transition: color 0.15s;
+}
+.clear-draft-btn:hover { color: var(--negative); }
 
 .panel-body {
   padding: 12px;

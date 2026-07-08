@@ -7,18 +7,26 @@
         <div class="page-sub">Compare trade value between two sides</div>
       </div>
 
-      <!-- Source toggle -->
-      <div class="source-toggle">
+      <div class="head-right">
         <button
-          class="source-btn"
-          :class="{ 'source-btn--active': valueSource === 'amvgg' }"
-          @click="valueSource = 'amvgg'"
-        >AMV</button>
-        <button
-          class="source-btn"
-          :class="{ 'source-btn--active': valueSource === 'elvebredd' }"
-          @click="valueSource = 'elvebredd'"
-        >Elve</button>
+          v-if="yourSide.length || themSide.length"
+          class="clear-draft-btn"
+          @click="draftsStore.clearCheck()"
+        >Clear</button>
+
+        <!-- Source toggle -->
+        <div class="source-toggle">
+          <button
+            class="source-btn"
+            :class="{ 'source-btn--active': valueSource === 'amvgg' }"
+            @click="valueSource = 'amvgg'"
+          >AMV</button>
+          <button
+            class="source-btn"
+            :class="{ 'source-btn--active': valueSource === 'elvebredd' }"
+            @click="valueSource = 'elvebredd'"
+          >Elve</button>
+        </div>
       </div>
     </div>
 
@@ -290,30 +298,21 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch } from 'vue'
+import { ref, computed, watch, onMounted } from 'vue'
+import { storeToRefs } from 'pinia'
 import { matSearch, matBalance } from '@quasar/extras/material-icons'
 import { uid } from 'quasar'
 import { FORM_LABELS, FORM_COLOR_HEX, CATEGORY_LABELS, type PetForm, type InventoryPet, type ItemCategory } from 'src/types'
 import { useValuesStore, type DemandLevel } from 'src/stores/values'
 import { useInventoryStore } from 'src/stores/inventory'
+import { useDraftsStore, type SideEntry } from 'src/stores/drafts'
 import { useFormPicker } from 'src/composables/useFormPicker'
 
 const valuesStore = useValuesStore()
 const inventory   = useInventoryStore()
+const draftsStore = useDraftsStore()
 
 const inventoryPets = computed(() => inventory.pets)
-
-// ── Types ────────────────────────────────────────────────────────────────────
-
-interface SideEntry {
-  id: string
-  name: string
-  form: PetForm
-  category?: ItemCategory
-  value: number | null
-  demand: DemandLevel
-  loading: boolean
-}
 
 function demandClass(d: DemandLevel) {
   if (d === 'High') return 'high'
@@ -328,10 +327,10 @@ function demandStars(d: DemandLevel): string {
 
 // ── State ────────────────────────────────────────────────────────────────────
 
-const valueSource = ref<'amvgg' | 'elvebredd'>('amvgg')
+// Sides + source live in the drafts store so they survive navigation + reload.
+const { checkYou: yourSide, checkThem: themSide, checkSource: valueSource } = storeToRefs(draftsStore)
 watch(valueSource, refreshValues)
-const yourSide = ref<SideEntry[]>([])
-const themSide = ref<SideEntry[]>([])
+onMounted(() => draftsStore.hydrate())
 
 // ── Computed ─────────────────────────────────────────────────────────────────
 
@@ -584,6 +583,26 @@ function addOtherPetToThem(name: string) {
   color: var(--text-3);
   margin-top: 2px;
 }
+
+.head-right {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.clear-draft-btn {
+  background: none;
+  border: none;
+  color: var(--text-3);
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  cursor: pointer;
+  padding: 2px 4px;
+  transition: color 0.15s;
+}
+.clear-draft-btn:hover { color: var(--negative); }
 
 /* ── Source toggle ── */
 .source-toggle {
