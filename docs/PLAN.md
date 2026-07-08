@@ -28,11 +28,12 @@ sin comprometerse.
   es la única feature con riesgo de relación con las fuentes de las que dependemos.
   La UX está bien; queda como herramienta personal.
 
-**Decisión**: separar en dos modos.
-- *Versión pública* = My Pets + Check Values + Trade Builder consultivo
+**Decisión** (actualizada 2026-07-08): originalmente se separó en dos modos —
+público consultivo + modo avanzado personal detrás de un flag. Ese modo avanzado
+(Publish/Auto/Loop + Browse Market) se **eliminó por completo el 2026-07-08**:
+quedó una sola versión pública para todos. El código vive en el historial de git.
+- *Versión pública (única)* = My Pets + Check Values + Trade Builder consultivo
   (sidebar de 3 secciones). Identidad: todo propio, nada espejado.
-- *Modo avanzado personal* = Publish/Auto + Browse Market detrás de un flag
-  (localStorage o setting oculto).
 - El motor de crecimiento (Fase 3) y los diferenciadores (Fase 5) no dependen
   del feed de trades — no se pierde nada estratégico.
 
@@ -77,12 +78,11 @@ Sin confianza en los valores, nada más importa.
       del historial de tendencias de la Fase 5, se acumula solo mientras tanto.
 
 ### Fase 2 — Limpieza para público
-- [ ] Ocultar Publish / Auto / Loop **y Browse Market** detrás de un flag
-      (p. ej. `localStorage.advanced_mode`): la sidebar pública queda con
-      3 secciones (My Pets, Check Values, Trade Builder). El código de Browse
-      Market no se borra — sigue siendo herramienta personal.
-- [ ] Rate-limit extra o auth simple en `/api/trade/browse` para que el endpoint
-      no quede usable por terceros aunque la página esté oculta.
+- [x] ~~Ocultar Publish / Auto / Loop y Browse Market detrás de un flag~~ →
+      **eliminados por completo (2026-07-08)**. Primero se ocultaron detrás de
+      `localStorage.advanced_mode`; después se decidió borrarlos del todo. La
+      sidebar pública queda con 3 secciones (My Pets, Check Values, Trade Builder).
+- [x] ~~Rate-limit/auth en `/api/trade/browse`~~ → endpoint eliminado con el resto.
 - [ ] Mensajes de error amables (nada de errores crudos en monospace).
 - [ ] Responsive/mobile: Trade Builder colapsa a una columna; revisar todas las páginas.
 - [ ] Tooltips + página corta de "cómo funciona" (formas, fuentes, demand, fairness).
@@ -237,8 +237,9 @@ La ejecución ya está; falta punto de vista. Pocas decisiones, mucho efecto:
 - Comparador de pets ("Frost Dragon vs Shadow Dragon").
 - Login with Roblox (OAuth2) como diferenciador de la Fase 4, segunda iteración.
 - Re-evaluar Browse Market público: si la app crece, escribirles a AMVGG y
-  preguntar si les molesta (argumento: el "View ↗" les manda tráfico). Habilitar
-  después es fácil; des-quemar una IP bloqueada o una mala relación, no.
+  preguntar si les molesta (argumento: el "View ↗" les manda tráfico). El código
+  se eliminó el 2026-07-08 — rehabilitarlo es reconstruir desde el historial de
+  git; des-quemar una IP bloqueada o una mala relación, no.
 - **Import de inventario por screenshot** (experimental, feature "wow" que nadie
   tiene): el usuario sube capturas de su inventario in-game y el server matchea
   los íconos contra el set de sprites de pets ya conocido (imágenes de amvgg).
