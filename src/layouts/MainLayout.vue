@@ -60,6 +60,15 @@
         </nav>
 
         <div class="sidebar-footer" :class="{ 'sidebar-footer--mini': collapsed }">
+          <button
+            class="help-btn"
+            :class="{ 'help-btn--mini': collapsed }"
+            :title="collapsed ? 'How it works' : undefined"
+            @click="showGuide = true"
+          >
+            <q-icon :name="matHelpOutline" size="18px" />
+            <span v-if="!collapsed">How it works</span>
+          </button>
           <div class="theme-picker" :class="{ 'theme-picker--mini': collapsed }">
             <button
               v-for="t in themes"
@@ -88,16 +97,72 @@
         </keep-alive>
       </router-view>
     </q-page-container>
+
+    <!-- "How it works" — a plain-language explainer for the app's jargon. -->
+    <q-dialog v-model="showGuide">
+      <div class="guide">
+        <div class="guide-head">
+          <h2 class="guide-title">How AM Trader works</h2>
+          <button class="guide-close" aria-label="Close" @click="showGuide = false">✕</button>
+        </div>
+
+        <section class="guide-section">
+          <h3 class="guide-h">Pet forms</h3>
+          <p class="guide-p">
+            A pet's value depends on its form. When adding a pet you toggle five
+            buttons — <strong>F R D N M</strong> — and they combine (e.g. Neon + Fly = NF).
+          </p>
+          <ul class="form-legend">
+            <li v-for="f in formLegend" :key="f.k">
+              <span class="form-chip" :style="{ background: FORM_COLOR_HEX[f.form] }">{{ f.k }}</span>
+              <span class="form-name">{{ f.label }}</span>
+              <span class="form-desc">{{ f.desc }}</span>
+            </li>
+          </ul>
+        </section>
+
+        <section class="guide-section">
+          <h3 class="guide-h">Value sources — AMV &amp; Elve</h3>
+          <p class="guide-p">
+            There is no official price list, so the community keeps its own.
+            <strong>AMV</strong> (amvgg.com) and <strong>Elve</strong> (elvebredd.com)
+            are the two most-used. The app shows both so you can cross-check — if they
+            disagree a lot, the pet's value is unsettled, so trade carefully.
+          </p>
+        </section>
+
+        <section class="guide-section">
+          <h3 class="guide-h">Demand ★</h3>
+          <p class="guide-p">
+            Stars show how many people want a pet right now (0–5). A high-value pet
+            with low demand can be hard to trade away; a lower-value pet with high
+            demand moves fast. Value tells you what it's worth; demand tells you how
+            easily you'll trade it.
+          </p>
+        </section>
+
+        <section class="guide-section">
+          <h3 class="guide-h">Fairness %</h3>
+          <p class="guide-p">
+            In Trade Builder, fairness compares the total value of both sides.
+            <strong>100%</strong> is an even trade; above means you come out ahead
+            (Win), below means you're overpaying (Lose). It uses whichever value
+            source you have selected.
+          </p>
+        </section>
+      </div>
+    </q-dialog>
   </q-layout>
 </template>
 
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useQuasar } from 'quasar'
-import { matInventory2, matSwapHoriz, matBalance, matChevronLeft, matChevronRight, matMenu } from '@quasar/extras/material-icons'
+import { matInventory2, matSwapHoriz, matBalance, matChevronLeft, matChevronRight, matMenu, matHelpOutline } from '@quasar/extras/material-icons'
 import { version } from '../../package.json'
 import { useTheme } from 'src/composables/useTheme'
 import { useInventoryStore } from 'src/stores/inventory'
+import { FORM_COLOR_HEX } from 'src/types'
 
 const $q = useQuasar()
 const inventory = useInventoryStore()
@@ -134,6 +199,16 @@ const navItems = computed(() => [
   { name: 'check-values',  icon: matBalance,    label: 'Check Values'  },
   { name: 'trade-builder', icon: matSwapHoriz,  label: 'Trade Builder' },
 ])
+
+// "How it works" guide — a one-stop explainer for the app's jargon.
+const showGuide = ref(false)
+const formLegend = [
+  { k: 'F', form: 'fly',    label: 'Fly',     desc: 'can be flown' },
+  { k: 'R', form: 'ride',   label: 'Ride',    desc: 'can be ridden' },
+  { k: 'D', form: 'normal', label: 'Default', desc: 'no add-ons' },
+  { k: 'N', form: 'n',      label: 'Neon',    desc: 'glows in the dark' },
+  { k: 'M', form: 'm',      label: 'Mega',    desc: 'mega-neon — 4 neons combined' },
+] as const
 </script>
 
 <style scoped>
@@ -310,6 +385,135 @@ const navItems = computed(() => [
 .collapse-btn:hover {
   background: var(--surface-2);
   color: var(--text-1);
+}
+
+/* How-it-works button */
+.help-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text-2);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+.help-btn:hover {
+  background: var(--surface-2);
+  color: var(--text-1);
+}
+.help-btn--mini {
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  align-self: center;
+}
+
+/* How-it-works dialog */
+.guide {
+  width: 460px;
+  max-width: 92vw;
+  max-height: 86vh;
+  overflow-y: auto;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 22px 24px 26px;
+}
+
+.guide-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 4px;
+}
+.guide-title {
+  font-size: 18px;
+  font-weight: 800;
+  color: var(--text-1);
+  margin: 0;
+}
+.guide-close {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text-3);
+  font-size: 15px;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+.guide-close:hover {
+  background: var(--surface-2);
+  color: var(--text-1);
+}
+
+.guide-section {
+  margin-top: 18px;
+}
+.guide-h {
+  font-size: 13px;
+  font-weight: 800;
+  color: var(--primary);
+  letter-spacing: 0.3px;
+  margin: 0 0 6px;
+}
+.guide-p {
+  font-size: 13px;
+  line-height: 1.55;
+  color: var(--text-2);
+  margin: 0;
+}
+.guide-p strong {
+  color: var(--text-1);
+  font-weight: 700;
+}
+
+.form-legend {
+  list-style: none;
+  margin: 12px 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.form-legend li {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.form-chip {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 7px;
+  color: #fff;
+  font-size: 12px;
+  font-weight: 800;
+  flex-shrink: 0;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+}
+.form-name {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-1);
+  min-width: 54px;
+}
+.form-desc {
+  font-size: 12px;
+  color: var(--text-3);
 }
 
 /* Mobile header */
