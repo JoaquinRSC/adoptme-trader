@@ -297,7 +297,7 @@ interface BrowsedTrade {
 // Browse Market is advanced-mode only; bounce everyone else back to My Pets.
 // Runs after mount (child hooks fire before the layout's), so the flag is set.
 const router = useRouter()
-const { enabled: advancedMode, init: initAdvancedMode } = useAdvancedMode()
+const { enabled: advancedMode, init: initAdvancedMode, authHeaders } = useAdvancedMode()
 onMounted(() => {
   initAdvancedMode()
   if (!advancedMode.value) void router.replace({ name: 'inventory' })
@@ -433,7 +433,7 @@ async function runSearch () {
   try {
     const res    = await fetch('/api/trade/browse', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', ...authHeaders() },
       body: JSON.stringify({ petName: selectedPet.value, form: selectedForm.value, sources: ['amvgg', 'elvebredd'], pages }),
     })
     const result = await res.json() as { trades: BrowsedTrade[]; errors: string[] }

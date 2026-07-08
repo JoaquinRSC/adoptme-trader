@@ -1,5 +1,5 @@
 import { defineSsrMiddleware } from '#q-app/wrappers'
-import { json as parseJson } from 'express'
+import { json as parseJson, type Request, type Response, type NextFunction } from 'express'
 import { existsSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { execFile } from 'node:child_process'
@@ -769,6 +769,21 @@ async function browseMarket (payload: {
 
 // ── Middleware ────────────────────────────────────────────────────────────────
 
+// Gate for advanced-only endpoints that make outbound requests to AMVGG /
+// Elvebredd (scraping the trade feed, publishing trades). These are hidden in
+// the UI behind advanced mode, but the endpoints stay reachable — so require a
+// shared secret token (matching the client's `x-advanced-token` header) to keep
+// third parties from using our server as a scraping/publishing proxy.
+// In production the token is mandatory (fails closed if misconfigured); locally,
+// with no token set, the gate stays open for convenience.
+const ADVANCED_TOKEN = process.env.ADVANCED_TOKEN
+function requireAdvanced (req: Request, res: Response, next: NextFunction) {
+  const provided = req.headers['x-advanced-token']
+  if (ADVANCED_TOKEN && provided === ADVANCED_TOKEN) return next()
+  if (!ADVANCED_TOKEN && process.env.NODE_ENV !== 'production') return next()
+  res.status(403).json({ error: 'Advanced mode required' })
+}
+
 export default defineSsrMiddleware(({ app }) => {
   app.use(parseJson())
 
@@ -896,7 +911,7 @@ export default defineSsrMiddleware(({ app }) => {
     res.json(result)
   })
 
-  app.post('/api/trade/browse', async (req, res) => {
+  app.post('/api/trade/browse', requireAdvanced, async (req, res) => {
     try {
       const result = await browseMarket(req.body as Parameters<typeof browseMarket>[0])
       res.json(result)
@@ -905,7 +920,7 @@ export default defineSsrMiddleware(({ app }) => {
     }
   })
 
-  app.post('/api/trade/post-amvgg', async (req, res) => {
+  app.post('/api/trade/post-amvgg', requireAdvanced, async (req, res) => {
     interface TradeItem { name: string; form: string; itemCategory?: string }
     const { cookie, offered, wanted } = req.body as {
       cookie:  string
@@ -967,7 +982,7 @@ export default defineSsrMiddleware(({ app }) => {
     }
   }
 
-  app.post('/api/trade/elve-build-payloads', async (req, res) => {
+  app.post('/api/trade/elve-build-payloads', requireAdvanced, async (req, res) => {
     interface ElveTradeSpec { offered: { name: string; form: string }[]; wanted: { name: string; form: string }[] }
     const { trades } = req.body as { trades: ElveTradeSpec[] }
     if (!trades?.length) return res.status(400).json({ ok: false, error: 'Missing trades' })

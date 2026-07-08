@@ -647,7 +647,7 @@ import {
 
 const inventory = useInventoryStore()
 const values    = useValuesStore()
-const { enabled: advancedMode, init: initAdvancedMode } = useAdvancedMode()
+const { enabled: advancedMode, init: initAdvancedMode, authHeaders } = useAdvancedMode()
 
 // ── State ─────────────────────────────────────────────────────────────────────
 interface OfferedItem {
@@ -1051,7 +1051,7 @@ async function copyElveSingleScript () {
   try {
     const res  = await fetch('/api/trade/elve-build-payloads', {
       method:  'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', ...authHeaders() },
       body: JSON.stringify({
         trades: [{
           offered: offeredPets.value.map(o => ({ name: o.pet.name, form: o.pet.form })),
@@ -1076,7 +1076,7 @@ async function publishTrade () {
   try {
     const res = await fetch('/api/trade/post-amvgg', {
       method:  'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', ...authHeaders() },
       body: JSON.stringify({
         cookie:  amvggCookie.value,
         offered: offeredPets.value.map(o => ({
@@ -1348,7 +1348,7 @@ async function publishAutoTrades () {
     try {
       const res  = await fetch('/api/trade/post-amvgg', {
         method:  'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...authHeaders() },
         body: JSON.stringify({
           cookie:  amvggCookie.value,
           offered: trade.offered.map(o => ({ name: o.name, form: o.form, itemCategory: o.category })),
@@ -1379,7 +1379,7 @@ async function copyElveAutoScript () {
   try {
     const res  = await fetch('/api/trade/elve-build-payloads', {
       method:  'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', ...authHeaders() },
       body: JSON.stringify({
         trades: pending.map(t => ({
           offered: t.offered.map(o => ({ name: o.name, form: o.form })),
