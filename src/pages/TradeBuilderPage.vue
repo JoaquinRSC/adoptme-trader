@@ -2337,4 +2337,21 @@ function deltaChipClass (delta: number) {
 }
 .cat-picker-btn:hover { border-color: var(--border-hi); color: var(--text-2); }
 .cat-picker-btn--active { background: var(--primary); border-color: var(--primary); color: #fff; }
+
+/* ── Mobile: collapse the 3-column layout into a single stacked column ────────── */
+@media (max-width: 820px) {
+  .trade-page { padding: 16px; }
+  .page-head { flex-wrap: wrap; gap: 12px; margin-bottom: 18px; }
+
+  .trade-layout {
+    grid-template-columns: 1fr;
+    gap: 14px;
+  }
+
+  /* Center controls no longer need to align with the panel tops; the swap
+     arrow points down to read as offer → suggestions in the stacked flow. */
+  .trade-controls { padding-top: 4px; }
+  .swap-icon-wrap { transform: rotate(90deg); }
+  .btn-search { width: 100%; justify-content: center; }
+}
 </style>
