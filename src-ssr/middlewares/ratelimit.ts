@@ -2,15 +2,13 @@ import { defineSsrMiddleware } from '#q-app/wrappers'
 import type { Request, Response, NextFunction } from 'express'
 
 // In-memory per-IP rate limiter for the public demo. Single machine, so a plain
-// Map is enough — no shared store needed. Protects the server from abuse (the
-// browse endpoint makes an outbound request to amvgg.com on every call), not
-// from a billing blowup: the app runs on one machine that never scales out.
+// Map is enough — no shared store needed. Protects the server from abuse, not
+// from a billing blowup: the app runs on one machine that never scales out. All
+// endpoints now serve from in-memory caches, so a single generic limit suffices.
 
 const WINDOW_MS = 60_000
 
-// Longest-prefix-first: /api/trade/browse is checked before the generic /api/.
 const LIMITS: Array<{ prefix: string; max: number }> = [
-  { prefix: '/api/trade/browse', max: 20 },  // outbound curl to amvgg — keep tight
   { prefix: '/api/', max: 120 },
 ]
 

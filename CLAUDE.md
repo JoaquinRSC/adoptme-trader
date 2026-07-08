@@ -56,9 +56,8 @@ The `Dockerfile` copies these into the Fly.io image. The server loads them at st
 | `GET /api/pets/all` | GET | all pets with their FR value |
 | `GET /api/pets/list` | GET | full pet name list |
 | `GET /api/pets/search?q=` | GET | filtered pet name list |
-| `POST /api/trade/browse` | POST | browse AMVGG trades for a searched pet |
 
-All `/api/*` endpoints are public — the app has no authentication. A per-IP rate limiter (`src-ssr/middlewares/ratelimit.ts`) throttles abuse, tighter on the one endpoint that makes an outbound request (`/api/trade/browse`).
+All `/api/*` endpoints are public — the app has no authentication. They all serve from in-memory caches (no outbound requests at request time). A per-IP rate limiter (`src-ssr/middlewares/ratelimit.ts`) throttles abuse.
 
 ### Key files
 
@@ -67,13 +66,11 @@ All `/api/*` endpoints are public — the app has no authentication. A per-IP ra
 - `src/stores/values.ts` — In-memory value cache + `DemandLevel` type + `PetDetails` interface; wraps API fetch calls; `getBatch` for bulk pre-loading
 - `src/composables/useFormPicker.ts` — 5-button F/R/D/N/M toggle that derives `PetForm` from booleans; used in add-pet dialogs
 - `src/composables/useTheme.ts` — 5 color themes (Midnight/Ocean/Forest/Crimson/Dusk); persisted to `localStorage`, applied via `data-theme` on `<html>`
-- `src/composables/useAdvancedMode.ts` — Personal "advanced mode" flag gating owner-only tools (Publish/Auto to AMVGG & Elvebredd, Browse Market). Toggled via hidden URL param `?advanced=1` / `?advanced=0`, persisted to `localStorage.advanced_mode`. Stays `false` during SSR (never leaks to the public render); `init()` reads the real value on the client after mount.
 - `src/pages/InventoryPage.vue` — Pet cards with form badge, quantity, lazy value fetch
 - `src/pages/CheckValuesPage.vue` — Two-sided value comparison (YOU vs THEM); supports AMVGG and Elvebredd sources; shows demand ★ per slot; YOU picker has "My Pets" (sorted by value) + "Other" tabs; THEM picker has "Other" tab only (search)
-- `src/pages/TradeBuilderPage.vue` — Offered pets + form selector + demand-adjusted fairness score (reflects the selected suggestion under the active value source) + suggestions with adjustable match tolerance (±5/10/20%, default 20, persisted); My Pets picker sorted by cached value. Publish/Auto (post trades to AMVGG/Elvebredd) are **advanced-mode only** (see `useAdvancedMode`); the public build is consultative
-- `src/pages/BrowseMarketPage.vue` — **Advanced-mode only** (see `useAdvancedMode`; redirects to My Pets otherwise). Browse AMVGG trades for a pet you want to offer; layout: You give (left) ↔ They offer (right); filters: Good & Fair / Good only / OP (adjustable % threshold); "My pet only" toggle; shows AMV + ELV values per pet; "View ↗" button links to AMVGG user profile
-- `src/layouts/MainLayout.vue` — Sidebar nav (public: My Pets, Check Values, Trade Builder; Browse Market appears only in advanced mode) + theme swatch picker + collapse
-- `src-ssr/middlewares/api.ts` — All API handlers, AMVGG/Elvebredd cache warming, trade browsing logic
+- `src/pages/TradeBuilderPage.vue` — Offered pets + form selector + demand-adjusted fairness score (reflects the selected suggestion under the active value source) + suggestions with adjustable match tolerance (±5/10/20%, default 20, persisted); My Pets picker sorted by cached value. Consultative only (no trade posting)
+- `src/layouts/MainLayout.vue` — Sidebar nav (My Pets, Check Values, Trade Builder) + theme swatch picker + collapse
+- `src-ssr/middlewares/api.ts` — All API handlers, AMVGG/Elvebredd cache warming
 - `scripts/fetch-values.mjs` — Pre-fetch script: fetches AMVGG (Node fetch) + Elvebredd (curl) and saves to `src/data/*.json`
 - `scripts/snapshot-values.mjs` — Writes a compact daily snapshot (`{date, amv:{name:fr}, elve:{name:fr}}`) to `src/data/history/YYYY-MM-DD.json`; idempotent per UTC day, refuses to write if both sources are empty. Raw material for Phase 5 value trends. Not loaded by the server yet.
 - `Dockerfile` — Multi-stage build for Fly.io; copies `src/data/` into the image
@@ -113,4 +110,4 @@ Manual (local) update, if ever needed:
 
 - **Phase 1 (done):** Inventory management + trade builder (AMVGG values + demand)
 - **Phase 1.5 (done):** Elvebredd cross-check in Check Values; color themes
-- **Phase 1.8 (done):** SSR migration to Fly.io; static value cache; Browse Market; OP filter; Elve values in trade cards; non-pet item categories (Pet Wear, Eggs, Strollers, Food, Vehicles, Toys, Gifts, Stickers, Houses)
+- **Phase 1.8 (done):** SSR migration to Fly.io; static value cache; Elve values in trade cards; non-pet item categories (Pet Wear, Eggs, Strollers, Food, Vehicles, Toys, Gifts, Stickers, Houses)

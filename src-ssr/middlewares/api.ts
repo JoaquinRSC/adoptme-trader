@@ -1,8 +1,7 @@
 import { defineSsrMiddleware } from '#q-app/wrappers'
-import { json as parseJson, type Request, type Response, type NextFunction } from 'express'
+import { json as parseJson, type Response } from 'express'
 import { existsSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
-import { execFile } from 'node:child_process'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -12,30 +11,6 @@ export interface PetDetails {
   values:  Record<string, number | null>
   demands: Record<string, DemandLevel>
   rarity:  string | null
-}
-
-export interface BrowsedTradePet {
-  name:      string
-  form:      string
-  value:     number | null
-  elveValue: number | null
-  demand:    DemandLevel
-  isPet:     boolean
-}
-
-export interface BrowsedTrade {
-  id:            string
-  platform:      'amvgg' | 'elvebredd'
-  authorName:    string
-  publishedAt:   string
-  offering:      BrowsedTradePet[]
-  lookingFor:    BrowsedTradePet[]
-  offerTotal:    number | null
-  wantTotal:     number | null
-  elveOfferTotal: number | null
-  elveWantTotal:  number | null
-  score:         'good' | 'fair' | 'bad' | 'unknown'
-  ratio:         number | null
 }
 
 // ── Constants ─────────────────────────────────────────────────────────────────
@@ -72,33 +47,6 @@ const AMVGG_DEMAND_FIELDS: Array<[string, string]> = [
   ['megaDemand',      'mfr'],
 ]
 
-const FORM_TO_AMVGG_TYPE: Record<string, string> = {
-  normal: '', fly: 'f', ride: 'r', fr: 'fr',
-  n: 'n', nf: 'nf', nr: 'nr', nfr: 'nfr',
-  m: 'm', mf: 'mf', mr: 'mr', mfr: 'mfr',
-}
-
-const AMVGG_TYPE_TO_FORM: Record<string, string> = {
-  '': 'normal', 'f': 'fly', 'r': 'ride', 'fr': 'fr',
-  'n': 'n', 'nf': 'nf', 'nr': 'nr', 'nfr': 'nfr',
-  'm': 'm', 'mf': 'mf', 'mr': 'mr', 'mfr': 'mfr',
-}
-
-const FORM_TO_ELVE_ATTRS: Record<string, { fly: boolean; ride: boolean; default: boolean; neon: boolean; mega: boolean }> = {
-  normal: { fly: false, ride: false, default: true,  neon: false, mega: false },
-  fly:    { fly: true,  ride: false, default: false, neon: false, mega: false },
-  ride:   { fly: false, ride: true,  default: false, neon: false, mega: false },
-  fr:     { fly: true,  ride: true,  default: false, neon: false, mega: false },
-  n:      { fly: false, ride: false, default: false, neon: true,  mega: false },
-  nf:     { fly: true,  ride: false, default: false, neon: true,  mega: false },
-  nr:     { fly: false, ride: true,  default: false, neon: true,  mega: false },
-  nfr:    { fly: true,  ride: true,  default: false, neon: true,  mega: false },
-  m:      { fly: false, ride: false, default: false, neon: false, mega: true  },
-  mf:     { fly: true,  ride: false, default: false, neon: false, mega: true  },
-  mr:     { fly: false, ride: true,  default: false, neon: false, mega: true  },
-  mfr:    { fly: true,  ride: true,  default: false, neon: false, mega: true  },
-}
-
 const ELVE_FORMS = ['normal', 'fly', 'ride', 'fr', 'n', 'nf', 'nr', 'nfr', 'm', 'mf', 'mr', 'mfr'] as const
 
 // ── Static file cache loader ──────────────────────────────────────────────────
@@ -123,7 +71,6 @@ function getElveRecord (name: string | undefined): Record<string, number> | unde
   if (!name) return undefined
   return elveValuesCache.get(name) ?? elveValuesCache.get(name.replace(/\.(?=\s|$)/g, ''))
 }
-let   elveVersion      = 243
 let   elveFetchDone    = false
 let   elveFetchInFlight: Promise<void> | null = null
 
@@ -131,13 +78,9 @@ const imageCache = new Map<string, string | null>()
 let   petNamesCache: string[] | null = null
 
 const itemsCache           = new Map<string, { value: number; demand: string | null; elveValue?: number | null }>()
-const itemValueByName      = new Map<string, number>()
-const itemElveValueByName  = new Map<string, number>()
 let   itemsCacheFilled = false
 
 // ── Fetch helpers ─────────────────────────────────────────────────────────────
-
-const sleep = (ms: number) => new Promise<void>(r => setTimeout(r, ms))
 
 function fetchWithTimeout (url: string, timeoutMs = 12000, extraHeaders: Record<string, string> = {}): Promise<Response> {
   const controller = new AbortController()
@@ -146,38 +89,6 @@ function fetchWithTimeout (url: string, timeoutMs = 12000, extraHeaders: Record<
     headers: { 'User-Agent': USER_AGENT, ...extraHeaders },
     signal: controller.signal,
   }).finally(() => clearTimeout(id))
-}
-
-function curlFetch (url: string, timeoutMs = 12000, extraHeaders: string[] = []): Promise<{ ok: boolean; status: number; json: <T>() => Promise<T> }> {
-  return new Promise((resolve, reject) => {
-    const timer = setTimeout(() => reject(new Error('curl timeout')), timeoutMs)
-    const headerArgs = extraHeaders.flatMap(h => ['-H', h])
-    execFile('curl', ['-s', '-w', '\n%{http_code}', '--max-time', String(Math.floor(timeoutMs / 1000)), '-A', USER_AGENT, ...headerArgs, url], { maxBuffer: 10 * 1024 * 1024 }, (err, stdout) => {
-      clearTimeout(timer)
-      if (err) { reject(err); return }
-      const lastNl  = stdout.lastIndexOf('\n')
-      const body    = lastNl >= 0 ? stdout.slice(0, lastNl) : stdout
-      const status  = parseInt(lastNl >= 0 ? stdout.slice(lastNl + 1).trim() : '0') || 0
-      const ok      = status >= 200 && status < 300
-      if (!ok || !body) { resolve({ ok: false, status, json: async () => { throw new Error('empty') } }); return }
-      resolve({ ok: true, status, json: async <T>() => JSON.parse(body) as T })
-    })
-  })
-}
-
-function curlPost (url: string, jsonBody: string, headers: string[] = [], timeoutMs = 12000): Promise<{ ok: boolean; status: number; text: () => string }> {
-  return new Promise((resolve, reject) => {
-    const timer = setTimeout(() => reject(new Error('curl timeout')), timeoutMs)
-    const headerArgs = headers.flatMap(h => ['-H', h])
-    execFile('curl', ['-s', '-w', '\n%{http_code}', '-X', 'POST', '--data-binary', jsonBody, '--max-time', String(Math.floor(timeoutMs / 1000)), '-A', USER_AGENT, ...headerArgs, url], { maxBuffer: 10 * 1024 * 1024 }, (err, stdout) => {
-      clearTimeout(timer)
-      if (err) { reject(err); return }
-      const lastNl = stdout.lastIndexOf('\n')
-      const body   = lastNl >= 0 ? stdout.slice(0, lastNl) : stdout
-      const status = parseInt(lastNl >= 0 ? stdout.slice(lastNl + 1).trim() : '0') || 0
-      resolve({ ok: status >= 200 && status < 300, status, text: () => body })
-    })
-  })
 }
 
 // ── Items cache (non-pet categories) ─────────────────────────────────────────
@@ -190,8 +101,6 @@ async function warmItemsCache (): Promise<void> {
   for (const [category, items] of Object.entries(staticItems)) {
     for (const [name, data] of Object.entries(items)) {
       itemsCache.set(`${category}:${name}`, data)
-      itemValueByName.set(name, data.value)
-      if (data.elveValue != null) itemElveValueByName.set(name, data.elveValue)
     }
   }
   console.log(`Loaded ${itemsCache.size} non-pet items from static items cache`)
@@ -507,12 +416,6 @@ function elveFieldRe (form: string): RegExp {
   }
 }
 
-function elveAttrsToForm (a: { fly: boolean; ride: boolean; neon: boolean; mega: boolean; default: boolean }): string {
-  if (a.mega) return a.fly && a.ride ? 'mfr' : a.fly ? 'mf' : a.ride ? 'mr' : 'm'
-  if (a.neon) return a.fly && a.ride ? 'nfr' : a.fly ? 'nf' : a.ride ? 'nr' : 'n'
-  return a.fly && a.ride ? 'fr' : a.fly ? 'fly' : a.ride ? 'ride' : 'normal'
-}
-
 async function warmElveCache (): Promise<void> {
   if (elveFetchDone) return
   if (elveFetchInFlight) return elveFetchInFlight
@@ -532,9 +435,6 @@ async function warmElveCache (): Promise<void> {
       const res = await fetchWithTimeout('https://www.elvebredd.com/adopt-me-calculator', 15000)
       if (!res.ok) return
       const html = await res.text()
-
-      const verMatch = html.match(/\\"version\\":(\d+)/)
-      if (verMatch) elveVersion = parseInt(verMatch[1])
 
       type NamePos = { pos: number; name: string }
       const namePositions: NamePos[] = []
@@ -597,192 +497,7 @@ async function fetchElveValue (petName: string, form: string): Promise<number | 
   return getElveRecord(petName)?.[form] ?? null
 }
 
-// ── Post trade to AMVGG ───────────────────────────────────────────────────────
-
-function buildAmvggPetItem (name: string, form: string): Record<string, unknown> {
-  const details = detailsCache.get(name)
-  const item: Record<string, unknown> = {
-    id:       Math.random() * 1e13,
-    name,
-    category: 13,
-    type:     FORM_TO_AMVGG_TYPE[form] ?? '',
-    fg:       false,
-  }
-  if (details) {
-    for (const [field, formKey] of AMVGG_VALUE_FIELDS) {
-      const val = details.values[formKey]
-      item[field] = val != null ? String(val) : null
-    }
-    for (const [field, formKey] of AMVGG_DEMAND_FIELDS) {
-      item[field] = details.demands[formKey] ?? null
-    }
-  }
-  return item
-}
-
-function buildAmvggNonPetItem (name: string, itemCategory: string): Record<string, unknown> {
-  const entry = itemsCache.get(`${itemCategory}:${name}`)
-  return {
-    id:     Math.random() * 1e13,
-    name,
-    value:  entry ? String(entry.value) : '0',
-    demand: entry?.demand ?? 'Medium',
-  }
-}
-
-// ── Browse market ─────────────────────────────────────────────────────────────
-
-async function browseMarket (payload: {
-  petName: string
-  form:    string
-  sources: Array<'amvgg' | 'elvebredd'>
-  pages?:  number
-}): Promise<{ trades: BrowsedTrade[]; errors: string[] }> {
-  const { petName, form, sources, pages = 2 } = payload
-  await Promise.all([warmDetailsCache(), warmElveCache(), warmItemsCache()])
-
-  const results: BrowsedTrade[] = []
-  const errors:  string[] = []
-
-  function cachedValue (name: string | undefined, petForm: string, platform: 'amvgg' | 'elvebredd'): number | null {
-    if (!name) return null
-    if (platform === 'elvebredd') return getElveRecord(name)?.[petForm] ?? itemElveValueByName.get(name) ?? null
-    const petVal = detailsCache.get(name)?.values[petForm] ?? null
-    if (petVal !== null) return petVal
-    return itemValueByName.get(name) ?? null
-  }
-
-  function scoreRatio (ratio: number | null): BrowsedTrade['score'] {
-    if (ratio === null) return 'unknown'
-    if (ratio >= 0.9)  return 'good'
-    if (ratio >= 0.7)  return 'fair'
-    return 'bad'
-  }
-
-  function computeTotals (pets: BrowsedTradePet[]): number | null {
-    if (pets.some(p => p.value === null)) return null
-    return pets.reduce((s, p) => s + (p.value ?? 0), 0)
-  }
-
-  if (sources.includes('amvgg')) {
-    interface AmvggItem  { id: number; name: string; type: string; fg: boolean }
-    interface AmvggTrade { id: string; authorName: string; lookingFor: AmvggItem[]; offering: AmvggItem[]; publishedAt: string }
-    interface AmvggResp  { trades: AmvggTrade[]; pagination: { hasMore: boolean; nextCursor: string } }
-
-    const amvggType = FORM_TO_AMVGG_TYPE[form] ?? ''
-    const baseUrl   = `https://amvgg.com/api/trades?limit=100&lookingForItem=${encodeURIComponent(petName)}&lookingForType=${amvggType}`
-
-    let cursor: string | undefined
-    for (let p = 0; p < pages; p++) {
-      const url = cursor ? `${baseUrl}&cursor=${encodeURIComponent(cursor)}` : baseUrl
-      let res: { ok: boolean; status: number; json: <T>() => Promise<T> }
-      try { res = await curlFetch(url, 12000, ['Referer: https://amvgg.com/trades', 'Accept: application/json']) } catch (e) { errors.push(`AMVGG fetch error: ${e}`); break }
-      if (!res.ok) { errors.push(`AMVGG HTTP ${res.status} for ${url}`); break }
-      const data = await res.json<AmvggResp>()
-
-      for (const trade of data.trades) {
-        const mapItem = (item: AmvggItem, emptyFallback: string): BrowsedTradePet => {
-          const isPet   = detailsCache.has(item.name)
-          const petForm = item.type === '' ? emptyFallback : (AMVGG_TYPE_TO_FORM[item.type] ?? 'normal')
-          const demand = (detailsCache.get(item.name)?.demands[petForm] ?? null) as DemandLevel
-          return { name: item.name, form: petForm, value: cachedValue(item.name, petForm, 'amvgg'), elveValue: cachedValue(item.name, petForm, 'elvebredd'), demand, isPet }
-        }
-        const offering      = trade.offering.map(i => mapItem(i, 'normal'))
-        const lookingFor    = trade.lookingFor.map(i => mapItem(i, form))
-        const offerTotal    = computeTotals(offering)
-        const wantTotal     = computeTotals(lookingFor)
-        const elveOfferTotal = offering.every(p => p.elveValue !== null) ? offering.reduce((s, p) => s + p.elveValue!, 0) : null
-        const elveWantTotal  = lookingFor.every(p => p.elveValue !== null) ? lookingFor.reduce((s, p) => s + p.elveValue!, 0) : null
-        const ratio      = offerTotal !== null && wantTotal ? offerTotal / wantTotal : null
-        results.push({
-          id: trade.id, platform: 'amvgg',
-          authorName: trade.authorName, publishedAt: trade.publishedAt,
-          offering, lookingFor, offerTotal, wantTotal, elveOfferTotal, elveWantTotal,
-          score: scoreRatio(ratio), ratio,
-        })
-      }
-
-      if (!data.pagination.hasMore) break
-      cursor = data.pagination.nextCursor
-    }
-  }
-
-  if (sources.includes('elvebredd')) {
-    interface ElvePet     { id: number; name: string; attributes: { fly: boolean; ride: boolean; default: boolean; neon: boolean; mega: boolean } }
-    interface ElveListing { id: number; ownerUsername: string; ownerRobloxUsername: string; ownerGive: ElvePet[]; ownerGet: ElvePet[]; timeCreated: string }
-    interface ElveResp    { listings: ElveListing[]; hasMore: boolean }
-
-    const petId      = elveIdMap.get(petName)
-    let elveBaseUrl  = `https://elvebredd.com/api/recent-listings?limit=50&game=Adopt+Me`
-    if (petId !== undefined) elveBaseUrl += `&filterYour=${petId}`
-
-    // Elvebredd doesn't let users specify forms on the "want" side — ownerGet always has default:true.
-    const elveHeaders = ['Referer: https://www.elvebredd.com/', 'Accept: application/json']
-    const elvePages = petId !== undefined ? 2 : pages
-    const petNameLower = petName.toLowerCase()
-    for (let p = 0; p < elvePages; p++) {
-      let data: ElveResp | null = null
-      try {
-        let r = await curlFetch(`${elveBaseUrl}&offset=${p * 50}`, 12000, elveHeaders)
-        if (r.status === 429) { await sleep(3000); r = await curlFetch(`${elveBaseUrl}&offset=${p * 50}`, 12000, elveHeaders) }
-        if (!r.ok) { errors.push(r.status === 429 ? 'Elvebredd rate limited — try again shortly' : `Elvebredd error (HTTP ${r.status})`); break }
-        data = await r.json<ElveResp>()
-      } catch (e) { errors.push(`Elvebredd fetch error: ${e}`); break }
-      if (!data || (data as { ok?: boolean }).ok === false || !Array.isArray(data.listings)) break
-      if (!data.hasMore) { /* last page, don't fetch more */ }
-      for (const listing of data.listings) {
-        const wantsSearchedPet = listing.ownerGet.some(item => item.name.toLowerCase() === petNameLower)
-        if (!wantsSearchedPet) continue
-
-        const mapItem = (item: ElvePet, overrideForm?: string): BrowsedTradePet => {
-          const petForm = overrideForm ?? elveAttrsToForm(item.attributes)
-          const isPet   = detailsCache.has(item.name)
-          const demand  = (detailsCache.get(item.name)?.demands[petForm] ?? null) as DemandLevel
-          return { name: item.name, form: petForm, value: cachedValue(item.name, petForm, 'amvgg'), elveValue: cachedValue(item.name, petForm, 'elvebredd'), demand, isPet }
-        }
-        const offering        = listing.ownerGive.map(i => mapItem(i))
-        const lookingFor      = listing.ownerGet.map(i =>
-          mapItem(i, i.name.toLowerCase() === petNameLower ? form : undefined)
-        )
-        const offerTotal      = computeTotals(offering)
-        const wantTotal       = computeTotals(lookingFor)
-        const elveOfferTotal  = offering.every(p => p.elveValue !== null) ? offering.reduce((s, p) => s + p.elveValue!, 0) : null
-        const elveWantTotal   = lookingFor.every(p => p.elveValue !== null) ? lookingFor.reduce((s, p) => s + p.elveValue!, 0) : null
-        const ratio           = elveOfferTotal !== null && elveWantTotal
-          ? elveOfferTotal / elveWantTotal
-          : offerTotal !== null && wantTotal ? offerTotal / wantTotal : null
-        results.push({
-          id: String(listing.id), platform: 'elvebredd',
-          authorName: listing.ownerRobloxUsername || listing.ownerUsername,
-          publishedAt: listing.timeCreated,
-          offering, lookingFor, offerTotal, wantTotal, elveOfferTotal, elveWantTotal,
-          score: scoreRatio(ratio), ratio,
-        })
-      }
-    }
-  }
-
-  const cutoff = Date.now() - 24 * 60 * 60 * 1000
-  const recent = results.filter(t => new Date(t.publishedAt).getTime() >= cutoff)
-  return { trades: recent.sort((a, b) => new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime()), errors }
-}
-
 // ── Middleware ────────────────────────────────────────────────────────────────
-
-// Gate for advanced-only endpoints that make outbound requests to AMVGG /
-// Elvebredd (scraping the trade feed, publishing trades). These are hidden in
-// the UI behind advanced mode, but the endpoints stay reachable — so require a
-// shared secret token (matching the client's `x-advanced-token` header) to keep
-// third parties from using our server as a scraping/publishing proxy.
-// In production the token is mandatory (fails closed if misconfigured); locally,
-// with no token set, the gate stays open for convenience.
-const ADVANCED_TOKEN = process.env.ADVANCED_TOKEN
-function requireAdvanced (req: Request, res: Response, next: NextFunction) {
-  const provided = req.headers['x-advanced-token']
-  if (ADVANCED_TOKEN && provided === ADVANCED_TOKEN) return next()
-  if (!ADVANCED_TOKEN && process.env.NODE_ENV !== 'production') return next()
-  res.status(403).json({ error: 'Advanced mode required' })
-}
 
 export default defineSsrMiddleware(({ app }) => {
   app.use(parseJson())
@@ -816,15 +531,6 @@ export default defineSsrMiddleware(({ app }) => {
 
   app.get('/api/pets/all', async (_req, res) => {
     res.json(await fetchAllPets())
-  })
-
-  app.get('/api/pets/demands', async (_req, res) => {
-    await warmDetailsCache()
-    const result: Record<string, Record<string, DemandLevel>> = {}
-    for (const [name, details] of detailsCache.entries()) {
-      result[name] = details.demands
-    }
-    res.json(result)
   })
 
   app.get('/api/pet/value', async (req, res) => {
@@ -909,90 +615,5 @@ export default defineSsrMiddleware(({ app }) => {
       result.push({ name: key.slice(key.indexOf(':') + 1), ...data })
     }
     res.json(result)
-  })
-
-  app.post('/api/trade/browse', requireAdvanced, async (req, res) => {
-    try {
-      const result = await browseMarket(req.body as Parameters<typeof browseMarket>[0])
-      res.json(result)
-    } catch (e) {
-      res.status(500).json({ trades: [], errors: [String(e)] })
-    }
-  })
-
-  app.post('/api/trade/post-amvgg', requireAdvanced, async (req, res) => {
-    interface TradeItem { name: string; form: string; itemCategory?: string }
-    const { cookie, offered, wanted } = req.body as {
-      cookie:  string
-      offered: TradeItem[]
-      wanted:  TradeItem[]
-    }
-
-    if (!cookie || !offered?.length || !wanted?.length)
-      return res.status(400).json({ ok: false, error: 'Missing required fields' })
-
-    await Promise.all([warmDetailsCache(), warmItemsCache()])
-
-    const buildItem = (item: TradeItem) =>
-      (!item.itemCategory || item.itemCategory === 'pet')
-        ? buildAmvggPetItem(item.name, item.form)
-        : buildAmvggNonPetItem(item.name, item.itemCategory)
-
-    const payload = {
-      leftGridItems:  offered.map(buildItem),
-      rightGridItems: wanted.map(buildItem),
-    }
-
-    try {
-      const amvResp = await curlPost(
-        'https://amvgg.com/api/createPost',
-        JSON.stringify(payload),
-        [
-          'Content-Type: application/json',
-          `Cookie: ${cookie}`,
-          'Referer: https://amvgg.com/trades/create',
-          'Origin: https://amvgg.com',
-        ],
-      )
-
-      const text = amvResp.text()
-      if (!amvResp.ok) return res.status(amvResp.status).json({ ok: false, error: text })
-
-      let data: unknown
-      try { data = JSON.parse(text) } catch { data = text }
-      return res.json({ ok: true, data })
-    } catch (e) {
-      return res.status(500).json({ ok: false, error: String(e) })
-    }
-  })
-
-  function buildElvePet (item: { name: string; form: string }, side: 'your' | 'their') {
-    const id    = elveIdMap.get(item.name) ?? 0
-    const attrs = { ...(FORM_TO_ELVE_ATTRS[item.form] ?? FORM_TO_ELVE_ATTRS['normal']!) }
-    const value = getElveRecord(item.name)?.[item.form] ?? 0
-    return {
-      id,
-      name:           item.name,
-      image:          `/images/pets/${item.name}.png`,
-      value,
-      secondaryValue: value > 0 ? value / 240 : 0,
-      game:           'Adopt Me',
-      attributes:     attrs,
-      side,
-    }
-  }
-
-  app.post('/api/trade/elve-build-payloads', requireAdvanced, async (req, res) => {
-    interface ElveTradeSpec { offered: { name: string; form: string }[]; wanted: { name: string; form: string }[] }
-    const { trades } = req.body as { trades: ElveTradeSpec[] }
-    if (!trades?.length) return res.status(400).json({ ok: false, error: 'Missing trades' })
-    await warmElveCache()
-    const payloads = trades.map(t => ({
-      game:      'Adopt Me',
-      version:   elveVersion,
-      ownerGive: t.offered.map(p => buildElvePet(p, 'your')),
-      ownerGet:  t.wanted.map(p => buildElvePet(p, 'their')),
-    }))
-    return res.json({ ok: true, payloads })
   })
 })

@@ -1,6 +1,6 @@
 # AdoptMe Trader
 
-A trade manager for **Roblox Adopt Me** that helps players value pets and judge whether a trade is fair. It cross-checks two community value sources (**AMVGG** and **Elvebredd**), factors in each pet's demand, scores trade fairness, and lets you browse the live AMVGG market for offers on a pet you want to give away.
+A trade manager for **Roblox Adopt Me** that helps players value pets and judge whether a trade is fair. It cross-checks two community value sources (**AMVGG** and **Elvebredd**), factors in each pet's demand, and scores trade fairness.
 
 **Live app:** https://amtrader.fly.dev
 
@@ -18,10 +18,6 @@ A trade manager for **Roblox Adopt Me** that helps players value pets and judge 
 
 ![Check Values](docs/screenshots/check-values.png)
 
-**Browse Market** — scans live AMVGG trades for offers on a pet you want to give away, with AMV + ELV values per pet and Good / Fair / OP filters.
-
-![Browse Market](docs/screenshots/browse-market.png)
-
 ---
 
 ## What it does
@@ -31,7 +27,6 @@ Trading in Adopt Me is all about *value* and *demand*, and the numbers live acro
 - **My Pets** — Build your inventory (pets + non-pet items like Pet Wear, Eggs, Vehicles…). Each card shows its value for the selected form and a demand rating. Total inventory value, sortable by worth.
 - **Check Values** — Two-sided comparison (YOU vs THEM). Pick pets on each side and see the value gap, per slot, switching between AMVGG and Elvebredd.
 - **Trade Builder** — Assemble an offer and get a demand-adjusted fairness score, plus pet suggestions within a ±20% tolerance to balance the trade.
-- **Browse Market** — Search the live AMVGG market for trades asking for a pet you want to offer. Filters for Good / Fair / OP deals (adjustable threshold), with both AMV and ELV values shown side by side.
 - **5 color themes**, persisted locally.
 
 Pets come in **forms** (Fly / Ride / Neon / Mega and combinations), and each form has its own value — the app derives all of them from the base values using the same multiplier formula as the AMVGG calculator.
@@ -61,15 +56,15 @@ fetch('/api/...')      →      ratelimit → api → render
 **Automated refresh.** A GitHub Actions workflow ([`refresh-values.yml`](.github/workflows/refresh-values.yml)) re-fetches the values every few hours, writes one compact daily value snapshot (trend history, in `src/data/history/`), commits whatever changed, and redeploys to Fly.io only when the live caches actually changed — so the app stays current without manual intervention. It can also be triggered by hand from the Actions tab.
 
 **Middleware chain:**
-- `ratelimit` — in-memory per-IP limiter (tighter on the one endpoint that makes an outbound request)
-- `api` — all `/api/*` handlers + cache warming + market browsing
+- `ratelimit` — in-memory per-IP limiter
+- `api` — all `/api/*` handlers + cache warming
 - `render` — Quasar SSR renderer
 
 ### Key directories
 
 ```
 src/
-  pages/        My Pets, Check Values, Trade Builder, Browse Market
+  pages/        My Pets, Check Values, Trade Builder
   stores/       Pinia: inventory (localStorage-backed) + values cache
   composables/  form picker, theming
   data/         committed value caches (amv / elve / items) + history/ snapshots
