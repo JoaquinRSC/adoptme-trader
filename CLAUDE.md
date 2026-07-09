@@ -61,11 +61,12 @@ All `/api/*` endpoints are public — the app has no authentication. They all se
 
 ### Key files
 
-- `src/types.ts` — `PetForm` union, `FORM_LABELS`, `FORM_COLOR_HEX`, `FORM_GRADIENT`, `InventoryPet`, `PetSuggestion`
+- `src/types.ts` — `PetForm` union, `ValueSource`, `FORM_LABELS`, `FORM_COLOR_HEX`, `FORM_GRADIENT`, `InventoryPet`, `PetSuggestion`
 - `src/stores/inventory.ts` — CRUD for `InventoryPet[]`, persisted to `localStorage`
 - `src/stores/values.ts` — In-memory value cache + `DemandLevel` type + `PetDetails` interface; wraps API fetch calls; `getBatch` for bulk pre-loading
 - `src/components/PetPicker.vue` — **the** pet/item picker dialog. Props: `mine` (omit for a search-only picker, e.g. the THEM side), `mineLabel`, `mineEmptyText`. Emits `add` with a `PickerSelection`. Owns its toast, its value pre-fetch, its keyboard handling (autofocus, ↑↓, Enter, Esc) and its mobile full-screen sheet (`maximized` below Quasar's `sm`). Used by Trade Builder + Check Values (both sides) — add new "add a pet to a list" surfaces here, not by copy-pasting
 - `src/components/FormChips.vue` — F/R/D/N/M toggle with `v-model:PetForm` (wraps `useFormPicker`); used by `PetPicker` and the Inventory add-pet dialog
+- `src/components/SourceToggle.vue` — **the** AMV/Elve switch, `v-model:ValueSource`. Used by all three pages; owns its markup, CSS and ARIA. Don't inline another one
 - `src/components/SkeletonBar.vue` — shimmer placeholder shaped like the text it stands in for (`width` prop, height = 1em). Use it for values that are loading; keep `q-spinner` only where the user triggered an action (search, "Find matches")
 - `src/components/PetImage.vue` — every pet/item thumbnail. Tries the direct AMVGG sprite URL, falls back to `/api/pet/image` (which scrapes + caches), then to an emoji that keeps the element's box. Takes `name` + optional `fallback` emoji; sizing comes from the class the caller passes. Never write a raw `<img src="https://amvgg.com/items/...">` again
 - `src/composables/useFormPicker.ts` — 5-button F/R/D/N/M toggle that derives `PetForm` from booleans; wrapped by `FormChips.vue`
@@ -87,6 +88,19 @@ All `/api/*` endpoints are public — the app has no authentication. They all se
 ### Elvebredd value fetching (server)
 
 `warmElveCache()` loads from `src/data/elve-cache.json` at startup. Values stored in `elveValuesCache` Map. No demand data from Elvebredd.
+
+### Accessibility & touch conventions
+
+All of this lives in `src/css/app.scss`. Follow it when adding UI:
+
+- **Never hide a control behind `:hover`.** Touch screens have no hover. Every `:hover` rule is wrapped in `@media (hover: hover)` (the scrollbar thumb is the one exception); the matching `@media (hover: none)` block shows the controls outright. This also prevents "sticky hover" after a tap.
+- **Touch targets:** the `touch-hit` mixin grows a control's hit area to 44px with a transparent, centred `::after`, without changing what it paints (events on a pseudo-element go to its host). Add new small controls to the shared selector list in the `@media (hover: none)` block. The host must not already own `position` or `::after`.
+- **Focus:** a global `:focus-visible` ring. Don't set `outline: none`.
+- **Clickable things are `<button>`s**, not `<div>`s with `@click` — focus, Enter and Space come free. The pet slots learned this the hard way; `.pet-slot` resets the UA's `padding`/`font` so a button looks like the div did.
+- **Toggles** carry `aria-pressed` inside a `role="group"` with an `aria-label`. Icon/colour-only buttons need an explicit `aria-label`.
+- **Error is a page state**, not just a toast: the `.load-error` banner + `.btn-retry` (with `role="alert"`). A toast fades; a failed load has to leave a retry on the page. `notifyLoadError()` is throttled and already fires from the values store's `apiFetch`, so don't call it again in a page-level catch on that path.
+
+⚠️ **The service worker serves stale CSS after a deploy.** When verifying a visual change, unregister it and clear `caches` first, or you will measure the previous build. Also: a running `dist/ssr` server holds the directory, so `npm run build` can silently reuse the old output — stop the server before rebuilding.
 
 ### Theming
 
@@ -115,3 +129,5 @@ Manual (local) update, if ever needed:
 - **Phase 1 (done):** Inventory management + trade builder (AMVGG values + demand)
 - **Phase 1.5 (done):** Elvebredd cross-check in Check Values; color themes
 - **Phase 1.8 (done):** SSR migration to Fly.io; static value cache; Elve values in trade cards; non-pet item categories (Pet Wear, Eggs, Strollers, Food, Vehicles, Toys, Gifts, Stickers, Houses)
+- **Phase 2 (done, 2026-07-09):** public-ready cleanup — advanced mode removed, `PetPicker`/`FormChips`/`SourceToggle` unified, skeletons, undo, responsive pass, hover/touch fixes, 44px touch targets, the three page states, basic a11y. See `docs/PLAN.md`
+- **Phase 2.5 (next):** visual identity — own the per-form colour system (F/R/D/N/M) on cards, display typeface, logo/mascot, trader-voice microcopy. Run the `/frontend-design` skill first
