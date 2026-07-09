@@ -276,13 +276,7 @@
           <!-- Form chips — only for pets -->
           <template v-if="pickerCategory === 'pet'">
             <div class="form-section-label">Form</div>
-            <div class="form-grid">
-              <button class="form-chip" :class="{'form-chip--active': otherFly}" :style="otherFly ? {background: otherFlyGrad} : {}" @click="otherFly = !otherFly">F</button>
-              <button class="form-chip" :class="{'form-chip--active': otherRide}" :style="otherRide ? {background: otherRideGrad} : {}" @click="otherRide = !otherRide">R</button>
-              <button class="form-chip" :class="{'form-chip--active': otherIsNormal}" :style="otherIsNormal ? {background: otherNormGrad} : {}" @click="otherResetForm()">D</button>
-              <button class="form-chip" :class="{'form-chip--active': otherNm === 'n'}" :style="otherNm === 'n' ? {background: otherNGrad} : {}" @click="otherNm = otherNm === 'n' ? 'none' : 'n'">N</button>
-              <button class="form-chip" :class="{'form-chip--active': otherNm === 'm'}" :style="otherNm === 'm' ? {background: otherMGrad} : {}" @click="otherNm = otherNm === 'm' ? 'none' : 'm'">M</button>
-            </div>
+            <FormChips v-model="otherPickerForm" />
           </template>
 
           <q-input
@@ -340,7 +334,7 @@ import { storeToRefs } from 'pinia'
 import { useInventoryStore } from 'src/stores/inventory'
 import { useValuesStore, type DemandLevel } from 'src/stores/values'
 import { useDraftsStore, type OfferedItem } from 'src/stores/drafts'
-import { useFormPicker } from 'src/composables/useFormPicker'
+import FormChips from 'src/components/FormChips.vue'
 import {
   FORM_LABELS, FORM_COLOR_HEX, CATEGORY_LABELS,
   type PetForm, type InventoryPet, type ItemCategory, type PetSuggestion,
@@ -389,12 +383,7 @@ const itemCatOptions = [
   { label: 'Houses',    value: 'house'    },
 ]
 
-const {
-  flyPick: otherFly, ridePick: otherRide, nmPick: otherNm,
-  form: otherPickerForm, reset: otherResetForm, isNormal: otherIsNormal,
-  flyGrad: otherFlyGrad, rideGrad: otherRideGrad, normGrad: otherNormGrad,
-  nGrad: otherNGrad, mGrad: otherMGrad,
-} = useFormPicker()
+const otherPickerForm = ref<PetForm>('normal')
 
 watch(petSearch, async (q) => {
   if (!q.trim()) { searchResults.value = []; return }
@@ -416,7 +405,7 @@ function resetPicker () {
   myItemsCategoryFilter.value = 'all'
   petSearch.value            = ''
   searchResults.value        = []
-  otherResetForm()
+  otherPickerForm.value      = 'normal'
 }
 
 function addOtherPet (name: string) {
@@ -1248,27 +1237,6 @@ function deltaChipClass (delta: number) {
   letter-spacing: 0.8px;
   margin-bottom: 6px;
 }
-
-.form-grid {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-}
-
-.form-chip {
-  padding: 7px 14px;
-  font-size: 12px;
-  font-weight: 700;
-  border-radius: 99px;
-  border: 1.5px solid rgba(255,255,255,0.12);
-  background: rgba(255,255,255,0.06);
-  color: rgba(255,255,255,0.45);
-  cursor: pointer;
-  transition: all 0.15s;
-  line-height: 1;
-}
-.form-chip:hover { border-color: rgba(255,255,255,0.3); color: rgba(255,255,255,0.85); }
-.form-chip--active { box-shadow: 0 3px 12px rgba(0,0,0,0.45); color: #fff; border-color: transparent; }
 
 .results-panel {
   margin-top: 10px;

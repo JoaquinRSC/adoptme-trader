@@ -213,13 +213,7 @@
             <!-- Form chips -->
             <div class="form-section">
               <div class="form-section-label">Form</div>
-              <div class="form-grid">
-                <button class="form-chip" :class="{'form-chip--active': flyPick}" :style="flyPick ? {background: flyGrad} : {}" @click="flyPick = !flyPick">F</button>
-                <button class="form-chip" :class="{'form-chip--active': ridePick}" :style="ridePick ? {background: rideGrad} : {}" @click="ridePick = !ridePick">R</button>
-                <button class="form-chip" :class="{'form-chip--active': isNormal}" :style="isNormal ? {background: normGrad} : {}" @click="resetForm()">D</button>
-                <button class="form-chip" :class="{'form-chip--active': nmPick === 'n'}" :style="nmPick === 'n' ? {background: nGrad} : {}" @click="nmPick = nmPick === 'n' ? 'none' : 'n'">N</button>
-                <button class="form-chip" :class="{'form-chip--active': nmPick === 'm'}" :style="nmPick === 'm' ? {background: mGrad} : {}" @click="nmPick = nmPick === 'm' ? 'none' : 'm'">M</button>
-              </div>
+              <FormChips v-model="newPetForm" />
             </div>
 
             <!-- Quantity -->
@@ -354,7 +348,7 @@
 
 <script setup lang="ts">
 import { ref, reactive, computed, watch, onMounted, nextTick } from 'vue'
-import { useFormPicker } from 'src/composables/useFormPicker'
+import FormChips from 'src/components/FormChips.vue'
 import { useQuasar } from 'quasar'
 import { matAdd, matDeleteOutline, matSearch, matCheck, matArrowDownward, matArrowUpward, matSwapVert } from '@quasar/extras/material-icons'
 import { useInventoryStore } from 'src/stores/inventory'
@@ -401,11 +395,11 @@ const showAdd    = ref(false)
 const newPetName = ref('')
 const newPetQty  = ref(1)
 
-const { flyPick, ridePick, nmPick, form: newPetForm, reset: resetForm, isNormal, flyGrad, rideGrad, normGrad, nGrad, mGrad } = useFormPicker()
+const newPetForm = ref<PetForm>('normal')
 
 function openAdd () {
   newPetName.value    = ''
-  resetForm()
+  newPetForm.value    = 'normal'
   newPetQty.value     = 1
   searchQuery.value   = ''
   searchResults.value = []
@@ -1406,39 +1400,6 @@ function confirmRemove (id: string, name: string) {
   text-transform: uppercase;
   letter-spacing: 0.07em;
   margin-bottom: 4px;
-}
-
-.form-grid {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-}
-
-.form-chip {
-  padding: 7px 14px;
-  font-size: 12px;
-  font-weight: 700;
-  border-radius: 99px;
-  border: 1.5px solid rgba(255,255,255,0.12);
-  background: rgba(255,255,255,0.06);
-  color: rgba(255,255,255,0.45);
-  cursor: pointer;
-  transition: all 0.15s;
-  text-align: center;
-  line-height: 1;
-  letter-spacing: 0.03em;
-}
-
-.form-chip:hover {
-  border-color: rgba(255,255,255,0.3);
-  color: rgba(255,255,255,0.85);
-  background: rgba(255,255,255,0.1);
-}
-
-.form-chip--active {
-  box-shadow: 0 3px 12px rgba(0,0,0,0.45);
-  color: #fff;
-  border-color: transparent;
 }
 
 /* Actions */

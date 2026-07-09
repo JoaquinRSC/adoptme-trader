@@ -130,15 +130,19 @@ My Pets como tab / tira / ausente. Peor: en Trade Builder y Check Values el
 dialog SE CIERRA tras cada pet agregado → armar una oferta de 5 pets = abrirlo
 5 veces. Reemplazar todo por un componente compartido con esta spec:
 - [ ] `src/components/PetPicker.vue` configurable por props (tabs mine/other,
-      categorías sí/no, formas sí/no, single/multi). Extraer también
-      `FormChips.vue` (hoy el bloque F/R/D/N/M está copy-pasteado 6+ veces).
+      categorías sí/no, formas sí/no, single/multi).
+- [x] Extraer `FormChips.vue` (el bloque F/R/D/N/M estaba copy-pasteado 4×:
+      Inventory add-pet, Check Values YOU + THEM, Trade Builder). Ahora es un
+      componente único con `v-model:PetForm` (encapsula `useFormPicker`), tooltips
+      con el nombre de cada forma, y touch targets más grandes. Verificado end-to-end
+      (Normal→N→NF→MF, badge de preview refleja el v-model).
 - [ ] Interacción idéntica SIEMPRE: autofocus al abrir, ↑↓ navega, Enter
       selecciona, Esc cierra, mismo debounce.
 - [ ] **No cerrar al agregar** en contextos multi (Trade Builder, Check Values):
       el pet agregado se marca con un contador/toast y el picker queda abierto;
       botón "Listo" para cerrar. (Se conecta con la carga masiva de la Fase 4.)
-- [ ] Chips de forma: misma posición siempre, touch targets grandes, tooltip
-      con el nombre (Fly/Ride/Default/Neon/Mega) para novatos.
+- [x] Chips de forma: misma posición siempre, touch targets grandes, tooltip
+      con el nombre (Fly/Ride/Default/Neon/Mega) para novatos. → hecho en `FormChips.vue`.
 - [ ] **Sección "Recientes"** antes de tipear (últimos N pets usados,
       localStorage): los traders repiten pets todo el tiempo — mata la
       búsqueda más común.

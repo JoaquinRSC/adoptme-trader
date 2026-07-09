@@ -182,13 +182,7 @@
           </div>
           <template v-if="yourPickerCategory === 'pet'">
             <div class="form-section-label" style="margin-top:10px">Form</div>
-            <div class="form-grid">
-              <button class="form-chip" :class="{'form-chip--active': yourOtherFly}" :style="yourOtherFly ? {background: yourOtherFlyGrad} : {}" @click="yourOtherFly = !yourOtherFly">F</button>
-              <button class="form-chip" :class="{'form-chip--active': yourOtherRide}" :style="yourOtherRide ? {background: yourOtherRideGrad} : {}" @click="yourOtherRide = !yourOtherRide">R</button>
-              <button class="form-chip" :class="{'form-chip--active': yourOtherIsNormal}" :style="yourOtherIsNormal ? {background: yourOtherNormGrad} : {}" @click="yourOtherResetForm()">D</button>
-              <button class="form-chip" :class="{'form-chip--active': yourOtherNm === 'n'}" :style="yourOtherNm === 'n' ? {background: yourOtherNGrad} : {}" @click="yourOtherNm = yourOtherNm === 'n' ? 'none' : 'n'">N</button>
-              <button class="form-chip" :class="{'form-chip--active': yourOtherNm === 'm'}" :style="yourOtherNm === 'm' ? {background: yourOtherMGrad} : {}" @click="yourOtherNm = yourOtherNm === 'm' ? 'none' : 'm'">M</button>
-            </div>
+            <FormChips v-model="yourOtherPickerForm" />
           </template>
           <q-input
             v-model="yourPetSearch"
@@ -247,13 +241,7 @@
           </div>
           <template v-if="themPickerCategory === 'pet'">
             <div class="form-section-label" style="margin-top:10px">Form</div>
-            <div class="form-grid">
-              <button class="form-chip" :class="{'form-chip--active': themOtherFly}" :style="themOtherFly ? {background: themOtherFlyGrad} : {}" @click="themOtherFly = !themOtherFly">F</button>
-              <button class="form-chip" :class="{'form-chip--active': themOtherRide}" :style="themOtherRide ? {background: themOtherRideGrad} : {}" @click="themOtherRide = !themOtherRide">R</button>
-              <button class="form-chip" :class="{'form-chip--active': themOtherIsNormal}" :style="themOtherIsNormal ? {background: themOtherNormGrad} : {}" @click="themOtherResetForm()">D</button>
-              <button class="form-chip" :class="{'form-chip--active': themOtherNm === 'n'}" :style="themOtherNm === 'n' ? {background: themOtherNGrad} : {}" @click="themOtherNm = themOtherNm === 'n' ? 'none' : 'n'">N</button>
-              <button class="form-chip" :class="{'form-chip--active': themOtherNm === 'm'}" :style="themOtherNm === 'm' ? {background: themOtherMGrad} : {}" @click="themOtherNm = themOtherNm === 'm' ? 'none' : 'm'">M</button>
-            </div>
+            <FormChips v-model="themOtherPickerForm" />
           </template>
           <q-input
             v-model="themPetSearch"
@@ -308,7 +296,7 @@ import { FORM_LABELS, FORM_COLOR_HEX, CATEGORY_LABELS, type PetForm, type Invent
 import { useValuesStore, type DemandLevel } from 'src/stores/values'
 import { useInventoryStore } from 'src/stores/inventory'
 import { useDraftsStore, type SideEntry } from 'src/stores/drafts'
-import { useFormPicker } from 'src/composables/useFormPicker'
+import FormChips from 'src/components/FormChips.vue'
 import { notifyLoadError } from 'src/utils/notify'
 
 const valuesStore = useValuesStore()
@@ -474,12 +462,7 @@ const yourPetSearch     = ref('')
 const yourPickerResults = ref<string[]>([])
 const yourSearchLoading = ref(false)
 
-const {
-  flyPick: yourOtherFly, ridePick: yourOtherRide, nmPick: yourOtherNm,
-  form: yourOtherPickerForm, reset: yourOtherResetForm, isNormal: yourOtherIsNormal,
-  flyGrad: yourOtherFlyGrad, rideGrad: yourOtherRideGrad, normGrad: yourOtherNormGrad,
-  nGrad: yourOtherNGrad, mGrad: yourOtherMGrad,
-} = useFormPicker()
+const yourOtherPickerForm = ref<PetForm>('normal')
 
 watch(yourPetSearch, async (q) => {
   if (!q.trim()) { yourPickerResults.value = []; return }
@@ -500,7 +483,7 @@ function resetYourPicker() {
   yourPickerCategory.value = 'pet'
   yourPetSearch.value      = ''
   yourPickerResults.value  = []
-  yourOtherResetForm()
+  yourOtherPickerForm.value = 'normal'
 }
 
 function addInventoryPetToYour(pet: InventoryPet) {
@@ -527,12 +510,7 @@ const themPetSearch   = ref('')
 const themPickerResults = ref<string[]>([])
 const themSearchLoading = ref(false)
 
-const {
-  flyPick: themOtherFly, ridePick: themOtherRide, nmPick: themOtherNm,
-  form: themOtherPickerForm, reset: themOtherResetForm, isNormal: themOtherIsNormal,
-  flyGrad: themOtherFlyGrad, rideGrad: themOtherRideGrad, normGrad: themOtherNormGrad,
-  nGrad: themOtherNGrad, mGrad: themOtherMGrad,
-} = useFormPicker()
+const themOtherPickerForm = ref<PetForm>('normal')
 
 watch(themPetSearch, async (q) => {
   if (!q.trim()) { themPickerResults.value = []; return }
@@ -552,7 +530,7 @@ function resetThemPicker() {
   themPickerCategory.value = 'pet'
   themPetSearch.value      = ''
   themPickerResults.value  = []
-  themOtherResetForm()
+  themOtherPickerForm.value = 'normal'
 }
 
 function addOtherPetToThem(name: string) {
@@ -935,39 +913,6 @@ function addOtherPetToThem(name: string) {
   text-transform: uppercase;
   letter-spacing: 0.8px;
   margin-bottom: 6px;
-}
-
-.form-grid {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-}
-
-.form-chip {
-  padding: 7px 14px;
-  font-size: 12px;
-  font-weight: 700;
-  border-radius: 99px;
-  border: 1.5px solid rgba(255,255,255,0.12);
-  background: rgba(255,255,255,0.06);
-  color: rgba(255,255,255,0.45);
-  cursor: pointer;
-  transition: all 0.15s;
-  text-align: center;
-  line-height: 1;
-  letter-spacing: 0.03em;
-}
-
-.form-chip:hover {
-  border-color: rgba(255,255,255,0.3);
-  color: rgba(255,255,255,0.85);
-  background: rgba(255,255,255,0.1);
-}
-
-.form-chip--active {
-  box-shadow: 0 3px 12px rgba(0,0,0,0.45);
-  color: #fff;
-  border-color: transparent;
 }
 
 .btn-ghost {
