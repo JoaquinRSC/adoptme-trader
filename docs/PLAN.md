@@ -13,13 +13,13 @@ sin comprometerse.
 Cerrado en la Fase 2: modo avanzado eliminado, errores amables, borradores
 persistidos, fix del router SSR, tooltips + "How it works", contraste y
 `max-width`, **selector de pets unificado** (`PetPicker`), **fallback de
-imágenes** (`PetImage`), **undo al borrar** y **skeletons** (`SkeletonBar`).
+imágenes** (`PetImage`), **undo al borrar**, **skeletons** (`SkeletonBar`) y
+la **pasada responsive** de Check Values + Trade Builder. No quedan bugs
+visuales conocidos.
 
-Falta para cerrar la Fase 2 — tres cosas, en este orden:
-1. **Pasada responsive** de Check Values + Trade Builder (ver el 🐛 de los pet
-   slots en "UX transversal"). Es el único bug visual conocido.
-2. Los 3 estados (vacío / cargando / error) auditados página por página.
-3. Accesibilidad básica (foco visible, touch targets ≥44px, aria). Ya hecho:
+Falta para cerrar la Fase 2 — dos cosas, en este orden:
+1. Los 3 estados (vacío / cargando / error) auditados página por página.
+2. Accesibilidad básica (foco visible, touch targets ≥44px, aria). Ya hecho:
    `alt` en las imágenes y `aria-label` en el botón de borrar.
 
 Después: Fase 2.5 (identidad visual), que es la que le saca el "look de template".
@@ -73,8 +73,8 @@ quedó una sola versión pública para todos. El código vive en el historial de
   si cambiaron; snapshot diario a `src/data/history/`.
 - ✅ Errores crudos en pantalla → toasts amables (`src/utils/notify.ts`).
 - ✅ Jerga sin explicar → tooltips en AMV/Elve y fairness + "How it works" en el sidebar.
-- ⚠️ Mobile: Trade Builder ya apila a 820px, **pero Check Values no tiene ninguna
-  media query** y los pet slots desbordan en paneles angostos. Es lo que queda.
+- ✅ Mobile: las dos páginas de dos lados apilan a ≤1000px y el grid de pet slots
+  es fluido (`minmax(96px, 1fr)`), así que el valor ya no se sale del slot.
 - ⏳ Inventario solo en localStorage (por dispositivo, se pierde) → sync con login (Fase 4).
 
 ## Roadmap (en orden)
@@ -202,17 +202,32 @@ dialog SE CIERRA tras cada pet agregado → armar una oferta de 5 pets = abrirlo
       los 6 `q-spinner` de valores: total + card en My Pets, slots en Check Values,
       slot + los 2 totales del footer en Trade Builder. Los spinners de búsqueda
       y el del botón "Find matches" siguen: ahí sí hay una acción en curso.
-- [ ] 🐛 **Bug encontrado (preexistente, necesita pasada responsive)**: el
-      `.pet-slots-grid` está fijo en `repeat(4, 1fr)`, así que en paneles angostos
-      el slot cae a ~48px y el `.slot-meta` (forma + estrellas + valor) desborda:
-      el valor se dibuja FUERA del slot. Reproducido a 929px de ancho; a 1280px+
-      no pasa. No lo causan los skeletons — el estado cargado desborda igual.
-      Intenté parchear el `slot-meta` (ellipsis en la forma, `flex-shrink: 0` en
-      el valor) y no alcanza: a 48px no entran ni estrellas + valor. Hay que
-      agrandar el slot, no encoger el contenido.
-      Peor: **`CheckValuesPage.vue` no tiene NINGUNA media query** (su layout
-      `1fr 120px 1fr` sobrevive hasta 390px). Trade Builder sí apila a 820px.
-      Arreglar las dos juntas.
+- [x] 🐛 **Overflow del `.pet-slots-grid` (preexistente) — arreglado.** El grid
+      estaba fijo en `repeat(4, 1fr)`: en paneles angostos el slot caía a ~48px y
+      el `.slot-meta` (forma + estrellas + valor) desbordaba, dibujando el valor
+      FUERA del slot. Diagnóstico corregido: el layout **sí** apilaba, pero recién
+      a 599px (regla global en `app.scss`), así que entre 600 y 1100px los dos
+      paneles quedaban angostos con 4 columnas fijas.
+      Fix en tres partes:
+      1. `repeat(auto-fill, minmax(96px, 1fr))`. El 96 está medido, no elegido:
+         la parte incompresible del meta (3 estrellas + valor + padding) mide
+         ~74px, y un código de forma (`MFR`, `NFR`) suma ~21px. Es el mismo piso
+         que ya usaba el grid de `PetPicker.vue`. Desktop no cambia (4 columnas
+         en las dos páginas, igual que antes).
+      2. Los dos layouts apilan a **≤1000px** (antes: 820px Trade Builder,
+         599px Check Values), que es donde el panel se vuelve más angosto que
+         dos slots.
+      3. El label de forma trunca con ellipsis (`Normal` → `Nor…`, `Strollers`)
+         en vez de empujar el valor; estrellas y valor con `flex-shrink: 0`.
+         Esta contención es la red real: aunque el contenido crezca, recorta
+         adentro del slot en vez de dibujarse afuera.
+      Además el grid de slots y **todo el bloque responsive de las dos páginas**
+      viven una sola vez en `src/css/app.scss`: estaban copy-pasteados, y por eso
+      se les habían desincronizado los breakpoints. Verificado en el build SSR en
+      11 anchos (360→1920px) × 2 páginas: 0 overflow, 0 clipping de estrellas o
+      valor, 0 scroll horizontal.
+      ⚠️ Al verificar: el service worker sirve CSS viejo. Desregistrarlo y limpiar
+      `caches` antes de medir, o se mide el build anterior (ver `project_sw_stale_deploy`).
 - [x] Fallback de imágenes: `src/components/PetImage.vue` reemplaza los 7 `<img>`
       inline. Intenta la URL directa; si 404ea, resuelve con `/api/pet/image`
       (que scrapea y cachea); recién ahí muestra el emoji, que conserva la caja en
@@ -361,7 +376,7 @@ ads → Fly pago con margen.
 
 ## Primer paso concreto al retomar
 
-Pasada responsive de `CheckValuesPage.vue` (hoy no tiene ninguna media query) y
-del `.pet-slots-grid` de las dos páginas, que está fijo en 4 columnas y hace
-desbordar el valor del slot en paneles angostos. Diagnóstico completo en el 🐛
-de "UX transversal". Es lo último que separa a la Fase 2 de estar cerrada.
+Auditar los 3 estados (vacío con CTA / cargando con skeleton / error amable con
+reintentar) página por página: My Pets, Check Values, Trade Builder. Hoy el
+estado de error existe como toast pero no como estado de la página. Después
+queda accesibilidad básica, y con eso la Fase 2 cierra.

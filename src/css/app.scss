@@ -216,16 +216,152 @@ body {
   margin-inline: auto;
 }
 
-// ── Mobile (≤599px) ───────────────────────────────────────────────────────────
-// Global overrides so the SSR pages reflow on phones. Uses !important to win over
-// the components' scoped rules (same class names, scoped attribute specificity).
-@media (max-width: 599px) {
-  // Tighter page gutters
-  .inv-page,
+// ── Pet slot grid ─────────────────────────────────────────────────────────────
+// Shared by Check Values and Trade Builder. Lives here rather than in both pages'
+// scoped styles so the two can't drift apart again.
+//
+// Columns are fluid instead of a fixed `repeat(4, 1fr)`, which used to squeeze the
+// slot down to ~48px in a narrow panel and push the value outside it. 96px is the
+// floor because the meta strip's incompressible part — 3 demand stars, the value,
+// padding — measures ~74px, and a form code (`MFR`, `NFR`) needs ~21px more. Long
+// labels (`Normal`, `Strollers`) still truncate; see `.slot-form` below. Same floor
+// as the picker grid in PetPicker.vue.
+.pet-slots-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(96px, 1fr));
+  gap: 5px;
+  padding: 8px;
+  background: rgba(255, 255, 255, 0.02);
+  border-radius: 14px;
+  border: 1px solid var(--border);
+}
+
+.pet-slot {
+  position: relative;
+  aspect-ratio: 1;
+  border-radius: 10px;
+  background: var(--surface-3);
+  border: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: visible;
+}
+
+.slot-img {
+  width: 80%;
+  height: 80%;
+  object-fit: contain;
+  font-size: 24px;
+  filter: drop-shadow(0 4px 12px rgba(0, 0, 0, 0.5));
+}
+
+.slot-meta {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: rgba(0, 0, 0, 0.65);
+  border-radius: 0 0 9px 9px;
+  padding: 3px 6px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 4px;
+  overflow: hidden;
+}
+
+// The form label is the only expendable part: long labels ("Normal", "Strollers")
+// truncate rather than push the demand stars and the value out of the slot.
+.slot-form {
+  font-size: 10px;
+  font-weight: 800;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.slot-demand {
+  font-size: 10px;
+  line-height: 1;
+  flex-shrink: 0;
+}
+.demand--high   { color: #34d399; }
+.demand--medium { color: #f0b429; }
+.demand--low    { color: #f87171; }
+
+.slot-val {
+  font-size: 10px;
+  color: var(--gold);
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+.pet-slot--filled {
+  cursor: pointer;
+}
+.pet-slot--filled::after {
+  content: '✕';
+  position: absolute;
+  inset: 0;
+  border-radius: 9px;
+  background: rgba(239, 68, 68, 0);
+  color: #fff;
+  font-size: 22px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transition: opacity 0.15s, background 0.15s;
+  z-index: 5;
+}
+.pet-slot--filled:hover::after {
+  opacity: 1;
+  background: rgba(239, 68, 68, 0.72);
+}
+
+.pet-slot--add {
+  background: transparent;
+  border: 1.5px dashed var(--border-hi);
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+}
+.pet-slot--add:hover {
+  background: var(--primary-dim);
+  border-color: var(--primary);
+}
+
+.slot-plus-circle {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: var(--surface-3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 22px;
+  color: var(--text-3);
+  font-weight: 300;
+  line-height: 1;
+  transition: background 0.15s, color 0.15s;
+}
+.pet-slot--add:hover .slot-plus-circle {
+  background: var(--primary-dim);
+  color: var(--primary);
+}
+
+// ── Narrow (≤1000px) ──────────────────────────────────────────────────────────
+// Both two-sided pages stack their panels here: side by side, each panel is under
+// half the viewport, which is narrower than two slots. Kept next to the slot grid
+// (and not in each page) so the two can't drift apart — Trade Builder used to
+// stack at 820px and Check Values at 599px, which is how the overflow above went
+// unnoticed. !important wins over the pages' scoped rules, same as the block below.
+@media (max-width: 1000px) {
   .cv-page,
-  .trade-page,
-  .bm-page {
-    padding: 14px !important;
+  .trade-page {
+    padding: 16px !important;
   }
 
   // Page headers wrap instead of overflowing
@@ -234,14 +370,37 @@ body {
     gap: 12px !important;
     margin-bottom: 18px !important;
   }
-  .page-title { font-size: 21px !important; }
 
-  // Two-sided comparison layouts stack vertically (YOU → middle → THEM)
+  // YOU → middle → THEM, in DOM order
   .cv-layout,
   .trade-layout {
     grid-template-columns: 1fr !important;
-    gap: 12px !important;
+    gap: 14px !important;
   }
+
+  // The middle column no longer lines up with the panel headers, so drop the
+  // padding that aligned it. Check Values' idle balance icon would just be a
+  // dead row between the stacked panels.
+  .cv-center { padding-top: 0 !important; }
+  .diff-placeholder { display: none !important; }
+
+  // Trade Builder's swap arrow points down to read as offer → suggestions.
+  .trade-controls { padding-top: 4px !important; }
+  .swap-icon-wrap { transform: rotate(90deg); }
+}
+
+// ── Mobile (≤599px) ───────────────────────────────────────────────────────────
+// Global overrides so the SSR pages reflow on phones. Uses !important to win over
+// the components' scoped rules (same class names, scoped attribute specificity).
+@media (max-width: 599px) {
+  // Tighter page gutters
+  .inv-page,
+  .cv-page,
+  .trade-page {
+    padding: 14px !important;
+  }
+
+  .page-title { font-size: 21px !important; }
 
   // Wider tap targets for the small form/source toggles
   .source-toggle .source-btn { padding: 7px 12px !important; }
