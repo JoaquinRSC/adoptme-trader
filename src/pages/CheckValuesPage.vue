@@ -52,7 +52,7 @@
                 </span>
                 <span v-if="entry.demand" class="slot-demand" :class="`demand--${demandClass(entry.demand)}`" :title="entry.demand">{{ demandStars(entry.demand) }}</span>
                 <span class="slot-val">
-                  <q-spinner v-if="entry.loading" size="8px" />
+                  <SkeletonBar v-if="entry.loading" width="1.6em" />
                   <template v-else>{{ entry.value != null ? (valueSource === 'elvebredd' ? entry.value.toFixed(2) : entry.value) : '—' }}</template>
                 </span>
               </div>
@@ -101,7 +101,7 @@
                 </span>
                 <span v-if="entry.demand" class="slot-demand" :class="`demand--${demandClass(entry.demand)}`" :title="entry.demand">{{ demandStars(entry.demand) }}</span>
                 <span class="slot-val">
-                  <q-spinner v-if="entry.loading" size="8px" />
+                  <SkeletonBar v-if="entry.loading" width="1.6em" />
                   <template v-else>{{ entry.value != null ? (valueSource === 'elvebredd' ? entry.value.toFixed(2) : entry.value) : '—' }}</template>
                 </span>
               </div>
@@ -149,6 +149,7 @@ import { useInventoryStore } from 'src/stores/inventory'
 import { useDraftsStore, type SideEntry } from 'src/stores/drafts'
 import PetPicker from 'src/components/PetPicker.vue'
 import PetImage from 'src/components/PetImage.vue'
+import SkeletonBar from 'src/components/SkeletonBar.vue'
 import { notifyLoadError } from 'src/utils/notify'
 import { useRecentStore } from 'src/stores/recent'
 

@@ -43,7 +43,7 @@
                 <span class="slot-form" :style="(!item.pet.category || item.pet.category === 'pet') ? { color: FORM_COLOR_HEX[item.pet.form] } : {}">{{ item.pet.category && item.pet.category !== 'pet' ? CATEGORY_LABELS[item.pet.category] : FORM_LABELS[item.pet.form] }}</span>
                 <span v-if="item.demand" class="slot-demand" :class="`demand--${demandClass(item.demand)}`" :title="item.demand">{{ demandStars(item.demand) }}</span>
                 <span class="slot-val">
-                  <q-spinner v-if="item.loading" size="8px" />
+                  <SkeletonBar v-if="item.loading" width="1.6em" />
                   <template v-else>{{ valueSource === 'elvebredd' ? (item.elveValue?.toFixed(2) ?? '') : (item.amvggValue ?? '') }}</template>
                 </span>
               </div>
@@ -60,14 +60,14 @@
             <div class="footer-total-row">
               <span class="footer-src">AMV</span>
               <span class="footer-value">
-                <q-spinner v-if="anyOfferedLoading" size="11px" />
+                <SkeletonBar v-if="anyOfferedLoading" width="4em" />
                 <template v-else>{{ totalOfferedAmvgg.toFixed(4) }}</template>
               </span>
             </div>
             <div class="footer-total-row">
               <span class="footer-src">Elve</span>
               <span class="footer-value">
-                <q-spinner v-if="anyOfferedLoading" size="11px" />
+                <SkeletonBar v-if="anyOfferedLoading" width="3.4em" />
                 <template v-else>{{ totalOfferedElve.toFixed(2) }}</template>
               </span>
             </div>
@@ -210,6 +210,7 @@ import { useValuesStore, type DemandLevel } from 'src/stores/values'
 import { useDraftsStore, type OfferedItem } from 'src/stores/drafts'
 import PetPicker from 'src/components/PetPicker.vue'
 import PetImage from 'src/components/PetImage.vue'
+import SkeletonBar from 'src/components/SkeletonBar.vue'
 import { useRecentStore } from 'src/stores/recent'
 import {
   FORM_LABELS, FORM_COLOR_HEX, CATEGORY_LABELS,

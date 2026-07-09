@@ -179,8 +179,16 @@ dialog SE CIERRA tras cada pet agregado → armar una oferta de 5 pets = abrirlo
       a `/api/pet/details` → un endpoint batch (o incluir demands en `pet/batch`).
 
 **UX transversal** (los detalles que hacen que se sienta "bien pensado"):
-- [ ] Skeletons (cards fantasma) en vez de spinners al cargar valores —
-      la app se siente el doble de rápida sin serlo.
+- [x] Skeletons en vez de spinners al cargar valores: `src/components/SkeletonBar.vue`
+      (barra con shimmer, alto = 1em, respeta `prefers-reduced-motion`). Reemplaza
+      los 6 `q-spinner` de valores: total + card en My Pets, slots en Check Values,
+      slot + los 2 totales del footer en Trade Builder. Los spinners de búsqueda
+      y el del botón "Find matches" siguen: ahí sí hay una acción en curso.
+- [ ] 🐛 **Bug encontrado (preexistente)**: entre ~820px y ~1000px de ancho, el
+      `.slot-meta` de los pet slots desborda — el valor se dibuja fuera del slot
+      (forma + estrellas + valor no entran en ~46px). Debajo de 820px el layout
+      apila y no pasa; arriba de 1000px el slot es grande. No lo causan los
+      skeletons (el estado cargado desborda igual).
 - [x] Fallback de imágenes: `src/components/PetImage.vue` reemplaza los 7 `<img>`
       inline. Intenta la URL directa; si 404ea, resuelve con `/api/pet/image`
       (que scrapea y cachea); recién ahí muestra el emoji, que conserva la caja en

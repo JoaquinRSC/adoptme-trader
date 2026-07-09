@@ -13,7 +13,7 @@
         <div class="total-stat" v-if="inventory.pets.length">
           <span class="total-lbl">Total</span>
           <span class="total-val">
-            <q-spinner v-if="anyLoading" size="13px" />
+            <SkeletonBar v-if="anyLoading" width="4em" />
             <template v-else>{{ totalValue.toFixed(3) }}</template>
           </span>
         </div>
@@ -100,7 +100,7 @@
           <!-- Value + demand stars -->
           <div class="value-row">
             <span class="value-lbl">{{ valueSource === 'amvgg' ? 'AMVGG' : 'Elve' }}</span>
-            <q-spinner v-if="loadingValue[pet.id]" size="13px" />
+            <SkeletonBar v-if="loadingValue[pet.id]" width="3.2em" />
             <template v-else-if="activeValue(pet) !== null && activeValue(pet) !== undefined">
               <span class="value-num">{{ displayValue(pet) }}</span>
             </template>
@@ -325,6 +325,7 @@
 import { ref, reactive, computed, onMounted, nextTick } from 'vue'
 import FormChips from 'src/components/FormChips.vue'
 import PetImage from 'src/components/PetImage.vue'
+import SkeletonBar from 'src/components/SkeletonBar.vue'
 import { matAdd, matDeleteOutline, matSearch, matCheck, matArrowDownward, matArrowUpward, matSwapVert } from '@quasar/extras/material-icons'
 import { useInventoryStore } from 'src/stores/inventory'
 import { useValuesStore, type DemandLevel } from 'src/stores/values'
