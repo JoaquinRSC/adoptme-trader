@@ -83,10 +83,12 @@ watch(() => props.modelValue, (v) => { if (v !== form.value) reset(v) })
   letter-spacing: 0.03em;
 }
 
-.form-chip:hover {
-  border-color: rgba(255, 255, 255, 0.3);
-  color: rgba(255, 255, 255, 0.85);
-  background: rgba(255, 255, 255, 0.1);
+@media (hover: hover) {
+  .form-chip:hover {
+    border-color: rgba(255, 255, 255, 0.3);
+    color: rgba(255, 255, 255, 0.85);
+    background: rgba(255, 255, 255, 0.1);
+  }
 }
 
 .form-chip--active {

@@ -777,7 +777,9 @@ function removeWithUndo (id: string) {
   cursor: pointer;
   transition: background 0.15s, color 0.15s, border-color 0.15s;
 }
-.sort-btn:hover { background: var(--surface-3); color: var(--text-1); }
+@media (hover: hover) {
+  .sort-btn:hover { background: var(--surface-3); color: var(--text-1); }
+}
 .sort-btn--active { border-color: var(--primary); color: var(--primary); }
 
 .source-toggle {
@@ -829,7 +831,7 @@ function removeWithUndo (id: string) {
   cursor: pointer;
   transition: opacity 0.15s, transform 0.1s;
 }
-.btn-primary:hover   { opacity: 0.88; }
+@media (hover: hover) { .btn-primary:hover { opacity: 0.88; } }
 .btn-primary:active  { transform: scale(0.97); }
 .btn-primary:disabled { opacity: 0.4; cursor: not-allowed; }
 
@@ -847,7 +849,9 @@ function removeWithUndo (id: string) {
   cursor: pointer;
   transition: background 0.15s, border-color 0.15s;
 }
-.btn-secondary:hover { background: var(--surface-3); border-color: var(--primary); }
+@media (hover: hover) {
+  .btn-secondary:hover { background: var(--surface-3); border-color: var(--primary); }
+}
 
 /* Mobile: let the header actions wrap instead of cramming into one row */
 @media (max-width: 599px) {
@@ -903,7 +907,9 @@ function removeWithUndo (id: string) {
   cursor: pointer;
   transition: all 0.15s;
 }
-.cat-chip:hover { border-color: var(--primary); color: var(--text-1); }
+@media (hover: hover) {
+  .cat-chip:hover { border-color: var(--primary); color: var(--text-1); }
+}
 .cat-chip--active { background: var(--primary); border-color: var(--primary); color: #fff; }
 
 .btn-ghost {
@@ -919,7 +925,9 @@ function removeWithUndo (id: string) {
   cursor: pointer;
   transition: background 0.15s, color 0.15s;
 }
-.btn-ghost:hover { background: var(--surface-3); color: var(--text-1); }
+@media (hover: hover) {
+  .btn-ghost:hover { background: var(--surface-3); color: var(--text-1); }
+}
 
 /* Empty state */
 .empty-state {
@@ -951,12 +959,14 @@ function removeWithUndo (id: string) {
   overflow: hidden;
   transition: border-color 0.2s, transform 0.15s, box-shadow 0.2s;
 }
-.pet-card:hover {
-  border-color: var(--border-hi);
-  transform: translateY(-2px);
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+@media (hover: hover) {
+  .pet-card:hover {
+    border-color: var(--border-hi);
+    transform: translateY(-2px);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+  }
+  .pet-card:hover .pet-actions { opacity: 1; }
 }
-.pet-card:hover .pet-actions { opacity: 1; }
 
 /* Thumbnail */
 .pet-thumb {
@@ -1070,7 +1080,9 @@ function removeWithUndo (id: string) {
   cursor: pointer;
   transition: background 0.12s;
 }
-.value-fetch:hover { background: rgba(124, 108, 248, 0.2); }
+@media (hover: hover) {
+  .value-fetch:hover { background: rgba(124, 108, 248, 0.2); }
+}
 
 /* Demand stars */
 .demand-row {
@@ -1096,6 +1108,8 @@ function removeWithUndo (id: string) {
 .stars--low    { color: #f87171; }
 
 /* Hover actions */
+/* Revealed by hovering the card. Without a hover to reveal it the delete button
+   would be an invisible-but-tappable target, so on touch it is always shown. */
 .pet-actions {
   position: absolute;
   top: 7px;
@@ -1106,6 +1120,9 @@ function removeWithUndo (id: string) {
   opacity: 0;
   transition: opacity 0.15s;
   z-index: 10;
+}
+@media (hover: none) {
+  .pet-actions { opacity: 1; }
 }
 .action-btn {
   width: 26px;
@@ -1121,8 +1138,10 @@ function removeWithUndo (id: string) {
   justify-content: center;
   transition: background 0.12s, color 0.12s;
 }
-.action-btn:hover { background: var(--surface-3); color: var(--text-1); }
-.action-del:hover { color: var(--negative); }
+@media (hover: hover) {
+  .action-btn:hover { background: var(--surface-3); color: var(--text-1); }
+  .action-del:hover { color: var(--negative); }
+}
 
 /* Dialog */
 /* ── Add Pet dialog ─────────────────────────────────────────────────────────── */
@@ -1189,9 +1208,13 @@ function removeWithUndo (id: string) {
   cursor: pointer;
   transition: background 0.1s;
 }
-.result-item:hover,
+/* `--active` is the ↑↓ keyboard highlight — it must survive on touch, so it is
+   kept out of the hover guard. */
 .result-item--active {
   background: var(--surface-3);
+}
+@media (hover: hover) {
+  .result-item:hover { background: var(--surface-3); }
 }
 
 .result-img {

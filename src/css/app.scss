@@ -185,8 +185,10 @@ body {
   border-radius: 10px !important;
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5) !important;
 }
-.q-item:hover {
-  background: var(--surface-3) !important;
+@media (hover: hover) {
+  .q-item:hover {
+    background: var(--surface-3) !important;
+  }
 }
 
 // Quasar btn. No `!important`: Quasar sets a flat button's color through the
@@ -196,8 +198,10 @@ body {
 .q-btn--flat {
   color: var(--text-2);
 }
-.q-btn--flat:hover {
-  color: var(--text-1);
+@media (hover: hover) {
+  .q-btn--flat:hover {
+    color: var(--text-1);
+  }
 }
 
 // Spinner color
@@ -301,6 +305,10 @@ body {
 .pet-slot--filled {
   cursor: pointer;
 }
+// Tapping a filled slot removes it. On a mouse that's taught by the ✕ wash on
+// hover; a touch screen never fires hover, so it gets a small persistent ✕ badge
+// instead (see the `hover: none` block below) — otherwise the pet just vanishes
+// under your finger with no warning, and slots have no undo.
 .pet-slot--filled::after {
   content: '✕';
   position: absolute;
@@ -317,9 +325,11 @@ body {
   transition: opacity 0.15s, background 0.15s;
   z-index: 5;
 }
-.pet-slot--filled:hover::after {
-  opacity: 1;
-  background: rgba(239, 68, 68, 0.72);
+@media (hover: hover) {
+  .pet-slot--filled:hover::after {
+    opacity: 1;
+    background: rgba(239, 68, 68, 0.72);
+  }
 }
 
 .pet-slot--add {
@@ -328,9 +338,11 @@ body {
   cursor: pointer;
   transition: background 0.15s, border-color 0.15s;
 }
-.pet-slot--add:hover {
-  background: var(--primary-dim);
-  border-color: var(--primary);
+@media (hover: hover) {
+  .pet-slot--add:hover {
+    background: var(--primary-dim);
+    border-color: var(--primary);
+  }
 }
 
 .slot-plus-circle {
@@ -347,9 +359,29 @@ body {
   line-height: 1;
   transition: background 0.15s, color 0.15s;
 }
-.pet-slot--add:hover .slot-plus-circle {
-  background: var(--primary-dim);
-  color: var(--primary);
+@media (hover: hover) {
+  .pet-slot--add:hover .slot-plus-circle {
+    background: var(--primary-dim);
+    color: var(--primary);
+  }
+}
+
+// ── Touch: no hover, so nothing may hide behind it ────────────────────────────
+// `hover: none` is the primary pointer being a finger. The ✕ wash above is a
+// hover reveal, so a filled slot advertises its remove action with a corner badge.
+@media (hover: none) {
+  .pet-slot--filled::after {
+    content: '✕';
+    inset: auto 3px auto auto;
+    top: 3px;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: rgba(239, 68, 68, 0.9);
+    font-size: 11px;
+    font-weight: 800;
+    opacity: 1;
+  }
 }
 
 // ── Narrow (≤1000px) ──────────────────────────────────────────────────────────

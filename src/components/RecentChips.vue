@@ -52,8 +52,10 @@ defineEmits<{ select: [string] }>()
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.recent-chip:hover {
-  border-color: var(--primary);
-  color: var(--text-1);
+@media (hover: hover) {
+  .recent-chip:hover {
+    border-color: var(--primary);
+    color: var(--text-1);
+  }
 }
 </style>

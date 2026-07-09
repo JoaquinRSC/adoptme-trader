@@ -341,7 +341,9 @@ function reset () {
   transition: background 0.15s, color 0.15s;
 }
 .picker-tab--active { background: var(--surface-1); color: var(--text-1); }
-.picker-tab:hover:not(.picker-tab--active) { color: var(--text-2); }
+@media (hover: hover) {
+  .picker-tab:hover:not(.picker-tab--active) { color: var(--text-2); }
+}
 
 /* ── Mine grid ── */
 .picker-grid {
@@ -366,7 +368,9 @@ function reset () {
   cursor: pointer;
   transition: border-color 0.12s, background 0.12s;
 }
-.picker-card-item:hover { border-color: var(--primary); background: var(--primary-dim); }
+@media (hover: hover) {
+  .picker-card-item:hover { border-color: var(--primary); background: var(--primary-dim); }
+}
 
 .picker-card-img { width: 56px; height: 56px; object-fit: contain; font-size: 26px; }
 
@@ -420,7 +424,9 @@ function reset () {
   cursor: pointer;
   transition: background 0.12s, color 0.12s, border-color 0.12s;
 }
-.cat-picker-btn:hover { border-color: var(--primary); color: var(--text-1); }
+@media (hover: hover) {
+  .cat-picker-btn:hover { border-color: var(--primary); color: var(--text-1); }
+}
 .cat-picker-btn--active { background: var(--primary); border-color: var(--primary); color: #fff; }
 
 .results-panel {
@@ -447,8 +453,12 @@ function reset () {
   cursor: pointer;
   transition: background 0.1s;
 }
-.result-item:hover,
+/* `--active` is the ↑↓ keyboard highlight — it must survive on touch, so it is
+   kept out of the hover guard. */
 .result-item--active { background: var(--surface-2); }
+@media (hover: hover) {
+  .result-item:hover { background: var(--surface-2); }
+}
 
 .result-img {
   width: 28px;
@@ -482,7 +492,9 @@ function reset () {
   cursor: pointer;
   transition: background 0.15s, color 0.15s;
 }
-.btn-ghost:hover { background: var(--surface-3); color: var(--text-1); }
+@media (hover: hover) {
+  .btn-ghost:hover { background: var(--surface-3); color: var(--text-1); }
+}
 
 /* ── Mobile: the dialog becomes a full-screen sheet ──
    Quasar's `maximized` already supplies the full-bleed size and square corners.

@@ -294,9 +294,11 @@ const formLegend = [
   padding: 11px 0;
 }
 
-.nav-item:hover {
-  background: var(--surface-2);
-  color: var(--text-1);
+@media (hover: hover) {
+  .nav-item:hover {
+    background: var(--surface-2);
+    color: var(--text-1);
+  }
 }
 
 .nav-item--active {
@@ -356,7 +358,9 @@ const formLegend = [
   transition: transform 0.15s, border-color 0.15s;
   flex-shrink: 0;
 }
-.theme-swatch:hover { transform: scale(1.2); }
+@media (hover: hover) {
+  .theme-swatch:hover { transform: scale(1.2); }
+}
 .theme-swatch--active { border-color: var(--text-1); }
 
 .footer-version {
@@ -382,9 +386,11 @@ const formLegend = [
 .sidebar-footer--mini .collapse-btn {
   align-self: center;
 }
-.collapse-btn:hover {
-  background: var(--surface-2);
-  color: var(--text-1);
+@media (hover: hover) {
+  .collapse-btn:hover {
+    background: var(--surface-2);
+    color: var(--text-1);
+  }
 }
 
 /* How-it-works button */
@@ -403,9 +409,11 @@ const formLegend = [
   cursor: pointer;
   transition: background 0.15s, color 0.15s;
 }
-.help-btn:hover {
-  background: var(--surface-2);
-  color: var(--text-1);
+@media (hover: hover) {
+  .help-btn:hover {
+    background: var(--surface-2);
+    color: var(--text-1);
+  }
 }
 .help-btn--mini {
   justify-content: center;
@@ -453,9 +461,11 @@ const formLegend = [
   cursor: pointer;
   transition: background 0.15s, color 0.15s;
 }
-.guide-close:hover {
-  background: var(--surface-2);
-  color: var(--text-1);
+@media (hover: hover) {
+  .guide-close:hover {
+    background: var(--surface-2);
+    color: var(--text-1);
+  }
 }
 
 .guide-section {

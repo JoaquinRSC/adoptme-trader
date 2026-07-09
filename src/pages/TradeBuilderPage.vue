@@ -568,7 +568,9 @@ function deltaChipClass (delta: number) {
   padding: 2px 4px;
   transition: color 0.15s;
 }
-.clear-draft-btn:hover { color: var(--negative); }
+@media (hover: hover) {
+  .clear-draft-btn:hover { color: var(--negative); }
+}
 
 .panel-body {
   padding: 12px;
@@ -688,7 +690,9 @@ function deltaChipClass (delta: number) {
   justify-content: center;
   transition: opacity 0.15s, transform 0.1s;
 }
-.btn-search:hover:not(:disabled) { opacity: 0.88; }
+@media (hover: hover) {
+  .btn-search:hover:not(:disabled) { opacity: 0.88; }
+}
 .btn-search:active:not(:disabled) { transform: scale(0.97); }
 .btn-search:disabled { opacity: 0.35; cursor: not-allowed; }
 
@@ -737,7 +741,9 @@ function deltaChipClass (delta: number) {
   border: 1px solid transparent;
   transition: border-color 0.15s;
 }
-.suggestion-card:hover { border-color: var(--border-hi); }
+@media (hover: hover) {
+  .suggestion-card:hover { border-color: var(--border-hi); }
+}
 
 .sug-card--green { background: rgba(52, 211, 153, 0.06); }
 .sug-card--amber { background: rgba(240, 180, 41, 0.06); }

@@ -344,7 +344,9 @@ function addToThem (sel: PickerSelection) {
   padding: 2px 4px;
   transition: color 0.15s;
 }
-.clear-draft-btn:hover { color: var(--negative); }
+@media (hover: hover) {
+  .clear-draft-btn:hover { color: var(--negative); }
+}
 
 /* ── Source toggle ── */
 .source-toggle {

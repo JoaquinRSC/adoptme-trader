@@ -240,9 +240,24 @@ dialog SE CIERRA tras cada pet agregado → armar una oferta de 5 pets = abrirlo
       `Dialog` de Quasar: era su único uso.
 - [ ] Los 3 estados en TODA página: vacío (con CTA), cargando (skeleton),
       error (mensaje amable + reintentar). Auditar página por página.
+- [x] 🐛 **Controles escondidos detrás de `:hover` (touch) — arreglado.** En
+      mobile no existe el hover, así que el botón de borrar de las cards de My
+      Pets (`.pet-actions { opacity: 0 }`, revelado por `.pet-card:hover`) era un
+      target **invisible pero tocable**: no se podía descubrir, solo activar sin
+      querer. Igual la ✕ de los pet slots, que solo aparecía en hover.
+      Ahora las 32 reglas `:hover` están envueltas en `@media (hover: hover)`
+      (menos la del scrollbar), lo que además evita el *sticky hover* — el estado
+      hover que en touch queda pegado tras el tap. En `@media (hover: none)` los
+      controles se muestran siempre: el botón de borrar en la card, y un badge ✕
+      chico en la esquina de cada slot lleno (los slots no tienen undo, así que
+      el pet no puede desaparecer sin aviso). Ojo con las reglas que combinan
+      `:hover` con `--active`: el resaltado de teclado ↑↓ queda FUERA del guard.
+      Verificado con contextos touch (`hasTouch`) y mouse.
 - [ ] Accesibilidad básica: contraste AA (se solapa con pulido visual), focus
       visible, touch targets ≥44px, alt/aria en controles. Parcial: `PetImage`
-      pone `alt`/`aria-label` y el botón de borrar tiene `aria-label`.
+      pone `alt`/`aria-label` y el botón de borrar tiene `aria-label`, y los
+      controles ya no dependen del hover. Pendiente: `.action-btn` mide 26px
+      (mitiga el riesgo el undo de 5 s) y los chips de forma ~28px.
 
 ### Fase 2.5 — Identidad visual (que no parezca template/IA)
 La ejecución ya está; falta punto de vista. Pocas decisiones, mucho efecto:
