@@ -253,11 +253,29 @@ dialog SE CIERRA tras cada pet agregado → armar una oferta de 5 pets = abrirlo
       el pet no puede desaparecer sin aviso). Ojo con las reglas que combinan
       `:hover` con `--active`: el resaltado de teclado ↑↓ queda FUERA del guard.
       Verificado con contextos touch (`hasTouch`) y mouse.
+- [x] **Touch targets ≥44px** — hecho sin cambiar el dibujo. Mixin `touch-hit`
+      en `app.scss`: un `::after` transparente y centrado agranda el área de
+      toque (los eventos de un pseudo-elemento van a su elemento originario, así
+      que no hay markup ni JS nuevo). Sólo bajo `@media (hover: none)`.
+      Medido con hit-testing real (`elementFromPoint`) a 390px, antes → después:
+      `.action-btn` 26→**44**, `.clear-draft-btn` 21→**45**, `.source-btn` 32→**44**,
+      `.sort-btn` 32→**44**, `.btn-search` 36→**45**, `.picker-tab` 32→**44**,
+      `.btn-ghost` 40→**45**. Los chips de forma ya medían 36px (el plan decía
+      28: quedó viejo tras extraer `FormChips.vue`).
+      Dos excepciones justificadas: `.theme-swatch` llega a 24×44 y no más —
+      son 6 en fila en un drawer de 220px, y 6×44=264px no entran (24px cumple
+      WCAG 2.2 AA de todos modos); y `.mobile-menu-btn` mide 38 de ancho porque
+      el `.q-drawer__opener` de Quasar le pisa el borde — pero abre el mismo
+      drawer, así que el tap hace lo mismo.
+      ⚠️ Ojo: `.pet-card` tiene `overflow: hidden` y recortaba el área del botón
+      de borrar; se resuelve moviendo el inset de `.pet-actions` a `padding`.
+      Nota: el objetivo real de WCAG 2.2 AA (2.5.8) son **24px**, no 44 (eso es
+      2.5.5, nivel AAA / HIG de Apple). Se apuntó a 44 igual porque salía gratis.
 - [ ] Accesibilidad básica: contraste AA (se solapa con pulido visual), focus
-      visible, touch targets ≥44px, alt/aria en controles. Parcial: `PetImage`
-      pone `alt`/`aria-label` y el botón de borrar tiene `aria-label`, y los
-      controles ya no dependen del hover. Pendiente: `.action-btn` mide 26px
-      (mitiga el riesgo el undo de 5 s) y los chips de forma ~28px.
+      visible, alt/aria en controles. Parcial: `PetImage` pone `alt`/`aria-label`,
+      el botón de borrar tiene `aria-label`, los controles ya no dependen del
+      hover y los touch targets están (ver arriba). Falta: focus visible y una
+      pasada de aria en los toggles.
 
 ### Fase 2.5 — Identidad visual (que no parezca template/IA)
 La ejecución ya está; falta punto de vista. Pocas decisiones, mucho efecto:

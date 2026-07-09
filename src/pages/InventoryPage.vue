@@ -1123,6 +1123,17 @@ function removeWithUndo (id: string) {
 }
 @media (hover: none) {
   .pet-actions { opacity: 1; }
+
+  /* The card clips its overflow, which would shear off the delete button's
+     enlarged touch area (see `touch-hit` in app.scss). Pull the container out to
+     the card's corner and re-create the inset as padding, so the hit area grows
+     into the card instead of into the clipped region. 9px is what a 26px button
+     needs on each side to reach 44px; the button lands 2px off its old spot. */
+  .pet-actions {
+    top: 0;
+    right: 0;
+    padding: 9px;
+  }
 }
 .action-btn {
   width: 26px;

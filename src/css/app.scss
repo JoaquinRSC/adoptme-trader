@@ -366,6 +366,28 @@ body {
   }
 }
 
+// Grow a control's touch area to `$size` without changing anything it paints: a
+// transparent, centred pseudo-element does the hit-testing. Events on a pseudo-
+// element are delivered to its originating element, so no markup or JS changes.
+// Only reaches past the border when the control is smaller than $size, and the
+// gaps between our controls are wider than the overhang, so targets don't overlap.
+// The host must not already own `position` or `::after` — none of these do.
+@mixin touch-hit($size: 44px) {
+  position: relative;
+
+  &::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 100%;
+    height: 100%;
+    min-width: $size;
+    min-height: $size;
+  }
+}
+
 // ── Touch: no hover, so nothing may hide behind it ────────────────────────────
 // `hover: none` is the primary pointer being a finger. The ✕ wash above is a
 // hover reveal, so a filled slot advertises its remove action with a corner badge.
@@ -381,6 +403,28 @@ body {
     font-size: 11px;
     font-weight: 800;
     opacity: 1;
+  }
+
+  // Every control a finger has to hit. Measured at 390px before this: the delete
+  // button was 26px, the "Clear" draft link 21px tall, the toggles 32px. WCAG 2.2
+  // AA (2.5.8) only asks for 24px, but a destructive button deserves the 44px of
+  // WCAG 2.5.5 / Apple's HIG, and it costs nothing to give it to the rest.
+  .action-btn,
+  .clear-draft-btn,
+  .source-btn,
+  .sort-btn,
+  .btn-search,
+  .btn-primary,
+  .btn-secondary,
+  .btn-ghost,
+  .form-chip,
+  .mobile-menu-btn,
+  .recent-chip,
+  .cat-chip,
+  .cat-picker-btn,
+  .picker-tab,
+  .theme-swatch {
+    @include touch-hit;
   }
 }
 
