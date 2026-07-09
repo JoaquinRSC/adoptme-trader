@@ -239,7 +239,7 @@
               class="picker-card-item"
               v-for="pet in filteredSortedAvailableInventory"
               :key="pet.id"
-              @click="addOffered(pet); showInventoryPicker = false"
+              @click="addOffered(pet); notifyAdded(pet.name)"
             >
               <img
                 :src="`https://amvgg.com/items/${encodeURIComponent(pet.name)}.webp`"
@@ -315,7 +315,7 @@
         </q-card-section>
 
         <q-card-actions align="right">
-          <button class="btn-ghost" @click="showInventoryPicker = false">Close</button>
+          <button class="btn-ghost" @click="showInventoryPicker = false">Done</button>
         </q-card-actions>
       </q-card>
     </q-dialog>
@@ -335,6 +335,7 @@ import { useInventoryStore } from 'src/stores/inventory'
 import { useValuesStore, type DemandLevel } from 'src/stores/values'
 import { useDraftsStore, type OfferedItem } from 'src/stores/drafts'
 import FormChips from 'src/components/FormChips.vue'
+import { notifyAdded } from 'src/utils/notify'
 import {
   FORM_LABELS, FORM_COLOR_HEX, CATEGORY_LABELS,
   type PetForm, type InventoryPet, type ItemCategory, type PetSuggestion,
@@ -416,7 +417,7 @@ function addOtherPet (name: string) {
     category: pickerCategory.value,
   }
   addOffered(synthetic)
-  showInventoryPicker.value = false
+  notifyAdded(name)
 }
 
 const formOptions = Object.entries(FORM_LABELS).map(([value, label]) => ({ value, label }))

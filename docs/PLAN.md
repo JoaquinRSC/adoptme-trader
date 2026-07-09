@@ -138,9 +138,11 @@ dialog SE CIERRA tras cada pet agregado → armar una oferta de 5 pets = abrirlo
       (Normal→N→NF→MF, badge de preview refleja el v-model).
 - [ ] Interacción idéntica SIEMPRE: autofocus al abrir, ↑↓ navega, Enter
       selecciona, Esc cierra, mismo debounce.
-- [ ] **No cerrar al agregar** en contextos multi (Trade Builder, Check Values):
-      el pet agregado se marca con un contador/toast y el picker queda abierto;
-      botón "Listo" para cerrar. (Se conecta con la carga masiva de la Fase 4.)
+- [x] **No cerrar al agregar** en Trade Builder + Check Values: el picker queda
+      abierto, cada add dispara un toast `notifyAdded()` con contador de grupo
+      (Quasar `group` colapsa adds rápidos en un toast con count), y el botón pasó
+      de "Close" a "Done". Verificado en Trade Builder (add×2 sin cerrar, contador,
+      Done cierra). Aún sin componente único — hecho sobre los pickers actuales.
 - [x] Chips de forma: misma posición siempre, touch targets grandes, tooltip
       con el nombre (Fly/Ride/Default/Neon/Mega) para novatos. → hecho en `FormChips.vue`.
 - [ ] **Sección "Recientes"** antes de tipear (últimos N pets usados,

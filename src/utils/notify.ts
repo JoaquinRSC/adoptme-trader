@@ -21,3 +21,16 @@ export function notifyLoadError (
     actions: [{ label: 'Dismiss', color: 'white', handler: () => { /* close */ } }],
   })
 }
+
+// Brief confirmation when a pet/item is added to a picker that stays open.
+// `group` collapses rapid repeats into one toast with a running count.
+export function notifyAdded (name: string) {
+  if (typeof window === 'undefined') return
+  Notify.create({
+    type: 'positive',
+    message: `Added ${name}`,
+    position: 'bottom',
+    timeout: 1400,
+    group: 'pet-added',
+  })
+}

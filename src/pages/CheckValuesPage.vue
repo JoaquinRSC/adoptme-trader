@@ -220,7 +220,7 @@
         </q-card-section>
 
         <q-card-actions align="right">
-          <button class="btn-ghost" @click="showYourPicker = false">Close</button>
+          <button class="btn-ghost" @click="showYourPicker = false">Done</button>
         </q-card-actions>
       </q-card>
     </q-dialog>
@@ -279,7 +279,7 @@
         </q-card-section>
 
         <q-card-actions align="right">
-          <button class="btn-ghost" @click="showThemPicker = false">Close</button>
+          <button class="btn-ghost" @click="showThemPicker = false">Done</button>
         </q-card-actions>
       </q-card>
     </q-dialog>
@@ -297,7 +297,7 @@ import { useValuesStore, type DemandLevel } from 'src/stores/values'
 import { useInventoryStore } from 'src/stores/inventory'
 import { useDraftsStore, type SideEntry } from 'src/stores/drafts'
 import FormChips from 'src/components/FormChips.vue'
-import { notifyLoadError } from 'src/utils/notify'
+import { notifyLoadError, notifyAdded } from 'src/utils/notify'
 
 const valuesStore = useValuesStore()
 const inventory   = useInventoryStore()
@@ -488,12 +488,12 @@ function resetYourPicker() {
 
 function addInventoryPetToYour(pet: InventoryPet) {
   addPetToSide('your', pet.name, pet.form, pet.category ?? 'pet')
-  showYourPicker.value = false
+  notifyAdded(pet.name)
 }
 
 function addOtherPetToYour(name: string) {
   addPetToSide('your', name, yourOtherPickerForm.value, yourPickerCategory.value)
-  showYourPicker.value = false
+  notifyAdded(name)
 }
 
 // ── THEM side picker ──────────────────────────────────────────────────────────
@@ -535,7 +535,7 @@ function resetThemPicker() {
 
 function addOtherPetToThem(name: string) {
   addPetToSide('them', name, themOtherPickerForm.value, themPickerCategory.value)
-  showThemPicker.value = false
+  notifyAdded(name)
 }
 </script>
 
