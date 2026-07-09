@@ -8,7 +8,7 @@ sin comprometerse.
 
 ## Estado (última actualización: 2026-07-09)
 
-**Fase 1 ✅ · Fase 1.5 ✅ · Fase 1.8 ✅ · Fase 2 — casi cerrada.**
+**Fase 1 ✅ · Fase 1.5 ✅ · Fase 1.8 ✅ · Fase 2 ✅ (cerrada 2026-07-09).**
 
 Cerrado en la Fase 2: modo avanzado eliminado, errores amables, borradores
 persistidos, fix del router SSR, tooltips + "How it works", contraste y
@@ -17,12 +17,14 @@ imágenes** (`PetImage`), **undo al borrar**, **skeletons** (`SkeletonBar`) y
 la **pasada responsive** de Check Values + Trade Builder. No quedan bugs
 visuales conocidos.
 
-Falta para cerrar la Fase 2 — dos cosas, en este orden:
-1. Los 3 estados (vacío / cargando / error) auditados página por página.
-2. Accesibilidad básica (foco visible, touch targets ≥44px, aria). Ya hecho:
-   `alt` en las imágenes y `aria-label` en el botón de borrar.
+También: pasada responsive, hover/touch (nada escondido detrás de `:hover`),
+touch targets de 44px, los 3 estados por página y accesibilidad básica.
 
-Después: Fase 2.5 (identidad visual), que es la que le saca el "look de template".
+Queda pendiente de la Fase 2 sólo lo que se solapa con la 2.5: contraste AA.
+Y dos ítems que nunca fueron bloqueantes: PWA instalable (ya hecha, falta tildarla
+abajo) y el batch de demands de las sugerencias (rendimiento, no corrección).
+
+Siguiente: **Fase 2.5 (identidad visual)**, que es la que le saca el "look de template".
 
 ## Diagnóstico
 
@@ -117,7 +119,11 @@ Sin confianza en los valores, nada más importa.
       fairness score (las ★ de demand ya tenían `title`). Los chips F/R/D/N/M quedan
       explicados en el diálogo; sus tooltips por-botón se agregan al unificar en
       `FormChips.vue` (evita tocar las 25 copias actuales).
-- [ ] PWA instalable (manifest + service worker básico).
+- [x] PWA instalable (manifest + service worker). Ya estaba: `quasar.config.ts`
+      tiene `pwa: true`, el manifest vive en `src-pwa/manifest.json` y tanto
+      `/manifest.json` como `/sw.js` responden 200 en producción. El ítem quedó
+      sin tildar. ⚠️ Ese service worker sirve CSS viejo tras un deploy: al
+      verificar cambios visuales, desregistralo y limpiá `caches` primero.
 - [x] Verificar/arreglar el posible hydration mismatch del SSR (ver diagnóstico visual).
       **Era un bug real, no artefacto del headless.** `curl` al SSR mostraba cada ruta
       renderizando el componente de OTRA página, y el mapeo cambiaba entre corridas
@@ -238,8 +244,26 @@ dialog SE CIERRA tras cada pet agregado → armar una oferta de 5 pets = abrirlo
       (`inventory.removePet` devuelve `{pet,index}`, `insertPet` lo reinserta).
       Cada borrado tiene su propio toast (`group: false`). Se eliminó el plugin
       `Dialog` de Quasar: era su único uso.
-- [ ] Los 3 estados en TODA página: vacío (con CTA), cargando (skeleton),
-      error (mensaje amable + reintentar). Auditar página por página.
+- [x] **Los 3 estados en TODA página** (vacío con CTA / cargando con skeleton /
+      error amable con reintentar). La auditoría encontró que el estado de error
+      no existía como estado de página — sólo como toast, que se desvanece.
+      Ahora hay un banner `.load-error` + `.btn-retry` (globales en `app.scss`,
+      `role="alert"`) en Check Values y Trade Builder.
+      Tres bugs reales que salieron de la auditoría:
+      1. 🐛 `TradeBuilderPage.search()` no tenía `catch`: una búsqueda fallida
+         dejaba el panel en su texto inicial, indistinguible de no haber apretado
+         el botón. Ahora muestra el error con Retry.
+      2. 🐛 `CheckValuesPage.refreshValues()` tampoco: un throw abandonaba el loop
+         con las entradas restantes en `loading: true` → skeletons girando para
+         siempre. Reescrito con `Promise.allSettled` sobre `refreshEntry()`: cada
+         entrada se resuelve sola (una falla ya no abandona al resto) y N pets
+         cuestan 1 round trip en vez de N en serie.
+      3. 🐛 Los dos mensajes vacíos de Trade Builder se renderizaban **juntos**
+         cuando una búsqueda no daba resultados ("Configure your offer…" encima de
+         "No pets found"): al primero le faltaba excluir `searchDone`.
+      El banner se limpia al borrar la entrada que falló o al hacer Clear
+      (`loadError` / `searchError` se resetean con las mutaciones de la lista).
+      Vacío: My Pets tiene empty-state con CTA; en CV/TB el slot `+` ES el CTA.
 - [x] 🐛 **Controles escondidos detrás de `:hover` (touch) — arreglado.** En
       mobile no existe el hover, así que el botón de borrar de las cards de My
       Pets (`.pet-actions { opacity: 0 }`, revelado por `.pet-card:hover`) era un
@@ -271,11 +295,20 @@ dialog SE CIERRA tras cada pet agregado → armar una oferta de 5 pets = abrirlo
       de borrar; se resuelve moviendo el inset de `.pet-actions` a `padding`.
       Nota: el objetivo real de WCAG 2.2 AA (2.5.8) son **24px**, no 44 (eso es
       2.5.5, nivel AAA / HIG de Apple). Se apuntó a 44 igual porque salía gratis.
-- [ ] Accesibilidad básica: contraste AA (se solapa con pulido visual), focus
-      visible, alt/aria en controles. Parcial: `PetImage` pone `alt`/`aria-label`,
-      el botón de borrar tiene `aria-label`, los controles ya no dependen del
-      hover y los touch targets están (ver arriba). Falta: focus visible y una
-      pasada de aria en los toggles.
+- [x] **Accesibilidad básica.** `:focus-visible` global (anillo de 2px con
+      `--primary`; nada de anillo al clickear con el mouse). ARIA: `aria-pressed`
+      + `role="group"` en los toggles AMV/Elve, chips de forma, chips de categoría
+      y swatches de tema (que eran botones de puro color, sin nombre accesible);
+      `aria-label` en los slots y en los botones `+`.
+      Los pet slots eran `<div>` con `@click`: no se podían enfocar ni activar con
+      teclado. Se convirtieron en `<button type="button">` — igual que el slot `+`
+      de al lado, que ya lo era — así el foco, Enter y Space vienen gratis en vez
+      de cablearse a mano. Hubo que resetear `padding`/`font` en `.pet-slot`, o el
+      meta se renderizaba con la fuente del sistema.
+      Los tabs del picker NO son `role="tablist"`: un tablist de verdad debe
+      navegarse con flechas y roving tabindex, y media implementación es peor que
+      ninguna. Quedan como grupo de botones con `aria-pressed`.
+      Falta sólo el contraste AA, que se solapa con el pulido visual de la Fase 2.5.
 
 ### Fase 2.5 — Identidad visual (que no parezca template/IA)
 La ejecución ya está; falta punto de vista. Pocas decisiones, mucho efecto:
@@ -409,7 +442,11 @@ ads → Fly pago con margen.
 
 ## Primer paso concreto al retomar
 
-Auditar los 3 estados (vacío con CTA / cargando con skeleton / error amable con
-reintentar) página por página: My Pets, Check Values, Trade Builder. Hoy el
-estado de error existe como toast pero no como estado de la página. Después
-queda accesibilidad básica, y con eso la Fase 2 cierra.
+La Fase 2 está cerrada. Arranca la **Fase 2.5 (identidad visual)**, y el primer
+paso es el que más rinde: apropiarse del sistema de colores por forma
+(F/R/D/N/M) como lenguaje visual — bordes/tints de card por forma, gradientes de
+forma en los headers de trade. `FORM_COLOR_HEX` y `FORM_GRADIENT` ya existen en
+`src/types.ts` y ya se usan en los chips; falta llevarlos a las cards.
+Es conocimiento del dominio que ninguna otra app del nicho tiene.
+
+Antes de tocar UI nueva, correr la skill `/frontend-design`.

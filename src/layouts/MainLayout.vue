@@ -69,7 +69,8 @@
             <q-icon :name="matHelpOutline" size="18px" />
             <span v-if="!collapsed">How it works</span>
           </button>
-          <div class="theme-picker" :class="{ 'theme-picker--mini': collapsed }">
+          <!-- Colour-only buttons: without an aria-label they announce as nothing. -->
+          <div class="theme-picker" :class="{ 'theme-picker--mini': collapsed }" role="group" aria-label="Colour theme">
             <button
               v-for="t in themes"
               :key="t.id"
@@ -77,6 +78,8 @@
               :class="{ 'theme-swatch--active': currentTheme === t.id }"
               :style="{ background: t.accent }"
               :title="t.label"
+              :aria-label="t.label"
+              :aria-pressed="currentTheme === t.id"
               @click="applyTheme(t.id)"
             />
           </div>

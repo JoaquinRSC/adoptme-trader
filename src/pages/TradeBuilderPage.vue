@@ -7,17 +7,21 @@
         <div class="page-sub">AMVGG values + demand cross-check</div>
       </div>
       <div style="display:flex;align-items:center;gap:8px">
-      <div class="source-toggle">
+      <div class="source-toggle" role="group" aria-label="Value source">
         <button
           class="source-btn"
           :class="{ 'source-btn--active': valueSource === 'amvgg' }"
           title="AMVGG (amvgg.com) — community value list"
+          aria-label="AMVGG values"
+          :aria-pressed="valueSource === 'amvgg'"
           @click="valueSource = 'amvgg'"
         >AMV</button>
         <button
           class="source-btn"
           :class="{ 'source-btn--active': valueSource === 'elvebredd' }"
           title="Elvebredd (elvebredd.com) — community value list"
+          aria-label="Elvebredd values"
+          :aria-pressed="valueSource === 'elvebredd'"
           @click="valueSource = 'elvebredd'"
         >Elve</button>
       </div>
@@ -37,19 +41,29 @@
 
         <div class="panel-body">
           <div class="pet-slots-grid">
-            <div class="pet-slot pet-slot--filled" v-for="item in offeredPets" :key="item.pet.id" @click="removeOffered(item.pet.id)" title="Click to remove">
+            <!-- A real <button>, like the add slot beside it: focus, Enter and
+                 Space come free instead of being hand-wired onto a <div>. -->
+            <button
+              type="button"
+              class="pet-slot pet-slot--filled"
+              v-for="item in offeredPets"
+              :key="item.pet.id"
+              :aria-label="`Remove ${item.pet.name} from your offer`"
+              title="Click to remove"
+              @click="removeOffered(item.pet.id)"
+            >
               <PetImage :name="item.pet.name" class="slot-img" />
-              <div class="slot-meta">
+              <span class="slot-meta">
                 <span class="slot-form" :style="(!item.pet.category || item.pet.category === 'pet') ? { color: FORM_COLOR_HEX[item.pet.form] } : {}">{{ item.pet.category && item.pet.category !== 'pet' ? CATEGORY_LABELS[item.pet.category] : FORM_LABELS[item.pet.form] }}</span>
                 <span v-if="item.demand" class="slot-demand" :class="`demand--${demandClass(item.demand)}`" :title="item.demand">{{ demandStars(item.demand) }}</span>
                 <span class="slot-val">
                   <SkeletonBar v-if="item.loading" width="1.6em" />
                   <template v-else>{{ valueSource === 'elvebredd' ? (item.elveValue?.toFixed(2) ?? '') : (item.amvggValue ?? '') }}</template>
                 </span>
-              </div>
-            </div>
-            <button class="pet-slot pet-slot--add" @click="showInventoryPicker = true">
-              <div class="slot-plus-circle">+</div>
+              </span>
+            </button>
+            <button type="button" class="pet-slot pet-slot--add" aria-label="Add a pet to your offer" @click="showInventoryPicker = true">
+              <span class="slot-plus-circle">+</span>
             </button>
           </div>
         </div>
@@ -138,7 +152,16 @@
         </div>
 
         <div class="panel-body">
-          <div class="empty-panel" v-if="!suggestions.length && !searching">
+          <!-- The three states, kept mutually exclusive: error, then idle/empty. -->
+          <div class="load-error" v-if="searchError" role="alert">
+            <q-icon :name="matErrorOutline" size="18px" />
+            <span>Couldn't search right now.</span>
+            <button class="btn-retry" @click="search">Retry</button>
+          </div>
+
+          <!-- `!searchDone` too, or a search with no matches showed this idle text
+               stacked on top of the "No pets found" one below. -->
+          <div class="empty-panel" v-if="!suggestions.length && !searching && !searchDone && !searchError">
             Configure your offer and click "Find matches"
           </div>
 
@@ -174,7 +197,7 @@
             </div>
           </div>
 
-          <div class="empty-panel" v-if="searchDone && !suggestions.length">
+          <div class="empty-panel" v-if="searchDone && !suggestions.length && !searchError">
             No pets found within ±{{ tolerancePct }}% of your offer value
           </div>
         </div>
@@ -201,7 +224,7 @@
 import { ref, computed, watch, onMounted } from 'vue'
 import {
   matUpload, matSwapHoriz,
-  matAutoAwesome, matSearch, matWarning,
+  matAutoAwesome, matSearch, matWarning, matErrorOutline,
 } from '@quasar/extras/material-icons'
 
 import { storeToRefs } from 'pinia'
@@ -235,6 +258,7 @@ const suggestions         = ref<SuggestionWithDemand[]>([])
 const showInventoryPicker = ref(false)
 const searching           = ref(false)
 const searchDone          = ref(false)
+const searchError         = ref(false)
 
 const valueSource         = ref<'amvgg' | 'elvebredd'>('amvgg')
 
@@ -378,17 +402,20 @@ async function addOffered (pet: InventoryPet) {
   }
 }
 
+// Changing the offer invalidates the previous search — including its error.
 function removeOffered (id: string) {
   const idx = offeredPets.value.findIndex(o => o.pet.id === id)
   if (idx !== -1) offeredPets.value.splice(idx, 1)
   suggestions.value = []
   searchDone.value  = false
+  searchError.value = false
 }
 
 function clearOffer () {
   draftsStore.clearTrade()
   suggestions.value        = []
   searchDone.value         = false
+  searchError.value        = false
   selectedSuggestion.value = null
 }
 
@@ -397,6 +424,7 @@ async function search () {
   if (!offeredPets.value.length || totalOfferedValue.value === 0) return
   searching.value   = true
   searchDone.value  = false
+  searchError.value = false
   suggestions.value = []
 
   try {
@@ -448,6 +476,11 @@ async function search () {
 
     suggestions.value = top20
     searchDone.value  = true
+  } catch {
+    // Without this, a failed search left the panel on its initial empty text —
+    // indistinguishable from never having pressed the button. Every throw in here
+    // comes through the values store's apiFetch, which already raised the toast.
+    searchError.value = true
   } finally {
     searching.value = false
   }

@@ -30,9 +30,9 @@
           />
           <span>{{ sortOrder === 'desc' ? 'High → Low' : sortOrder === 'asc' ? 'Low → High' : 'Sort' }}</span>
         </button>
-        <div class="source-toggle">
-          <button class="source-btn" :class="{ 'source-btn--active': valueSource === 'amvgg' }" title="AMVGG (amvgg.com) — community value list" @click="setSource('amvgg')">AMV</button>
-          <button class="source-btn" :class="{ 'source-btn--active': valueSource === 'elvebredd' }" title="Elvebredd (elvebredd.com) — community value list" @click="setSource('elvebredd')">Elve</button>
+        <div class="source-toggle" role="group" aria-label="Value source">
+          <button class="source-btn" :class="{ 'source-btn--active': valueSource === 'amvgg' }" title="AMVGG (amvgg.com) — community value list" aria-label="AMVGG values" :aria-pressed="valueSource === 'amvgg'" @click="setSource('amvgg')">AMV</button>
+          <button class="source-btn" :class="{ 'source-btn--active': valueSource === 'elvebredd' }" title="Elvebredd (elvebredd.com) — community value list" aria-label="Elvebredd values" :aria-pressed="valueSource === 'elvebredd'" @click="setSource('elvebredd')">Elve</button>
         </div>
         <button class="btn-primary" @click="openAdd">
           <q-icon :name="matAdd" size="16px" />
@@ -46,12 +46,13 @@
     </div>
 
     <!-- Category filter -->
-    <div class="cat-filter" v-if="availableCategories.length > 1">
+    <div class="cat-filter" v-if="availableCategories.length > 1" role="group" aria-label="Filter by category">
       <button
         v-for="cat in availableCategories"
         :key="cat"
         class="cat-chip"
         :class="{ 'cat-chip--active': categoryFilter === cat }"
+        :aria-pressed="categoryFilter === cat"
         @click="categoryFilter = cat"
       >{{ cat === 'all' ? 'All' : CATEGORY_LABELS[cat as ItemCategory] }}</button>
     </div>

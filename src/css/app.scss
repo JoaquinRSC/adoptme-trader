@@ -209,6 +209,76 @@ body {
   color: var(--primary) !important;
 }
 
+// Grow a control's touch area to `$size` without changing anything it paints: a
+// transparent, centred pseudo-element does the hit-testing. Events on a pseudo-
+// element are delivered to its originating element, so no markup or JS changes.
+// Only reaches past the border when the control is smaller than $size, and the
+// gaps between our controls are wider than the overhang, so targets don't overlap.
+// The host must not already own `position` or `::after` — none of these do.
+// Defined here because Sass needs a mixin declared before it is included.
+@mixin touch-hit($size: 44px) {
+  position: relative;
+
+  &::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 100%;
+    height: 100%;
+    min-width: $size;
+    min-height: $size;
+  }
+}
+
+// ── Error state ───────────────────────────────────────────────────────────────
+// The page-level counterpart to the `notifyLoadError()` toast: a toast fades, so
+// a failed load also has to leave something on the page that offers a retry.
+// Shared by Check Values and Trade Builder.
+.load-error {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 16px;
+  padding: 10px 14px;
+  border: 1px solid rgba(248, 113, 113, 0.35);
+  border-radius: 10px;
+  background: rgba(248, 113, 113, 0.08);
+  color: var(--text-2);
+  font-size: 13px;
+  font-weight: 600;
+
+  .q-icon { color: var(--negative); flex-shrink: 0; }
+}
+
+.btn-retry {
+  margin-left: auto;
+  flex-shrink: 0;
+  padding: 6px 14px;
+  border: 1px solid var(--border-hi);
+  border-radius: 8px;
+  background: var(--surface-2);
+  color: var(--text-1);
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+}
+
+@media (hover: hover) {
+  .btn-retry:hover { background: var(--surface-3); border-color: var(--primary); }
+}
+
+// ── Keyboard focus ────────────────────────────────────────────────────────────
+// Nothing sets `outline: none`, but the UA's default ring all but disappears on
+// these dark surfaces. `:focus-visible` rather than `:focus`, so clicking with a
+// mouse never leaves a ring behind — only keyboard traversal shows it.
+:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}
+
 // ── Layout width ──────────────────────────────────────────────────────────────
 // Center page content on wide screens instead of stretching edge-to-edge, which
 // leaves controls marooned at the margins on 1440px+ displays. The pages are the
@@ -240,6 +310,8 @@ body {
   border: 1px solid var(--border);
 }
 
+// Both slots are <button>s, so the UA's font and padding have to be reset or the
+// meta strip would render in the system font inside a padded box.
 .pet-slot {
   position: relative;
   aspect-ratio: 1;
@@ -250,6 +322,10 @@ body {
   align-items: center;
   justify-content: center;
   overflow: visible;
+  padding: 0;
+  font: inherit;
+  color: inherit;
+  text-align: inherit;
 }
 
 .slot-img {
@@ -366,28 +442,6 @@ body {
   }
 }
 
-// Grow a control's touch area to `$size` without changing anything it paints: a
-// transparent, centred pseudo-element does the hit-testing. Events on a pseudo-
-// element are delivered to its originating element, so no markup or JS changes.
-// Only reaches past the border when the control is smaller than $size, and the
-// gaps between our controls are wider than the overhang, so targets don't overlap.
-// The host must not already own `position` or `::after` — none of these do.
-@mixin touch-hit($size: 44px) {
-  position: relative;
-
-  &::after {
-    content: '';
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    width: 100%;
-    height: 100%;
-    min-width: $size;
-    min-height: $size;
-  }
-}
-
 // ── Touch: no hover, so nothing may hide behind it ────────────────────────────
 // `hover: none` is the primary pointer being a finger. The ✕ wash above is a
 // hover reveal, so a filled slot advertises its remove action with a corner badge.
@@ -417,6 +471,7 @@ body {
   .btn-primary,
   .btn-secondary,
   .btn-ghost,
+  .btn-retry,
   .form-chip,
   .mobile-menu-btn,
   .recent-chip,

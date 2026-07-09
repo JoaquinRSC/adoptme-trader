@@ -9,15 +9,20 @@
     <q-card class="picker-card" :class="{ 'picker-card--sheet': sheet }">
       <q-card-section class="q-pb-sm">
         <div class="dialog-title">{{ title }}</div>
-        <div class="picker-tabs" v-if="mine">
+        <!-- Deliberately a group of pressable buttons rather than role="tablist":
+             a real tablist owes the user arrow-key navigation and a roving
+             tabindex, and half of that pattern is worse than none. -->
+        <div class="picker-tabs" v-if="mine" role="group" aria-label="Pet source">
           <button
             class="picker-tab"
             :class="{ 'picker-tab--active': tab === 'mine' }"
+            :aria-pressed="tab === 'mine'"
             @click="tab = 'mine'"
           >{{ mineLabel }}</button>
           <button
             class="picker-tab"
             :class="{ 'picker-tab--active': tab === 'other' }"
+            :aria-pressed="tab === 'other'"
             @click="tab = 'other'"
           >Other</button>
         </div>

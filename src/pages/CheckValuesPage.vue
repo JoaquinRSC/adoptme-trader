@@ -11,25 +11,36 @@
         <button
           v-if="yourSide.length || themSide.length"
           class="clear-draft-btn"
-          @click="draftsStore.clearCheck()"
+          @click="clearCheck"
         >Clear</button>
 
         <!-- Source toggle -->
-        <div class="source-toggle">
+        <div class="source-toggle" role="group" aria-label="Value source">
           <button
             class="source-btn"
             :class="{ 'source-btn--active': valueSource === 'amvgg' }"
             title="AMVGG (amvgg.com) — community value list"
+            aria-label="AMVGG values"
+            :aria-pressed="valueSource === 'amvgg'"
             @click="valueSource = 'amvgg'"
           >AMV</button>
           <button
             class="source-btn"
             :class="{ 'source-btn--active': valueSource === 'elvebredd' }"
             title="Elvebredd (elvebredd.com) — community value list"
+            aria-label="Elvebredd values"
+            :aria-pressed="valueSource === 'elvebredd'"
             @click="valueSource = 'elvebredd'"
           >Elve</button>
         </div>
       </div>
+    </div>
+
+    <!-- Values failed to load: say so on the page, not only in a toast that fades. -->
+    <div class="load-error" v-if="loadError" role="alert">
+      <q-icon :name="matErrorOutline" size="18px" />
+      <span>Couldn't load the latest values. They may be out of date.</span>
+      <button class="btn-retry" @click="refreshValues">Retry</button>
     </div>
 
     <!-- Main layout -->
@@ -44,9 +55,19 @@
 
         <div class="panel-body">
           <div class="pet-slots-grid">
-            <div class="pet-slot pet-slot--filled" v-for="entry in yourSide" :key="entry.id" @click="removePet('your', entry.id)" title="Click to remove">
+            <!-- A real <button>, like the add slot beside it: focus, Enter and
+                 Space come free instead of being hand-wired onto a <div>. -->
+            <button
+              type="button"
+              class="pet-slot pet-slot--filled"
+              v-for="entry in yourSide"
+              :key="entry.id"
+              :aria-label="`Remove ${entry.name}`"
+              title="Click to remove"
+              @click="removePet('your', entry.id)"
+            >
               <PetImage :name="entry.name" class="slot-img" />
-              <div class="slot-meta">
+              <span class="slot-meta">
                 <span class="slot-form" :style="{ color: entry.category && entry.category !== 'pet' ? 'var(--text-2)' : FORM_COLOR_HEX[entry.form] }">
                   {{ entry.category && entry.category !== 'pet' ? CATEGORY_LABELS[entry.category] : FORM_LABELS[entry.form] }}
                 </span>
@@ -55,10 +76,10 @@
                   <SkeletonBar v-if="entry.loading" width="1.6em" />
                   <template v-else>{{ entry.value != null ? (valueSource === 'elvebredd' ? entry.value.toFixed(2) : entry.value) : '—' }}</template>
                 </span>
-              </div>
-            </div>
-            <button class="pet-slot pet-slot--add" @click="showYourPicker = true">
-              <div class="slot-plus-circle">+</div>
+              </span>
+            </button>
+            <button type="button" class="pet-slot pet-slot--add" aria-label="Add a pet to your side" @click="showYourPicker = true">
+              <span class="slot-plus-circle">+</span>
             </button>
           </div>
         </div>
@@ -93,9 +114,17 @@
 
         <div class="panel-body">
           <div class="pet-slots-grid">
-            <div class="pet-slot pet-slot--filled" v-for="entry in themSide" :key="entry.id" @click="removePet('them', entry.id)" title="Click to remove">
+            <button
+              type="button"
+              class="pet-slot pet-slot--filled"
+              v-for="entry in themSide"
+              :key="entry.id"
+              :aria-label="`Remove ${entry.name}`"
+              title="Click to remove"
+              @click="removePet('them', entry.id)"
+            >
               <PetImage :name="entry.name" class="slot-img" />
-              <div class="slot-meta">
+              <span class="slot-meta">
                 <span class="slot-form" :style="{ color: entry.category && entry.category !== 'pet' ? 'var(--text-2)' : FORM_COLOR_HEX[entry.form] }">
                   {{ entry.category && entry.category !== 'pet' ? CATEGORY_LABELS[entry.category] : FORM_LABELS[entry.form] }}
                 </span>
@@ -104,10 +133,10 @@
                   <SkeletonBar v-if="entry.loading" width="1.6em" />
                   <template v-else>{{ entry.value != null ? (valueSource === 'elvebredd' ? entry.value.toFixed(2) : entry.value) : '—' }}</template>
                 </span>
-              </div>
-            </div>
-            <button class="pet-slot pet-slot--add" @click="showThemPicker = true">
-              <div class="slot-plus-circle">+</div>
+              </span>
+            </button>
+            <button type="button" class="pet-slot pet-slot--add" aria-label="Add a pet to their side" @click="showThemPicker = true">
+              <span class="slot-plus-circle">+</span>
             </button>
           </div>
         </div>
@@ -141,7 +170,7 @@
 <script setup lang="ts">
 import { ref, computed, watch, onMounted } from 'vue'
 import { storeToRefs } from 'pinia'
-import { matBalance } from '@quasar/extras/material-icons'
+import { matBalance, matErrorOutline } from '@quasar/extras/material-icons'
 import { uid } from 'quasar'
 import { FORM_LABELS, FORM_COLOR_HEX, CATEGORY_LABELS, type PetForm, type ItemCategory, type PickerSelection } from 'src/types'
 import { useValuesStore, type DemandLevel } from 'src/stores/values'
@@ -173,6 +202,7 @@ function demandStars(d: DemandLevel): string {
 
 // Sides + source live in the drafts store so they survive navigation + reload.
 const { checkYou: yourSide, checkThem: themSide, checkSource: valueSource } = storeToRefs(draftsStore)
+const loadError = ref(false)
 watch(valueSource, refreshValues)
 onMounted(() => { draftsStore.hydrate(); recentStore.hydrate() })
 
@@ -232,6 +262,7 @@ async function addPetToSide(side: 'your' | 'them', name: string, form: PetForm, 
     } catch {
       const found = list.value.find(e => e.id === entry.id)
       if (found) found.loading = false
+      loadError.value = true
       notifyLoadError()
     }
     return
@@ -261,11 +292,8 @@ async function addPetToSide(side: 'your' | 'them', name: string, form: PetForm, 
   found.loading = false
 }
 
-// When source changes, re-fetch values for all pets already on both sides
-async function refreshValues() {
-  const allEntries = [...yourSide.value, ...themSide.value]
-  for (const entry of allEntries) { entry.loading = true; entry.value = null }
-  for (const entry of allEntries) {
+async function refreshEntry (entry: SideEntry) {
+  try {
     if (entry.category && entry.category !== 'pet') {
       const res  = await fetch(`/api/item/details?name=${encodeURIComponent(entry.name)}&category=${entry.category}`)
       const data = await res.json() as { value: number | null; demand: string | null; elveValue: number | null }
@@ -276,13 +304,38 @@ async function refreshValues() {
         ? await valuesStore.getElveValue(entry.name, entry.form)
         : await valuesStore.getValue(entry.name, entry.form)
     }
+  } finally {
     entry.loading = false
   }
 }
 
+// When source changes, re-fetch values for all pets already on both sides.
+// Each entry settles on its own: a sequential loop meant one failure abandoned
+// every entry after it (their skeletons shimmered forever), and N pets cost N
+// serialized round trips.
+async function refreshValues() {
+  const allEntries = [...yourSide.value, ...themSide.value]
+  for (const entry of allEntries) { entry.loading = true; entry.value = null }
+  loadError.value = false
+
+  const results = await Promise.allSettled(allEntries.map(refreshEntry))
+  if (results.some(r => r.status === 'rejected')) {
+    loadError.value = true
+    notifyLoadError()
+  }
+}
+
+// Removing or clearing entries can retire the very failure the banner reports,
+// so the error is cleared alongside the thing that caused it.
 function removePet(side: 'your' | 'them', id: string) {
   const list = getSide(side)
   list.value = list.value.filter(e => e.id !== id)
+  loadError.value = false
+}
+
+function clearCheck() {
+  draftsStore.clearCheck()
+  loadError.value = false
 }
 
 // ── Pickers ───────────────────────────────────────────────────────────────────
