@@ -70,13 +70,11 @@
 
         <!-- Thumbnail -->
         <div class="pet-thumb">
-          <img
-            v-if="petImageUrl[pet.id]"
-            :src="petImageUrl[pet.id]!"
+          <PetImage
+            :name="pet.name"
+            :fallback="!pet.category || pet.category === 'pet' ? '🐾' : '📦'"
             class="thumb-img"
-            @error="() => { petImageUrl[pet.id] = null }"
           />
-          <span v-else class="thumb-emoji">🐾</span>
           <div
             v-if="!pet.category || pet.category === 'pet'"
             class="form-badges"
@@ -119,7 +117,7 @@
 
         <!-- Hover actions -->
         <div class="pet-actions">
-          <button class="action-btn action-del" @click="confirmRemove(pet.id, pet.name)">
+          <button class="action-btn action-del" :aria-label="`Remove ${pet.name}`" @click="removeWithUndo(pet.id)">
             <q-icon :name="matDeleteOutline" size="15px" />
           </button>
         </div>
@@ -177,14 +175,7 @@
                 @mousedown.prevent="selectPet(name)"
                 @mouseover="dropIndex = i"
               >
-                <div class="result-img-wrap">
-                  <img
-                    :src="`https://amvgg.com/items/${encodeURIComponent(name)}.webp`"
-                    class="result-img"
-                    @error="(e) => (e.target as HTMLImageElement).style.display='none'"
-                  />
-                  <div class="result-img-placeholder">🐾</div>
-                </div>
+                <PetImage :name="name" class="result-img" />
                 <span class="result-name">{{ name }}</span>
                 <q-icon v-if="newPetName === name" :name="matCheck" size="13px" style="color:var(--primary);margin-left:auto" />
               </div>
@@ -196,14 +187,7 @@
             <!-- Pet preview -->
             <div class="pet-preview-card">
               <div v-if="newPetName" class="preview-filled">
-                <div class="preview-img-wrap" :key="newPetName">
-                  <img
-                    v-if="previewImageUrl"
-                    :src="previewImageUrl"
-                    class="preview-img"
-                  />
-                  <div class="preview-img-ph">🐾</div>
-                </div>
+                <PetImage :name="newPetName" class="preview-img" />
                 <div class="preview-info">
                   <div class="preview-name">{{ newPetName }}</div>
                   <div
@@ -295,14 +279,7 @@
                 @mousedown.prevent="selectItem(name)"
                 @mouseover="itemDropIndex = i"
               >
-                <div class="result-img-wrap">
-                  <img
-                    :src="`https://amvgg.com/items/${encodeURIComponent(name)}.webp`"
-                    class="result-img"
-                    @error="(e) => (e.target as HTMLImageElement).style.display='none'"
-                  />
-                  <div class="result-img-placeholder">📦</div>
-                </div>
+                <PetImage :name="name" fallback="📦" class="result-img" />
                 <span class="result-name">{{ name }}</span>
                 <q-icon v-if="newItemName === name" :name="matCheck" size="13px" style="color:var(--primary);margin-left:auto" />
               </div>
@@ -311,14 +288,7 @@
           <div class="add-right">
             <div class="pet-preview-card">
               <div v-if="newItemName" class="preview-filled">
-                <div class="preview-img-wrap">
-                  <img
-                    :src="`https://amvgg.com/items/${encodeURIComponent(newItemName)}.webp`"
-                    class="preview-img"
-                    @error="(e) => (e.target as HTMLImageElement).style.display='none'"
-                  />
-                  <div class="preview-img-ph">📦</div>
-                </div>
+                <PetImage :name="newItemName" fallback="📦" class="preview-img" />
                 <div class="preview-info">
                   <div class="preview-name">{{ newItemName }}</div>
                   <div class="preview-form-badge" style="color:var(--primary);border-color:var(--primary)">
@@ -352,14 +322,14 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, computed, watch, onMounted, nextTick } from 'vue'
+import { ref, reactive, computed, onMounted, nextTick } from 'vue'
 import FormChips from 'src/components/FormChips.vue'
-import { useQuasar } from 'quasar'
+import PetImage from 'src/components/PetImage.vue'
 import { matAdd, matDeleteOutline, matSearch, matCheck, matArrowDownward, matArrowUpward, matSwapVert } from '@quasar/extras/material-icons'
 import { useInventoryStore } from 'src/stores/inventory'
 import { useValuesStore, type DemandLevel } from 'src/stores/values'
 import { ADOPT_ME_PETS } from 'src/data/pets'
-import { notifyLoadError } from 'src/utils/notify'
+import { notifyLoadError, notifyRemoved } from 'src/utils/notify'
 import { useRecentStore } from 'src/stores/recent'
 import RecentChips from 'src/components/RecentChips.vue'
 import {
@@ -367,7 +337,6 @@ import {
   type PetForm, type InventoryPet, type ItemCategory,
 } from 'src/types'
 
-const $q = useQuasar()
 const inventory = useInventoryStore()
 const values = useValuesStore()
 const recentStore = useRecentStore()
@@ -421,10 +390,7 @@ function confirmAdd () {
   inventory.addPet(newPetName.value.trim(), newPetForm.value, count)
   recentStore.record(newPetName.value.trim())
   const added = inventory.pets.slice(-count)
-  for (const pet of added) {
-    void fetchValue(pet)
-    void fetchImage(pet.id, pet.name, pet.category)
-  }
+  for (const pet of added) void fetchValue(pet)
   newPetName.value    = ''
   newPetQty.value     = 1
   searchQuery.value   = ''
@@ -538,32 +504,7 @@ function resetSearch () {
   showDropdown.value  = false
 }
 
-// ── Image fetching ────────────────────────────────────────────────────────────
-const petImageUrl = reactive<Record<string, string | null>>({})
-
-async function fetchImage (id: string, name: string, category?: string) {
-  if (category && category !== 'pet') {
-    petImageUrl[id] = `https://amvgg.com/items/${encodeURIComponent(name)}.webp`
-    return
-  }
-  try {
-    const res = await fetch(`/api/pet/image?name=${encodeURIComponent(name)}`)
-    petImageUrl[id] = await res.json() as string | null
-  } catch {
-    petImageUrl[id] = null
-  }
-}
-
-const previewImageUrl = ref<string | null>(null)
-watch(() => newPetName.value, async (name) => {
-  previewImageUrl.value = null
-  if (name) {
-    try {
-      const res = await fetch(`/api/pet/image?name=${encodeURIComponent(name)}`)
-      previewImageUrl.value = await res.json() as string | null
-    } catch { /* ignore */ }
-  }
-})
+// Thumbnails resolve themselves — see `PetImage`.
 
 // ── Category filter ───────────────────────────────────────────────────────────
 const ALL_CATEGORY_ORDER: Array<'pet' | ItemCategory> = [
@@ -650,10 +591,7 @@ function confirmAddItem () {
   const count = Math.max(1, newItemQty.value)
   inventory.addItem(newItemName.value.trim(), newItemCategory.value, count)
   const added = inventory.pets.slice(-count)
-  for (const item of added) {
-    void fetchValue(item)
-    void fetchImage(item.id, item.name, item.category)
-  }
+  for (const item of added) void fetchValue(item)
   newItemName.value       = ''
   newItemQty.value        = 1
   itemSearchQuery.value   = ''
@@ -784,20 +722,14 @@ onMounted(() => {
   const valueQueue = [...inventory.pets]
   const valueWorker = async () => { while (valueQueue.length) await fetchValue(valueQueue.shift()!) }
   void Promise.all([valueWorker(), valueWorker(), valueWorker()])
-
-  const imgQueue = [...inventory.pets]
-  const imgWorker = async () => { while (imgQueue.length) { const p = imgQueue.shift()!; await fetchImage(p.id, p.name, p.category) } }
-  void Promise.all([imgWorker(), imgWorker(), imgWorker()])
 })
 
 // ── Actions ───────────────────────────────────────────────────────────────────
-function confirmRemove (id: string, name: string) {
-  $q.dialog({
-    title: 'Remove pet',
-    message: `Remove "${name}" from inventory?`,
-    cancel: true,
-    ok: { label: 'Remove', color: 'negative', flat: true },
-  }).onOk(() => inventory.removePet(id))
+// Remove first, ask never: a 5s Undo beats a confirm dialog on every delete.
+function removeWithUndo (id: string) {
+  const removed = inventory.removePet(id)
+  if (!removed) return
+  notifyRemoved(removed.pet.name, () => inventory.insertPet(removed.pet, removed.index))
 }
 </script>
 
@@ -1038,15 +970,10 @@ function confirmRemove (id: string, name: string) {
   width: 96px;
   height: 96px;
   object-fit: contain;
+  font-size: 48px;
   position: relative;
   z-index: 1;
   filter: drop-shadow(0 4px 12px rgba(0,0,0,0.5));
-}
-.thumb-emoji {
-  font-size: 48px;
-  filter: drop-shadow(0 2px 8px rgba(0,0,0,0.4));
-  position: absolute;
-  z-index: 0;
 }
 .thumb-badge--category {
   position: absolute;
@@ -1266,29 +1193,12 @@ function confirmRemove (id: string, name: string) {
   background: var(--surface-3);
 }
 
-.result-img-wrap {
-  position: relative;
+.result-img {
   flex-shrink: 0;
   width: 30px;
   height: 30px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.result-img {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
   object-fit: cover;
-  z-index: 1;
-}
-
-.result-img-placeholder {
   font-size: 13px;
-  opacity: 0.45;
-  z-index: 0;
 }
 
 .result-name {
@@ -1328,30 +1238,13 @@ function confirmRemove (id: string, name: string) {
   width: 100%;
 }
 
-.preview-img-wrap {
+.preview-img {
   width: 52px;
   height: 52px;
   flex-shrink: 0;
-  position: relative;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.preview-img {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
   object-fit: contain;
-  z-index: 1;
-  filter: drop-shadow(0 2px 8px rgba(0,0,0,0.4));
-}
-
-.preview-img-ph {
   font-size: 22px;
-  opacity: 0.6;
-  z-index: 0;
+  filter: drop-shadow(0 2px 8px rgba(0,0,0,0.4));
 }
 
 .preview-info {

@@ -19,7 +19,7 @@ export default configure(function (/* ctx */) {
     framework: {
       config: { dark: true },
       iconSet: 'svg-material-icons',
-      plugins: ['Notify', 'Dialog', 'Loading'],
+      plugins: ['Notify', 'Loading'],
     },
 
     animations: [],

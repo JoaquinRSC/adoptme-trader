@@ -53,9 +53,16 @@ export const useInventoryStore = defineStore('inventory', () => {
     }
   }
 
-  function removePet (id: string) {
-    const idx = pets.value.findIndex(p => p.id === id)
-    if (idx !== -1) pets.value.splice(idx, 1)
+  /** Returns what was removed so the caller can offer an undo. */
+  function removePet (id: string): { pet: InventoryPet; index: number } | null {
+    const index = pets.value.findIndex(p => p.id === id)
+    if (index === -1) return null
+    const [pet] = pets.value.splice(index, 1)
+    return pet ? { pet, index } : null
+  }
+
+  function insertPet (pet: InventoryPet, index: number) {
+    pets.value.splice(Math.min(index, pets.value.length), 0, pet)
   }
 
   function updateForm (id: string, form: PetForm) {
@@ -63,5 +70,5 @@ export const useInventoryStore = defineStore('inventory', () => {
     if (pet) pet.form = form
   }
 
-  return { pets, hydrate, addPet, addItem, removePet, updateForm }
+  return { pets, hydrate, addPet, addItem, removePet, insertPet, updateForm }
 })

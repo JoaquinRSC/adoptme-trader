@@ -51,11 +51,7 @@
             :key="pet.id"
             @click="addFromMine(pet)"
           >
-            <img
-              :src="imageUrl(pet.name)"
-              class="picker-card-img"
-              @error="hideImage"
-            />
+            <PetImage :name="pet.name" class="picker-card-img" />
             <div class="picker-card-name">{{ pet.name }}</div>
             <div class="picker-card-bottom">
               <span class="picker-card-form" :style="isPet(pet.category) ? { color: FORM_COLOR_HEX[pet.form] } : {}">
@@ -127,10 +123,7 @@
             @mousedown.prevent="addByName(name)"
             @mouseover="activeIndex = i"
           >
-            <div class="result-img-wrap">
-              <img :src="imageUrl(name)" class="result-img" @error="hideImage" />
-              <div class="result-img-placeholder">🐾</div>
-            </div>
+            <PetImage :name="name" class="result-img" />
             <span class="result-name">{{ name }}</span>
             <span
               v-if="category === 'pet'"
@@ -154,6 +147,7 @@ import { useQuasar, type QInput } from 'quasar'
 import { matSearch } from '@quasar/extras/material-icons'
 import FormChips from 'src/components/FormChips.vue'
 import RecentChips from 'src/components/RecentChips.vue'
+import PetImage from 'src/components/PetImage.vue'
 import { useValuesStore } from 'src/stores/values'
 import { useRecentStore } from 'src/stores/recent'
 import { notifyAdded } from 'src/utils/notify'
@@ -203,8 +197,6 @@ const activeIndex = ref(0)
 const searchInput = ref<QInput>()
 
 const isPet = (c?: ItemCategory) => !c || c === 'pet'
-const imageUrl = (name: string) => `https://amvgg.com/items/${encodeURIComponent(name)}.webp`
-const hideImage = (e: Event) => { (e.target as HTMLImageElement).style.display = 'none' }
 
 // ── Mine tab ──────────────────────────────────────────────────────────────────
 const mineCategories = computed(() => {
@@ -376,7 +368,7 @@ function reset () {
 }
 .picker-card-item:hover { border-color: var(--primary); background: var(--primary-dim); }
 
-.picker-card-img { width: 56px; height: 56px; object-fit: contain; }
+.picker-card-img { width: 56px; height: 56px; object-fit: contain; font-size: 26px; }
 
 .picker-card-name {
   font-size: 11px;
@@ -458,21 +450,12 @@ function reset () {
 .result-item:hover,
 .result-item--active { background: var(--surface-2); }
 
-.result-img-wrap {
-  position: relative;
+.result-img {
   width: 28px;
   height: 28px;
   flex-shrink: 0;
-}
-.result-img { width: 100%; height: 100%; object-fit: contain; }
-.result-img-placeholder {
-  position: absolute;
-  inset: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  object-fit: contain;
   font-size: 14px;
-  z-index: -1;
 }
 .result-name { font-size: 13px; font-weight: 600; color: var(--text-1); }
 

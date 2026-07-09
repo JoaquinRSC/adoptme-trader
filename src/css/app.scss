@@ -189,12 +189,15 @@ body {
   background: var(--surface-3) !important;
 }
 
-// Quasar btn
+// Quasar btn. No `!important`: Quasar sets a flat button's color through the
+// `text-*` helper it emits for an explicit `color` prop, and that carries
+// `!important`. Leaving this rule plain lets those buttons keep their own color
+// (a Notify action's `color: 'white'`) while the rest inherit the theme.
 .q-btn--flat {
-  color: var(--text-2) !important;
+  color: var(--text-2);
 }
 .q-btn--flat:hover {
-  color: var(--text-1) !important;
+  color: var(--text-1);
 }
 
 // Spinner color

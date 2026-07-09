@@ -181,14 +181,21 @@ dialog SE CIERRA tras cada pet agregado → armar una oferta de 5 pets = abrirlo
 **UX transversal** (los detalles que hacen que se sienta "bien pensado"):
 - [ ] Skeletons (cards fantasma) en vez de spinners al cargar valores —
       la app se siente el doble de rápida sin serlo.
-- [ ] Fallback de imágenes: hoy un `@error` hace `display:none` y la card queda
-      con un hueco; poner ícono placeholder para mantener la card entera.
-- [ ] Undo en vez de confirmación: al borrar del inventario, snackbar
-      "Deshacer" (5 s). Cero fricción, cero pérdidas accidentales.
+- [x] Fallback de imágenes: `src/components/PetImage.vue` reemplaza los 7 `<img>`
+      inline. Intenta la URL directa; si 404ea, resuelve con `/api/pet/image`
+      (que scrapea y cachea); recién ahí muestra el emoji, que conserva la caja en
+      vez de colapsarla. Antes el inventario pedía `/api/pet/image` para TODOS los
+      pets al montar; ahora sólo para los que fallan. Suma `alt` en cada imagen.
+- [x] Undo en vez de confirmación: borrar del inventario es instantáneo + toast
+      "Undo" de 5 s que restaura el pet en su posición original
+      (`inventory.removePet` devuelve `{pet,index}`, `insertPet` lo reinserta).
+      Cada borrado tiene su propio toast (`group: false`). Se eliminó el plugin
+      `Dialog` de Quasar: era su único uso.
 - [ ] Los 3 estados en TODA página: vacío (con CTA), cargando (skeleton),
       error (mensaje amable + reintentar). Auditar página por página.
 - [ ] Accesibilidad básica: contraste AA (se solapa con pulido visual), focus
-      visible, touch targets ≥44px, alt/aria en controles.
+      visible, touch targets ≥44px, alt/aria en controles. Parcial: `PetImage`
+      pone `alt`/`aria-label` y el botón de borrar tiene `aria-label`.
 
 ### Fase 2.5 — Identidad visual (que no parezca template/IA)
 La ejecución ya está; falta punto de vista. Pocas decisiones, mucho efecto:

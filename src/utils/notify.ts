@@ -34,3 +34,17 @@ export function notifyAdded (name: string) {
     group: 'pet-added',
   })
 }
+
+// Deleting is instant; this is the safety net. No grouping — each removal needs
+// its own Undo, or the toast would restore only the last one.
+export function notifyRemoved (name: string, onUndo: () => void) {
+  if (typeof window === 'undefined') return
+  Notify.create({
+    message: `Removed ${name}`,
+    color: 'dark',
+    position: 'bottom',
+    timeout: 5000,
+    group: false,
+    actions: [{ label: 'Undo', color: 'white', handler: onUndo }],
+  })
+}

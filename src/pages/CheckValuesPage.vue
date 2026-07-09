@@ -45,11 +45,7 @@
         <div class="panel-body">
           <div class="pet-slots-grid">
             <div class="pet-slot pet-slot--filled" v-for="entry in yourSide" :key="entry.id" @click="removePet('your', entry.id)" title="Click to remove">
-              <img
-                :src="`https://amvgg.com/items/${encodeURIComponent(entry.name)}.webp`"
-                class="slot-img"
-                @error="(e) => (e.target as HTMLImageElement).style.display = 'none'"
-              />
+              <PetImage :name="entry.name" class="slot-img" />
               <div class="slot-meta">
                 <span class="slot-form" :style="{ color: entry.category && entry.category !== 'pet' ? 'var(--text-2)' : FORM_COLOR_HEX[entry.form] }">
                   {{ entry.category && entry.category !== 'pet' ? CATEGORY_LABELS[entry.category] : FORM_LABELS[entry.form] }}
@@ -98,11 +94,7 @@
         <div class="panel-body">
           <div class="pet-slots-grid">
             <div class="pet-slot pet-slot--filled" v-for="entry in themSide" :key="entry.id" @click="removePet('them', entry.id)" title="Click to remove">
-              <img
-                :src="`https://amvgg.com/items/${encodeURIComponent(entry.name)}.webp`"
-                class="slot-img"
-                @error="(e) => (e.target as HTMLImageElement).style.display = 'none'"
-              />
+              <PetImage :name="entry.name" class="slot-img" />
               <div class="slot-meta">
                 <span class="slot-form" :style="{ color: entry.category && entry.category !== 'pet' ? 'var(--text-2)' : FORM_COLOR_HEX[entry.form] }">
                   {{ entry.category && entry.category !== 'pet' ? CATEGORY_LABELS[entry.category] : FORM_LABELS[entry.form] }}
@@ -156,6 +148,7 @@ import { useValuesStore, type DemandLevel } from 'src/stores/values'
 import { useInventoryStore } from 'src/stores/inventory'
 import { useDraftsStore, type SideEntry } from 'src/stores/drafts'
 import PetPicker from 'src/components/PetPicker.vue'
+import PetImage from 'src/components/PetImage.vue'
 import { notifyLoadError } from 'src/utils/notify'
 import { useRecentStore } from 'src/stores/recent'
 
@@ -458,6 +451,7 @@ function addToThem (sel: PickerSelection) {
   width: 80%;
   height: 80%;
   object-fit: contain;
+  font-size: 24px;
   filter: drop-shadow(0 4px 12px rgba(0,0,0,0.5));
 }
 

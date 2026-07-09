@@ -38,11 +38,7 @@
         <div class="panel-body">
           <div class="pet-slots-grid">
             <div class="pet-slot pet-slot--filled" v-for="item in offeredPets" :key="item.pet.id" @click="removeOffered(item.pet.id)" title="Click to remove">
-              <img
-                :src="`https://amvgg.com/items/${encodeURIComponent(item.pet.name)}.webp`"
-                class="slot-img"
-                @error="(e) => (e.target as HTMLImageElement).style.display='none'"
-              />
+              <PetImage :name="item.pet.name" class="slot-img" />
               <div class="slot-meta">
                 <span class="slot-form" :style="(!item.pet.category || item.pet.category === 'pet') ? { color: FORM_COLOR_HEX[item.pet.form] } : {}">{{ item.pet.category && item.pet.category !== 'pet' ? CATEGORY_LABELS[item.pet.category] : FORM_LABELS[item.pet.form] }}</span>
                 <span v-if="item.demand" class="slot-demand" :class="`demand--${demandClass(item.demand)}`" :title="item.demand">{{ demandStars(item.demand) }}</span>
@@ -155,11 +151,7 @@
               @click="selectedSuggestion = selectedSuggestion?.name === s.name ? null : s"
             >
               <div class="sug-thumb">
-                <img
-                  :src="`https://amvgg.com/items/${encodeURIComponent(s.name)}.webp`"
-                  class="sug-thumb-img"
-                  @error="(e) => (e.target as HTMLImageElement).style.display='none'"
-                />
+                <PetImage :name="s.name" class="sug-thumb-img" />
               </div>
               <div class="sug-body">
                 <div class="sug-name">{{ s.name }}</div>
@@ -217,6 +209,7 @@ import { useInventoryStore } from 'src/stores/inventory'
 import { useValuesStore, type DemandLevel } from 'src/stores/values'
 import { useDraftsStore, type OfferedItem } from 'src/stores/drafts'
 import PetPicker from 'src/components/PetPicker.vue'
+import PetImage from 'src/components/PetImage.vue'
 import { useRecentStore } from 'src/stores/recent'
 import {
   FORM_LABELS, FORM_COLOR_HEX, CATEGORY_LABELS,
@@ -752,6 +745,7 @@ function deltaChipClass (delta: number) {
   width: 80%;
   height: 80%;
   object-fit: contain;
+  font-size: 24px;
   filter: drop-shadow(0 4px 12px rgba(0,0,0,0.5));
 }
 
@@ -882,6 +876,7 @@ function deltaChipClass (delta: number) {
   width: 100%;
   height: 100%;
   object-fit: contain;
+  font-size: 14px;
 }
 
 .sug-body { flex: 1; min-width: 0; }
