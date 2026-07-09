@@ -290,7 +290,12 @@
             <template #prepend><q-icon :name="matSearch" size="16px" style="color:var(--text-3)" /></template>
           </q-input>
           <div class="results-panel">
-            <div class="results-state" v-if="!petSearch.trim()">Start typing to search</div>
+            <RecentChips
+              v-if="!petSearch.trim() && pickerCategory === 'pet' && recentStore.list.length"
+              :names="recentStore.list"
+              @select="addOtherPet"
+            />
+            <div class="results-state" v-else-if="!petSearch.trim()">Start typing to search</div>
             <div class="results-state" v-else-if="searchLoading"><q-spinner size="14px" color="primary" /><span>Searching…</span></div>
             <div class="results-state" v-else-if="!searchResults.length">No results for "{{ petSearch }}"</div>
             <div
@@ -335,7 +340,9 @@ import { useInventoryStore } from 'src/stores/inventory'
 import { useValuesStore, type DemandLevel } from 'src/stores/values'
 import { useDraftsStore, type OfferedItem } from 'src/stores/drafts'
 import FormChips from 'src/components/FormChips.vue'
+import RecentChips from 'src/components/RecentChips.vue'
 import { notifyAdded } from 'src/utils/notify'
+import { useRecentStore } from 'src/stores/recent'
 import {
   FORM_LABELS, FORM_COLOR_HEX, CATEGORY_LABELS,
   type PetForm, type InventoryPet, type ItemCategory, type PetSuggestion,
@@ -344,6 +351,7 @@ import {
 const inventory   = useInventoryStore()
 const values      = useValuesStore()
 const draftsStore = useDraftsStore()
+const recentStore = useRecentStore()
 
 // ── State ─────────────────────────────────────────────────────────────────────
 interface SuggestionWithDemand extends PetSuggestion {
@@ -550,6 +558,7 @@ const demandWarning = computed(() => {
 
 // ── Actions ───────────────────────────────────────────────────────────────────
 async function addOffered (pet: InventoryPet) {
+  if (!pet.category || pet.category === 'pet') recentStore.record(pet.name)
   const item: OfferedItem = { pet, amvggValue: null, elveValue: null, demand: null, loading: true }
   offeredPets.value.push(item)
 
@@ -664,6 +673,7 @@ const selectedSuggestion = ref<SuggestionWithDemand | null>(null)
 
 onMounted(() => {
   draftsStore.hydrate()
+  recentStore.hydrate()
   const savedTolerance = Number(localStorage.getItem('match_tolerance_pct'))
   if (TOLERANCE_OPTIONS.includes(savedTolerance)) tolerancePct.value = savedTolerance
 })

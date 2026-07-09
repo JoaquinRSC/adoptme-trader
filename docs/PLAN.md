@@ -145,9 +145,13 @@ dialog SE CIERRA tras cada pet agregado → armar una oferta de 5 pets = abrirlo
       Done cierra). Aún sin componente único — hecho sobre los pickers actuales.
 - [x] Chips de forma: misma posición siempre, touch targets grandes, tooltip
       con el nombre (Fly/Ride/Default/Neon/Mega) para novatos. → hecho en `FormChips.vue`.
-- [ ] **Sección "Recientes"** antes de tipear (últimos N pets usados,
-      localStorage): los traders repiten pets todo el tiempo — mata la
-      búsqueda más común.
+- [x] **Sección "Recientes"** antes de tipear (últimos 8 pets usados,
+      localStorage): store `recent.ts` (SSR-safe, hydrate-on-mount) + componente
+      `RecentChips.vue`. Se registra al agregar cualquier pet (Inventory confirmAdd,
+      Trade Builder addOffered, Check Values addPetToSide) y se muestra en el
+      empty-state de los pickers cuando la búsqueda está vacía. En Inventory rellena
+      el nombre; en TB/CV agrega directo. Verificado end-to-end (agregar→persistir→
+      mostrar→click re-agrega).
 - [ ] My Pets siempre igual donde aplique: primer tab, ordenado por valor.
 - [ ] Mobile: el dialog pasa a sheet full-screen.
 - [ ] Browse Market puede conservar su dropdown inline (es el patrón correcto

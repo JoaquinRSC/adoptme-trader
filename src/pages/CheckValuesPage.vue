@@ -195,7 +195,12 @@
             <template #prepend><q-icon :name="matSearch" size="16px" style="color:var(--text-3)" /></template>
           </q-input>
           <div class="results-panel">
-            <div class="results-state" v-if="!yourPetSearch.trim()">Start typing to find {{ yourPickerCategory === 'pet' ? 'a pet' : 'an item' }}</div>
+            <RecentChips
+              v-if="!yourPetSearch.trim() && yourPickerCategory === 'pet' && recentStore.list.length"
+              :names="recentStore.list"
+              @select="addOtherPetToYour"
+            />
+            <div class="results-state" v-else-if="!yourPetSearch.trim()">Start typing to find {{ yourPickerCategory === 'pet' ? 'a pet' : 'an item' }}</div>
             <div class="results-state" v-else-if="yourSearchLoading"><q-spinner size="14px" color="primary" /><span>Searching…</span></div>
             <div class="results-state" v-else-if="!yourPickerResults.length">No results for "{{ yourPetSearch }}"</div>
             <div
@@ -254,7 +259,12 @@
             <template #prepend><q-icon :name="matSearch" size="16px" style="color:var(--text-3)" /></template>
           </q-input>
           <div class="results-panel">
-            <div class="results-state" v-if="!themPetSearch.trim()">Start typing to find {{ themPickerCategory === 'pet' ? 'a pet' : 'an item' }}</div>
+            <RecentChips
+              v-if="!themPetSearch.trim() && themPickerCategory === 'pet' && recentStore.list.length"
+              :names="recentStore.list"
+              @select="addOtherPetToThem"
+            />
+            <div class="results-state" v-else-if="!themPetSearch.trim()">Start typing to find {{ themPickerCategory === 'pet' ? 'a pet' : 'an item' }}</div>
             <div class="results-state" v-else-if="themSearchLoading"><q-spinner size="14px" color="primary" /><span>Searching…</span></div>
             <div class="results-state" v-else-if="!themPickerResults.length">No results for "{{ themPetSearch }}"</div>
             <div
@@ -297,11 +307,14 @@ import { useValuesStore, type DemandLevel } from 'src/stores/values'
 import { useInventoryStore } from 'src/stores/inventory'
 import { useDraftsStore, type SideEntry } from 'src/stores/drafts'
 import FormChips from 'src/components/FormChips.vue'
+import RecentChips from 'src/components/RecentChips.vue'
 import { notifyLoadError, notifyAdded } from 'src/utils/notify'
+import { useRecentStore } from 'src/stores/recent'
 
 const valuesStore = useValuesStore()
 const inventory   = useInventoryStore()
 const draftsStore = useDraftsStore()
+const recentStore = useRecentStore()
 
 const inventoryPets = computed(() => inventory.pets)
 
@@ -321,7 +334,7 @@ function demandStars(d: DemandLevel): string {
 // Sides + source live in the drafts store so they survive navigation + reload.
 const { checkYou: yourSide, checkThem: themSide, checkSource: valueSource } = storeToRefs(draftsStore)
 watch(valueSource, refreshValues)
-onMounted(() => draftsStore.hydrate())
+onMounted(() => { draftsStore.hydrate(); recentStore.hydrate() })
 
 // ── Computed ─────────────────────────────────────────────────────────────────
 
@@ -361,6 +374,7 @@ function getSide(side: 'your' | 'them') {
 }
 
 async function addPetToSide(side: 'your' | 'them', name: string, form: PetForm, category: ItemCategory = 'pet') {
+  if (category === 'pet') recentStore.record(name)
   const list = getSide(side)
   const entry: SideEntry = { id: uid(), name, form, category, value: null, demand: null, loading: true }
   list.value.push(entry)

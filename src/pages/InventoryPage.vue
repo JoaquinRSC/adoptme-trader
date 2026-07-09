@@ -158,6 +158,11 @@
               <div v-if="searching && !searchResults.length" class="results-state">
                 <q-spinner size="14px" color="primary" /><span>Searching…</span>
               </div>
+              <RecentChips
+                v-else-if="!searchQuery.trim() && recentStore.list.length"
+                :names="recentStore.list"
+                @select="selectPet"
+              />
               <div v-else-if="!searchQuery.trim()" class="results-state">
                 Start typing to find a pet
               </div>
@@ -355,6 +360,8 @@ import { useInventoryStore } from 'src/stores/inventory'
 import { useValuesStore, type DemandLevel } from 'src/stores/values'
 import { ADOPT_ME_PETS } from 'src/data/pets'
 import { notifyLoadError } from 'src/utils/notify'
+import { useRecentStore } from 'src/stores/recent'
+import RecentChips from 'src/components/RecentChips.vue'
 import {
   FORM_LABELS, FORM_COLOR_HEX, CATEGORY_LABELS,
   type PetForm, type InventoryPet, type ItemCategory,
@@ -363,6 +370,7 @@ import {
 const $q = useQuasar()
 const inventory = useInventoryStore()
 const values = useValuesStore()
+const recentStore = useRecentStore()
 
 const LETTER_BG: Record<string, string> = {
   M: '#8830da',
@@ -411,6 +419,7 @@ function confirmAdd () {
   if (!newPetName.value.trim()) return
   const count = Math.max(1, newPetQty.value)
   inventory.addPet(newPetName.value.trim(), newPetForm.value, count)
+  recentStore.record(newPetName.value.trim())
   const added = inventory.pets.slice(-count)
   for (const pet of added) {
     void fetchValue(pet)
@@ -783,6 +792,7 @@ async function fetchElveValue (pet: InventoryPet) {
 // Auto-fetch values, demand, and images on mount — max 3 concurrent
 onMounted(() => {
   inventory.hydrate()
+  recentStore.hydrate()
   const valueQueue = [...inventory.pets]
   const valueWorker = async () => { while (valueQueue.length) await fetchValue(valueQueue.shift()!) }
   void Promise.all([valueWorker(), valueWorker(), valueWorker()])
