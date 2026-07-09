@@ -6,6 +6,24 @@ cerrar cada fase entera antes de empezar la siguiente — una app chica, fresca 
 pulida le gana a una app grande a medio hacer. El backlog existe para anotar
 sin comprometerse.
 
+## Estado (última actualización: 2026-07-09)
+
+**Fase 1 ✅ · Fase 1.5 ✅ · Fase 1.8 ✅ · Fase 2 — casi cerrada.**
+
+Cerrado en la Fase 2: modo avanzado eliminado, errores amables, borradores
+persistidos, fix del router SSR, tooltips + "How it works", contraste y
+`max-width`, **selector de pets unificado** (`PetPicker`), **fallback de
+imágenes** (`PetImage`), **undo al borrar** y **skeletons** (`SkeletonBar`).
+
+Falta para cerrar la Fase 2 — tres cosas, en este orden:
+1. **Pasada responsive** de Check Values + Trade Builder (ver el 🐛 de los pet
+   slots en "UX transversal"). Es el único bug visual conocido.
+2. Los 3 estados (vacío / cargando / error) auditados página por página.
+3. Accesibilidad básica (foco visible, touch targets ≥44px, aria). Ya hecho:
+   `alt` en las imágenes y `aria-label` en el botón de borrar.
+
+Después: Fase 2.5 (identidad visual), que es la que le saca el "look de template".
+
 ## Diagnóstico
 
 **Lo que ya está listo para público (modo consulta):**
@@ -45,19 +63,19 @@ quedó una sola versión pública para todos. El código vive en el historial de
   genérica, dashboard con sidebar. Los usuarios no lo notan, pero anula el objetivo
   de ser "distinta a las demás". La ejecución está bien; falta capa de identidad
   (ver Fase 2.5).
-- 🐛 **Verificar posible hydration mismatch del SSR**: en renders en frío
-  (`/trade-builder` directo, incógnito) el header muestra el título de OTRA página
-  y quedan controles sin estilos. Puede ser artefacto del headless usado para los
-  screenshots, pero si se reproduce en navegador real es prioridad de Fase 2:
-  el SEO de la Fase 3 depende del primer render en frío.
+- ✅ **El hydration mismatch del SSR era real y está arreglado** (2026-07-08): el
+  router era un singleton de módulo, así que con requests SSR concurrentes cada
+  ruta renderizaba el contenido de otra. Se veía sólo bajo concurrencia, por eso
+  un `curl` aislado parecía sano. Resuelto con `defineRouter()` (commit `f8544a7`).
 
-**Problemas transversales:**
-- Valores estáticos: se actualizan solo con `npm run fetch-values` + commit + deploy.
-  Los valores cambian seguido → riesgo de recomendar trades malos. **Prioridad #1.**
-- Errores crudos en pantalla (monospace) → mensajes amables.
-- Inventario solo en localStorage (por dispositivo, se pierde) → sync con login (fase 4).
-- Mobile: audiencia mayormente celular/tablet; Trade Builder es 3 columnas desktop.
-- Jerga sin explicar (F/R/D/N/M, AMV vs Elve, demand ★, % fairness) → tooltips + mini "cómo funciona".
+**Problemas transversales** (estado al 2026-07-09):
+- ✅ Valores estáticos → `refresh-values.yml` los refresca cada 4h y redeploya solo
+  si cambiaron; snapshot diario a `src/data/history/`.
+- ✅ Errores crudos en pantalla → toasts amables (`src/utils/notify.ts`).
+- ✅ Jerga sin explicar → tooltips en AMV/Elve y fairness + "How it works" en el sidebar.
+- ⚠️ Mobile: Trade Builder ya apila a 820px, **pero Check Values no tiene ninguna
+  media query** y los pet slots desbordan en paneles angostos. Es lo que queda.
+- ⏳ Inventario solo en localStorage (por dispositivo, se pierde) → sync con login (Fase 4).
 
 ## Roadmap (en orden)
 
@@ -343,5 +361,7 @@ ads → Fly pago con margen.
 
 ## Primer paso concreto al retomar
 
-Fase 1: endpoint `/api/refresh-values` + cron de GitHub Actions + snapshots.
-Resuelve la preocupación principal (valores viejos) sin subir la factura de Fly.
+Pasada responsive de `CheckValuesPage.vue` (hoy no tiene ninguna media query) y
+del `.pet-slots-grid` de las dos páginas, que está fijo en 4 columnas y hace
+desbordar el valor del slot en paneles angostos. Diagnóstico completo en el 🐛
+de "UX transversal". Es lo último que separa a la Fase 2 de estar cerrada.
