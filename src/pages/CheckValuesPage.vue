@@ -14,25 +14,7 @@
           @click="clearCheck"
         >Clear</button>
 
-        <!-- Source toggle -->
-        <div class="source-toggle" role="group" aria-label="Value source">
-          <button
-            class="source-btn"
-            :class="{ 'source-btn--active': valueSource === 'amvgg' }"
-            title="AMVGG (amvgg.com) — community value list"
-            aria-label="AMVGG values"
-            :aria-pressed="valueSource === 'amvgg'"
-            @click="valueSource = 'amvgg'"
-          >AMV</button>
-          <button
-            class="source-btn"
-            :class="{ 'source-btn--active': valueSource === 'elvebredd' }"
-            title="Elvebredd (elvebredd.com) — community value list"
-            aria-label="Elvebredd values"
-            :aria-pressed="valueSource === 'elvebredd'"
-            @click="valueSource = 'elvebredd'"
-          >Elve</button>
-        </div>
+        <SourceToggle v-model="valueSource" />
       </div>
     </div>
 
@@ -177,6 +159,7 @@ import { useValuesStore, type DemandLevel } from 'src/stores/values'
 import { useInventoryStore } from 'src/stores/inventory'
 import { useDraftsStore, type SideEntry } from 'src/stores/drafts'
 import PetPicker from 'src/components/PetPicker.vue'
+import SourceToggle from 'src/components/SourceToggle.vue'
 import PetImage from 'src/components/PetImage.vue'
 import SkeletonBar from 'src/components/SkeletonBar.vue'
 import { notifyLoadError } from 'src/utils/notify'
@@ -401,36 +384,7 @@ function addToThem (sel: PickerSelection) {
   .clear-draft-btn:hover { color: var(--negative); }
 }
 
-/* ── Source toggle ── */
-.source-toggle {
-  display: flex;
-  gap: 4px;
-  background: var(--surface-2);
-  border-radius: 8px;
-  padding: 3px;
-}
-
-.source-btn {
-  padding: 6px 16px;
-  border: none;
-  border-radius: 6px;
-  font-size: 12px;
-  font-weight: 700;
-  cursor: pointer;
-  background: transparent;
-  color: var(--text-2);
-  transition: background 0.15s, color 0.15s;
-}
-
-.source-btn--active {
-  background: var(--primary);
-  color: #fff;
-}
-
-.source-btn--disabled {
-  opacity: 0.35;
-  cursor: not-allowed;
-}
+/* The AMV/Elve toggle lives in SourceToggle.vue. */
 
 /* ── Layout ── */
 .cv-layout {

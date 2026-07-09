@@ -30,10 +30,7 @@
           />
           <span>{{ sortOrder === 'desc' ? 'High → Low' : sortOrder === 'asc' ? 'Low → High' : 'Sort' }}</span>
         </button>
-        <div class="source-toggle" role="group" aria-label="Value source">
-          <button class="source-btn" :class="{ 'source-btn--active': valueSource === 'amvgg' }" title="AMVGG (amvgg.com) — community value list" aria-label="AMVGG values" :aria-pressed="valueSource === 'amvgg'" @click="setSource('amvgg')">AMV</button>
-          <button class="source-btn" :class="{ 'source-btn--active': valueSource === 'elvebredd' }" title="Elvebredd (elvebredd.com) — community value list" aria-label="Elvebredd values" :aria-pressed="valueSource === 'elvebredd'" @click="setSource('elvebredd')">Elve</button>
-        </div>
+        <SourceToggle v-model="valueSource" />
         <button class="btn-primary" @click="openAdd">
           <q-icon :name="matAdd" size="16px" />
           Add Pet
@@ -323,7 +320,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, computed, onMounted, nextTick } from 'vue'
+import { ref, reactive, computed, onMounted, nextTick, watch } from 'vue'
 import FormChips from 'src/components/FormChips.vue'
 import PetImage from 'src/components/PetImage.vue'
 import SkeletonBar from 'src/components/SkeletonBar.vue'
@@ -334,9 +331,10 @@ import { ADOPT_ME_PETS } from 'src/data/pets'
 import { notifyLoadError, notifyRemoved } from 'src/utils/notify'
 import { useRecentStore } from 'src/stores/recent'
 import RecentChips from 'src/components/RecentChips.vue'
+import SourceToggle from 'src/components/SourceToggle.vue'
 import {
   FORM_LABELS, FORM_COLOR_HEX, CATEGORY_LABELS, ITEM_CATEGORY_OPTIONS,
-  type PetForm, type InventoryPet, type ItemCategory,
+  type PetForm, type InventoryPet, type ItemCategory, type ValueSource,
 } from 'src/types'
 
 const inventory = useInventoryStore()
@@ -607,7 +605,7 @@ function resetItemSearch () {
 }
 
 // ── Value + demand fetching ───────────────────────────────────────────────────
-const valueSource  = ref<'amvgg' | 'elvebredd'>('amvgg')
+const valueSource  = ref<ValueSource>('amvgg')
 const petValue     = reactive<Record<string, number | null>>({})
 const petElveValue = reactive<Record<string, number | null>>({})
 const petDemand    = reactive<Record<string, DemandLevel>>({})
@@ -653,14 +651,13 @@ function fetchActive (pet: InventoryPet) {
   else void fetchValue(pet)
 }
 
-function setSource (src: 'amvgg' | 'elvebredd') {
-  valueSource.value = src
-  if (src === 'elvebredd') {
-    for (const pet of inventory.pets) {
-      if (petElveValue[pet.id] === undefined) void fetchElveValue(pet)
-    }
+// Elve values are fetched lazily, the first time the user switches to them.
+watch(valueSource, src => {
+  if (src !== 'elvebredd') return
+  for (const pet of inventory.pets) {
+    if (petElveValue[pet.id] === undefined) void fetchElveValue(pet)
   }
-}
+})
 
 function demandStars (d: DemandLevel): string {
   const n = d === 'High' ? 3 : d === 'Medium' ? 2 : d === 'Low' ? 1 : d === 'Very Low' ? 1 : 0
@@ -783,25 +780,7 @@ function removeWithUndo (id: string) {
 }
 .sort-btn--active { border-color: var(--primary); color: var(--primary); }
 
-.source-toggle {
-  display: flex;
-  gap: 4px;
-  background: var(--surface-2);
-  border-radius: 8px;
-  padding: 3px;
-}
-.source-btn {
-  padding: 6px 14px;
-  border: none;
-  border-radius: 6px;
-  font-size: 12px;
-  font-weight: 700;
-  cursor: pointer;
-  background: transparent;
-  color: var(--text-2);
-  transition: background 0.15s, color 0.15s;
-}
-.source-btn--active { background: var(--primary); color: #fff; }
+/* The AMV/Elve toggle lives in SourceToggle.vue. */
 
 .page-title {
   font-size: 26px;

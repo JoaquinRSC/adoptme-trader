@@ -6,26 +6,7 @@
         <div class="page-title">Trade Builder</div>
         <div class="page-sub">AMVGG values + demand cross-check</div>
       </div>
-      <div style="display:flex;align-items:center;gap:8px">
-      <div class="source-toggle" role="group" aria-label="Value source">
-        <button
-          class="source-btn"
-          :class="{ 'source-btn--active': valueSource === 'amvgg' }"
-          title="AMVGG (amvgg.com) — community value list"
-          aria-label="AMVGG values"
-          :aria-pressed="valueSource === 'amvgg'"
-          @click="valueSource = 'amvgg'"
-        >AMV</button>
-        <button
-          class="source-btn"
-          :class="{ 'source-btn--active': valueSource === 'elvebredd' }"
-          title="Elvebredd (elvebredd.com) — community value list"
-          aria-label="Elvebredd values"
-          :aria-pressed="valueSource === 'elvebredd'"
-          @click="valueSource = 'elvebredd'"
-        >Elve</button>
-      </div>
-      </div>
+      <SourceToggle v-model="valueSource" />
     </div>
 
     <div class="trade-layout">
@@ -232,12 +213,13 @@ import { useInventoryStore } from 'src/stores/inventory'
 import { useValuesStore, type DemandLevel } from 'src/stores/values'
 import { useDraftsStore, type OfferedItem } from 'src/stores/drafts'
 import PetPicker from 'src/components/PetPicker.vue'
+import SourceToggle from 'src/components/SourceToggle.vue'
 import PetImage from 'src/components/PetImage.vue'
 import SkeletonBar from 'src/components/SkeletonBar.vue'
 import { useRecentStore } from 'src/stores/recent'
 import {
   FORM_LABELS, FORM_COLOR_HEX, CATEGORY_LABELS,
-  type PetForm, type InventoryPet, type PetSuggestion, type PickerSelection,
+  type PetForm, type InventoryPet, type PetSuggestion, type PickerSelection, type ValueSource,
 } from 'src/types'
 
 const inventory   = useInventoryStore()
@@ -260,7 +242,7 @@ const searching           = ref(false)
 const searchDone          = ref(false)
 const searchError         = ref(false)
 
-const valueSource         = ref<'amvgg' | 'elvebredd'>('amvgg')
+const valueSource         = ref<ValueSource>('amvgg')
 
 // Match tolerance: how far a candidate's value may sit from the offer total.
 const TOLERANCE_OPTIONS = [5, 10, 20]
@@ -523,30 +505,7 @@ function deltaChipClass (delta: number) {
 .page-title   { font-size: 26px; font-weight: 800; color: var(--text-1); letter-spacing: -0.5px; }
 .page-sub     { font-size: 13px; font-weight: 600; color: var(--text-3); margin-top: 3px; }
 
-.source-toggle {
-  display: flex;
-  gap: 4px;
-  background: var(--surface-2);
-  border-radius: 8px;
-  padding: 3px;
-}
-
-.source-btn {
-  padding: 6px 16px;
-  border: none;
-  border-radius: 6px;
-  font-size: 12px;
-  font-weight: 700;
-  cursor: pointer;
-  background: transparent;
-  color: var(--text-2);
-  transition: background 0.15s, color 0.15s;
-}
-
-.source-btn--active {
-  background: var(--primary);
-  color: #fff;
-}
+/* The AMV/Elve toggle lives in SourceToggle.vue. */
 
 .trade-layout {
   display: grid;

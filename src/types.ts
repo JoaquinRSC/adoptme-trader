@@ -1,5 +1,8 @@
 export type PetForm = 'normal' | 'fly' | 'ride' | 'fr' | 'n' | 'nf' | 'nr' | 'nfr' | 'm' | 'mf' | 'mr' | 'mfr'
 
+/** Which community value list a page is reading from. See `SourceToggle.vue`. */
+export type ValueSource = 'amvgg' | 'elvebredd'
+
 export const FORM_LABELS: Record<PetForm, string> = {
   normal: 'Normal',
   fly:    'Fly',

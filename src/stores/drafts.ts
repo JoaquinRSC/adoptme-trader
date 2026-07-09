@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia'
 import { ref, watch } from 'vue'
-import type { InventoryPet, PetForm, ItemCategory } from 'src/types'
+import type { InventoryPet, PetForm, ItemCategory, ValueSource } from 'src/types'
 import type { DemandLevel } from 'src/stores/values'
 
 // Draft state for the Trade Builder offer and the Check Values sides. Kept here
@@ -26,7 +26,6 @@ export interface SideEntry {
   loading:  boolean
 }
 
-type ValueSource = 'amvgg' | 'elvebredd'
 
 const KEY_TRADE_OFFER  = 'draft_trade_offer'
 const KEY_CHECK_YOU    = 'draft_check_you'
