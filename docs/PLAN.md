@@ -129,15 +129,22 @@ teclado y autofocus solo en algunas, chips de forma en 3 posiciones diferentes,
 My Pets como tab / tira / ausente. Peor: en Trade Builder y Check Values el
 dialog SE CIERRA tras cada pet agregado → armar una oferta de 5 pets = abrirlo
 5 veces. Reemplazar todo por un componente compartido con esta spec:
-- [ ] `src/components/PetPicker.vue` configurable por props (tabs mine/other,
-      categorías sí/no, formas sí/no, single/multi).
+- [x] `src/components/PetPicker.vue` configurable por props (`mine` opcional →
+      con/sin tabs, `categories`, `forms`, textos). Emite `add` con
+      `PickerSelection` (`src/types.ts`); notifica el toast y precarga los valores
+      del inventario por sí solo. Adoptado por Trade Builder + Check Values
+      YOU/THEM (3 pickers → 1 componente). El add-pet/add-item de Inventory NO lo
+      usa: es un formulario (elegir → cantidad → confirmar), no un picker.
+      `single/multi` no se implementó — ningún consumidor lo necesita.
 - [x] Extraer `FormChips.vue` (el bloque F/R/D/N/M estaba copy-pasteado 4×:
       Inventory add-pet, Check Values YOU + THEM, Trade Builder). Ahora es un
       componente único con `v-model:PetForm` (encapsula `useFormPicker`), tooltips
       con el nombre de cada forma, y touch targets más grandes. Verificado end-to-end
       (Normal→N→NF→MF, badge de preview refleja el v-model).
-- [ ] Interacción idéntica SIEMPRE: autofocus al abrir, ↑↓ navega, Enter
-      selecciona, Esc cierra, mismo debounce.
+- [x] Interacción idéntica SIEMPRE: autofocus al abrir (o al pasar a "Other"),
+      ↑↓ navega con resaltado, Enter agrega el resaltado, Esc cierra, debounce 250
+      compartido. La búsqueda descarta respuestas viejas con un token, así que una
+      request lenta ya no pisa resultados nuevos. Verificado en navegador.
 - [x] **No cerrar al agregar** en Trade Builder + Check Values: el picker queda
       abierto, cada add dispara un toast `notifyAdded()` con contador de grupo
       (Quasar `group` colapsa adds rápidos en un toast con count), y el botón pasó
@@ -152,24 +159,22 @@ dialog SE CIERRA tras cada pet agregado → armar una oferta de 5 pets = abrirlo
       empty-state de los pickers cuando la búsqueda está vacía. En Inventory rellena
       el nombre; en TB/CV agrega directo. Verificado end-to-end (agregar→persistir→
       mostrar→click re-agrega).
-- [ ] My Pets siempre igual donde aplique: primer tab, ordenado por valor.
-- [ ] Mobile: el dialog pasa a sheet full-screen.
-- [ ] Browse Market puede conservar su dropdown inline (es el patrón correcto
-      para ese contexto) pero construido con las mismas piezas internas.
+- [x] My Pets siempre igual donde aplique: primer tab, ordenado por valor, con
+      filtro de categorías cuando hay más de una y el valor cacheado en cada card
+      (Check Values no tenía ni filtro ni valores; ahora sí).
+- [x] Mobile: el dialog pasa a sheet full-screen (`maximized` bajo 600px). Hubo
+      que borrar un `.picker-card { width: 94vw !important }` global de `app.scss`
+      que le ganaba al sheet. Verificado a 390×760.
+- [ ] ~~Browse Market~~ — el código se eliminó el 2026-07-08; no aplica.
 
 **Estado y consistencia (última pasada de revisión):**
-- [ ] 🐛 **Tolerancia inconsistente en Trade Builder**: `TOLERANCE = 0.02` filtra
-      sugerencias a ±2%, pero el empty state dice "±20%" (y CLAUDE.md también).
-      Decidir la intención y, mejor, exponer el control en la UI (±5/10/20%) —
-      hoy es un número mágico que explica búsquedas con pocas sugerencias.
-- [ ] **Persistir borradores**: la oferta del Trade Builder y los lados de Check
-      Values viven en refs del componente → cambiar de página los borra. Moverlos
-      a Pinia + localStorage con botón "limpiar". Perder una oferta de 6 pets por
-      tocar el sidebar es de las peores experiencias posibles.
-- [ ] **Redefinir el fairness score**: hoy se calcula solo contra la 1ª sugerencia
-      y siempre con valores AMV aunque estés en modo Elve. Cada sugerencia ya
-      tiene su delta chip → o quitar el score grande o darle semántica clara
-      (p. ej. fairness del trade seleccionado, respetando la fuente activa).
+- [x] 🐛 **Tolerancia inconsistente en Trade Builder**: resuelto exponiendo el
+      control en la UI (±5/10/20%, default 20, persistido en localStorage).
+- [x] **Persistir borradores**: la oferta del Trade Builder y los lados de Check
+      Values viven en `src/stores/drafts.ts` (Pinia + localStorage, `hydrate()` on
+      mount). Cada página tiene su botón "Clear".
+- [x] **Redefinir el fairness score**: ahora es la fairness de la sugerencia
+      seleccionada (o la mejor como fallback) y respeta la fuente activa AMV/Elve.
 - [ ] Batch de demands en sugerencias: las top-20 disparan 20 GET individuales
       a `/api/pet/details` → un endpoint batch (o incluir demands en `pet/batch`).
 

@@ -144,10 +144,14 @@ body {
   box-shadow: none !important;
 }
 
-// Quasar dark dialog card
+// Quasar dark dialog card. The radius is scoped to non-maximized dialogs so a
+// maximized one still renders as the edge-to-edge sheet Quasar intends.
 .q-dialog .q-card {
   background: var(--surface-2) !important;
   border: 1px solid var(--border-hi);
+}
+
+.q-dialog__inner:not(.q-dialog__inner--maximized) > .q-card {
   border-radius: 16px !important;
 }
 
@@ -234,13 +238,6 @@ body {
   .trade-layout {
     grid-template-columns: 1fr !important;
     gap: 12px !important;
-  }
-
-  // Dialog pickers/cards must fit the viewport (drop the 400px min-width)
-  .picker-card {
-    min-width: 0 !important;
-    width: 94vw !important;
-    max-width: 94vw !important;
   }
 
   // Wider tap targets for the small form/source toggles

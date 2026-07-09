@@ -64,7 +64,9 @@ All `/api/*` endpoints are public — the app has no authentication. They all se
 - `src/types.ts` — `PetForm` union, `FORM_LABELS`, `FORM_COLOR_HEX`, `FORM_GRADIENT`, `InventoryPet`, `PetSuggestion`
 - `src/stores/inventory.ts` — CRUD for `InventoryPet[]`, persisted to `localStorage`
 - `src/stores/values.ts` — In-memory value cache + `DemandLevel` type + `PetDetails` interface; wraps API fetch calls; `getBatch` for bulk pre-loading
-- `src/composables/useFormPicker.ts` — 5-button F/R/D/N/M toggle that derives `PetForm` from booleans; used in add-pet dialogs
+- `src/components/PetPicker.vue` — **the** pet/item picker dialog. Props: `mine` (omit for a search-only picker, e.g. the THEM side), `mineLabel`, `mineEmptyText`. Emits `add` with a `PickerSelection`. Owns its toast, its value pre-fetch, its keyboard handling (autofocus, ↑↓, Enter, Esc) and its mobile full-screen sheet (`maximized` below Quasar's `sm`). Used by Trade Builder + Check Values (both sides) — add new "add a pet to a list" surfaces here, not by copy-pasting
+- `src/components/FormChips.vue` — F/R/D/N/M toggle with `v-model:PetForm` (wraps `useFormPicker`); used by `PetPicker` and the Inventory add-pet dialog
+- `src/composables/useFormPicker.ts` — 5-button F/R/D/N/M toggle that derives `PetForm` from booleans; wrapped by `FormChips.vue`
 - `src/composables/useTheme.ts` — 5 color themes (Midnight/Ocean/Forest/Crimson/Dusk); persisted to `localStorage`, applied via `data-theme` on `<html>`
 - `src/pages/InventoryPage.vue` — Pet cards with form badge, quantity, lazy value fetch
 - `src/pages/CheckValuesPage.vue` — Two-sided value comparison (YOU vs THEM); supports AMVGG and Elvebredd sources; shows demand ★ per slot; YOU picker has "My Pets" (sorted by value) + "Other" tabs; THEM picker has "Other" tab only (search)

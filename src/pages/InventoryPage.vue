@@ -254,7 +254,7 @@
           <div class="add-left">
             <q-select
               v-model="newItemCategory"
-              :options="itemCategoryOptions"
+              :options="ITEM_CATEGORY_OPTIONS"
               emit-value map-options
               outlined dense
               label="Category"
@@ -363,7 +363,7 @@ import { notifyLoadError } from 'src/utils/notify'
 import { useRecentStore } from 'src/stores/recent'
 import RecentChips from 'src/components/RecentChips.vue'
 import {
-  FORM_LABELS, FORM_COLOR_HEX, CATEGORY_LABELS,
+  FORM_LABELS, FORM_COLOR_HEX, CATEGORY_LABELS, ITEM_CATEGORY_OPTIONS,
   type PetForm, type InventoryPet, type ItemCategory,
 } from 'src/types'
 
@@ -597,18 +597,6 @@ const itemSearchResults = ref<string[]>([])
 const itemSearching     = ref(false)
 const itemDropIndex     = ref(-1)
 const itemSearchInputRef = ref()
-
-const itemCategoryOptions = [
-  { label: 'Pet Wear',  value: 'petWear'  },
-  { label: 'Eggs',      value: 'egg'      },
-  { label: 'Strollers', value: 'stroller' },
-  { label: 'Food',      value: 'food'     },
-  { label: 'Vehicles',  value: 'vehicle'  },
-  { label: 'Toys',      value: 'toy'      },
-  { label: 'Gifts',     value: 'gift'     },
-  { label: 'Stickers',  value: 'sticker'  },
-  { label: 'Houses',    value: 'house'    },
-]
 
 function openAddItem () {
   newItemName.value       = ''

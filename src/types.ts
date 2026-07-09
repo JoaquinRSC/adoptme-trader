@@ -45,6 +45,11 @@ export const CATEGORY_LABELS: Record<ItemCategory, string> = {
   house:    'Houses',
 }
 
+/** Every category except `pet`, as `{ label, value }` for the category pickers. */
+export const ITEM_CATEGORY_OPTIONS = (Object.entries(CATEGORY_LABELS) as [ItemCategory, string][])
+  .filter(([value]) => value !== 'pet')
+  .map(([value, label]) => ({ label, value }))
+
 export const CATEGORY_SLUG: Record<Exclude<ItemCategory, 'pet'>, string> = {
   petWear:  'petwear',
   egg:      'eggs',
@@ -62,6 +67,15 @@ export interface InventoryPet {
   name: string
   form: PetForm
   category?: ItemCategory
+}
+
+/** What `<PetPicker>` emits when the user adds something. */
+export interface PickerSelection {
+  name: string
+  form: PetForm
+  category: ItemCategory
+  /** Present only when the selection came from the user's own inventory. */
+  pet?: InventoryPet
 }
 
 export const FORM_GRADIENT: Record<PetForm, string> = {
