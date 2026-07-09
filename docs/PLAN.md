@@ -184,11 +184,17 @@ dialog SE CIERRA tras cada pet agregado → armar una oferta de 5 pets = abrirlo
       los 6 `q-spinner` de valores: total + card en My Pets, slots en Check Values,
       slot + los 2 totales del footer en Trade Builder. Los spinners de búsqueda
       y el del botón "Find matches" siguen: ahí sí hay una acción en curso.
-- [ ] 🐛 **Bug encontrado (preexistente)**: entre ~820px y ~1000px de ancho, el
-      `.slot-meta` de los pet slots desborda — el valor se dibuja fuera del slot
-      (forma + estrellas + valor no entran en ~46px). Debajo de 820px el layout
-      apila y no pasa; arriba de 1000px el slot es grande. No lo causan los
-      skeletons (el estado cargado desborda igual).
+- [ ] 🐛 **Bug encontrado (preexistente, necesita pasada responsive)**: el
+      `.pet-slots-grid` está fijo en `repeat(4, 1fr)`, así que en paneles angostos
+      el slot cae a ~48px y el `.slot-meta` (forma + estrellas + valor) desborda:
+      el valor se dibuja FUERA del slot. Reproducido a 929px de ancho; a 1280px+
+      no pasa. No lo causan los skeletons — el estado cargado desborda igual.
+      Intenté parchear el `slot-meta` (ellipsis en la forma, `flex-shrink: 0` en
+      el valor) y no alcanza: a 48px no entran ni estrellas + valor. Hay que
+      agrandar el slot, no encoger el contenido.
+      Peor: **`CheckValuesPage.vue` no tiene NINGUNA media query** (su layout
+      `1fr 120px 1fr` sobrevive hasta 390px). Trade Builder sí apila a 820px.
+      Arreglar las dos juntas.
 - [x] Fallback de imágenes: `src/components/PetImage.vue` reemplaza los 7 `<img>`
       inline. Intenta la URL directa; si 404ea, resuelve con `/api/pet/image`
       (que scrapea y cachea); recién ahí muestra el emoji, que conserva la caja en
