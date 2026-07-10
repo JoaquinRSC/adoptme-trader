@@ -22,9 +22,15 @@ página** y **accesibilidad básica** (focus visible + ARIA). El **contraste AA*
 Sigue abierto un ítem que nunca fue bloqueante: el batch de demands de las
 sugerencias (rendimiento, no corrección).
 
-Siguiente en la 2.5: logo/mascota, nombre final, microcopy y emojis → Material.
+**Deployado el 2026-07-10** (`b38b0b0` diseño + `a4a5ad9` refactor). Verificado en
+producción con el service worker desregistrado: Fredoka pinta los títulos, el
+badge de forma peor medido da 7.08:1, la etiqueta peor medida 5.13:1, `.slot-meta`
+es opaco, y `/trade-builder` y `/check-values` SSRean su propio contenido.
 
-### Deuda técnica conocida (2026-07-09)
+Siguiente en la 2.5, **en orden de impacto**: logo/mascota, nombre final,
+microcopy y emojis → Material. Detalle en "Primer paso concreto al retomar".
+
+### Deuda técnica conocida (2026-07-10)
 
 - **`vue-tsc` tira 2 errores de tipos preexistentes** (verificado contra HEAD con
   un stash, no los introdujo ninguna sesión reciente):
@@ -48,8 +54,10 @@ Siguiente en la 2.5: logo/mascota, nombre final, microcopy y emojis → Material
 
 1. **`flyctl deploy` construye la imagen del árbol LOCAL.** Deployar estando
    detrás de `origin/master` pisa los `src/data/*.json` que el workflow de valores
-   acaba de publicar. Pasó el 2026-07-09. Como el workflow commitea cada 4 h,
-   estar detrás es lo normal → **`git fetch` + rebase antes de cada deploy**.
+   acaba de publicar. Pasó el 2026-07-09, y **volvió a estar a punto de pasar el
+   2026-07-10**: en una sola sesión de trabajo el workflow metió `c1f75bb`. Como
+   commitea cada 4 h, estar detrás es lo normal, no la excepción →
+   **`git fetch` + rebase antes de cada deploy**, sin pensarlo.
 2. **El service worker sirve CSS viejo** después de un deploy. Al verificar un
    cambio visual, desregistralo y limpiá `caches`, o medís el build anterior.
 3. **Un server `dist/ssr` corriendo bloquea el directorio**: `rm -rf dist/ssr`
@@ -91,10 +99,12 @@ quedó una sola versión pública para todos. El código vive en el historial de
 - ✅ Base sólida, por encima del promedio del nicho: sistema coherente (dark navy +
   violeta, cards, chips consistentes), sidebar profesional, empty states cuidados,
   5 temas de color. Mobile ya colapsa a una columna con hamburger (mejor de lo temido).
-- ⚠️ Tiene el "look IA/template por defecto": dark + violeta índigo, pills, sans
+- ⚠️ Tenía el "look IA/template por defecto": dark + violeta índigo, pills, sans
   genérica, dashboard con sidebar. Los usuarios no lo notan, pero anula el objetivo
-  de ser "distinta a las demás". La ejecución está bien; falta capa de identidad
-  (ver Fase 2.5).
+  de ser "distinta a las demás". **Parcialmente resuelto el 2026-07-10**: la sans
+  genérica dejó de serlo (Fredoka en los títulos) y las cards ahora hablan el
+  idioma de las formas. Sigue faltando lo que más identifica a una app: logo,
+  mascota y voz (ver Fase 2.5).
 - ✅ **El hydration mismatch del SSR era real y está arreglado** (2026-07-08): el
   router era un singleton de módulo, así que con requests SSR concurrentes cada
   ruta renderizaba el contenido de otra. Se veía sólo bajo concurrencia, por eso
