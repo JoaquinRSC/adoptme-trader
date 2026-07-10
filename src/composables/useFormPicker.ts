@@ -1,6 +1,5 @@
 import { ref, computed } from 'vue'
 import type { PetForm } from 'src/types'
-import { FORM_GRADIENT } from 'src/types'
 
 type NM = 'none' | 'n' | 'm'
 
@@ -38,11 +37,5 @@ export function useFormPicker (initial: PetForm = 'normal') {
 
   const isNormal = computed(() => !flyPick.value && !ridePick.value && nmPick.value === 'none')
 
-  const flyGrad  = FORM_GRADIENT.fly
-  const rideGrad = FORM_GRADIENT.ride
-  const normGrad = FORM_GRADIENT.normal
-  const nGrad    = FORM_GRADIENT.n
-  const mGrad    = FORM_GRADIENT.m
-
-  return { flyPick, ridePick, nmPick, form, reset, isNormal, flyGrad, rideGrad, normGrad, nGrad, mGrad }
+  return { flyPick, ridePick, nmPick, form, reset, isNormal }
 }

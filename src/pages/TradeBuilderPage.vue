@@ -35,7 +35,7 @@
             >
               <PetImage :name="item.pet.name" class="slot-img" />
               <span class="slot-meta">
-                <span class="slot-form" :style="(!item.pet.category || item.pet.category === 'pet') ? { color: FORM_COLOR_HEX[item.pet.form] } : {}">{{ item.pet.category && item.pet.category !== 'pet' ? CATEGORY_LABELS[item.pet.category] : FORM_LABELS[item.pet.form] }}</span>
+                <span class="slot-form" :style="(!item.pet.category || item.pet.category === 'pet') ? { color: FORM_TEXT_HEX[item.pet.form] } : {}">{{ item.pet.category && item.pet.category !== 'pet' ? CATEGORY_LABELS[item.pet.category] : FORM_LABELS[item.pet.form] }}</span>
                 <span v-if="item.demand" class="slot-demand" :class="`demand--${demandClass(item.demand)}`" :title="item.demand">{{ demandStars(item.demand) }}</span>
                 <span class="slot-val">
                   <SkeletonBar v-if="item.loading" width="1.6em" />
@@ -160,7 +160,7 @@
               <div class="sug-body">
                 <div class="sug-name">{{ s.name }}</div>
                 <div class="sug-meta">
-                  <span class="form-pill" :style="{ color: FORM_COLOR_HEX[s.form] }">
+                  <span class="form-pill" :style="{ color: FORM_TEXT_HEX[s.form] }">
                     {{ FORM_LABELS[s.form] }}
                   </span>
                   <span v-if="s.demand" class="demand-stars" :class="`stars--${demandClass(s.demand)}`" :title="s.demand">
@@ -218,7 +218,7 @@ import PetImage from 'src/components/PetImage.vue'
 import SkeletonBar from 'src/components/SkeletonBar.vue'
 import { useRecentStore } from 'src/stores/recent'
 import {
-  FORM_LABELS, FORM_COLOR_HEX, CATEGORY_LABELS,
+  FORM_LABELS, FORM_TEXT_HEX, CATEGORY_LABELS,
   type PetForm, type InventoryPet, type PetSuggestion, type PickerSelection, type ValueSource,
 } from 'src/types'
 

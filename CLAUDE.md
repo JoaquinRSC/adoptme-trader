@@ -61,7 +61,7 @@ All `/api/*` endpoints are public — the app has no authentication. They all se
 
 ### Key files
 
-- `src/types.ts` — `PetForm` union, `ValueSource`, `FORM_LABELS`, `FORM_COLOR_HEX`, `FORM_GRADIENT`, `InventoryPet`, `PetSuggestion`
+- `src/types.ts` — `PetForm` union, `ValueSource`, `FORM_LABELS`, the four form-colour maps (see below), `InventoryPet`, `PetSuggestion`
 - `src/stores/inventory.ts` — CRUD for `InventoryPet[]`, persisted to `localStorage`
 - `src/stores/values.ts` — In-memory value cache + `DemandLevel` type + `PetDetails` interface; wraps API fetch calls; `getBatch` for bulk pre-loading
 - `src/components/PetPicker.vue` — **the** pet/item picker dialog. Props: `mine` (omit for a search-only picker, e.g. the THEM side), `mineLabel`, `mineEmptyText`. Emits `add` with a `PickerSelection`. Owns its toast, its value pre-fetch, its keyboard handling (autofocus, ↑↓, Enter, Esc) and its mobile full-screen sheet (`maximized` below Quasar's `sm`). Used by Trade Builder + Check Values (both sides) — add new "add a pet to a list" surfaces here, not by copy-pasting
@@ -88,6 +88,37 @@ All `/api/*` endpoints are public — the app has no authentication. They all se
 ### Elvebredd value fetching (server)
 
 `warmElveCache()` loads from `src/data/elve-cache.json` at startup. Values stored in `elveValuesCache` Map. No demand data from Elvebredd.
+
+### Form colour & typography conventions
+
+**One form colour, four maps, three roles** (all in `src/types.ts`). Pick by role,
+never by convenience — a fill and a label cannot share a hex:
+
+| Map | Role |
+|---|---|
+| `FORM_COLOR_HEX` | fills: chip backgrounds, badges, the card's form edge |
+| `FORM_ON_HEX` | the ink to paint **on top of** a fill (white fails on 10 of 12) |
+| `FORM_TEXT_HEX` | when the form **is** the text (`.slot-form`, `.form-pill`) |
+| `FORM_RGB` | `"r, g, b"`, so CSS can vary alpha: `rgba(var(--form-rgb), .38)` |
+
+- **Gradients (`FORM_GRADIENT`) only on large surfaces with nothing written on
+  them** — the `.pet-thumb` wash. On a chip, the letter lands on the bright stop.
+- A `normal` pet and a non-pet item get **no** form colour. Tinting everything is
+  tinting nothing.
+- `color-mix()` is unavailable: the browser targets are chrome87 / safari13.1.
+- **AA is a hard floor: 4.5:1 for every text, in all six themes.** `--text-3` was
+  lifted for exactly this; it now sits close to `--text-2` on purpose, and the
+  hierarchy is carried by size/weight/case. `.slot-meta` is an *opaque* plate so
+  its contrast can't depend on the sprite behind it.
+
+**Type.** `--font-ui` (Nunito) carries the UI; `--font-display` (Fredoka) is for
+titles. `* { font-family: var(--font-ui) !important }` is load-bearing — it beats
+Quasar. So a second face can't be added with a competing rule: an element opts in
+by **re-pointing `--font-ui`** (custom properties resolve per element, so the `*`
+rule itself paints Fredoka). See the `.page-title` group in `app.scss`.
+
+Do **not** add `tabular-nums`: Nunito's digits are already uniform (9px at 15px/800)
+and Fredoka ships no `tnum` feature. Measured, not assumed. Re-check on a font swap.
 
 ### Accessibility & touch conventions
 
@@ -129,5 +160,5 @@ Manual (local) update, if ever needed:
 - **Phase 1 (done):** Inventory management + trade builder (AMVGG values + demand)
 - **Phase 1.5 (done):** Elvebredd cross-check in Check Values; color themes
 - **Phase 1.8 (done):** SSR migration to Fly.io; static value cache; Elve values in trade cards; non-pet item categories (Pet Wear, Eggs, Strollers, Food, Vehicles, Toys, Gifts, Stickers, Houses)
-- **Phase 2 (done, 2026-07-09):** public-ready cleanup — advanced mode removed, `PetPicker`/`FormChips`/`SourceToggle` unified, skeletons, undo, responsive pass, hover/touch fixes, 44px touch targets, the three page states, basic a11y. See `docs/PLAN.md`
-- **Phase 2.5 (next):** visual identity — own the per-form colour system (F/R/D/N/M) on cards, display typeface, logo/mascot, trader-voice microcopy. Run the `/frontend-design` skill first
+- **Phase 2 (done, 2026-07-10):** public-ready cleanup — advanced mode removed, `PetPicker`/`FormChips`/`SourceToggle` unified, skeletons, undo, responsive pass, hover/touch fixes, 44px touch targets, the three page states, basic a11y, WCAG AA contrast. See `docs/PLAN.md`
+- **Phase 2.5 (in progress):** visual identity. Done: per-form colour on cards, Fredoka display face, AA. Left: logo/mascot, final name, trader-voice microcopy, emoji→Material icons. Run the `/frontend-design` skill first

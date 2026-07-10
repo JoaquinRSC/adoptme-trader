@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;600;700;800;900&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Nunito:wght@400;500;600;700;800;900&display=swap');
 
 // ── Tap & selection (mobile) ───────────────────────────────────────────────────
 // App-like feel: tapping or scrolling never selects text or triggers the
@@ -15,7 +15,13 @@ body {
 }
 
 // ── Design tokens ─────────────────────────────────────────────────────────────
+// Type: Nunito carries the UI, Fredoka the page titles. Fredoka is geometric where
+// Nunito is humanist, so a title reads as a different voice rather than as Nunito
+// in a heavier weight. See the `*` rule below for how an element opts in.
 :root {
+  --font-ui:      'Nunito', 'Segoe UI', system-ui, sans-serif;
+  --font-display: 'Fredoka', 'Nunito', 'Segoe UI', system-ui, sans-serif;
+
   --bg:           #090b15;
   --surface:      #151827;
   --surface-2:    #1f2338;
@@ -31,7 +37,7 @@ body {
   --negative:     #f87171;
   --text-1:       #e8eaf2;
   --text-2:       #8b90a4;
-  --text-3:       #4a4f63;
+  --text-3:       #878a97;
 }
 
 // ── Themes ────────────────────────────────────────────────────────────────────
@@ -47,7 +53,7 @@ body {
   --primary-dim:  rgba(56, 189, 248, 0.1);
   --text-1:       #e2eeff;
   --text-2:       #7ba3c8;
-  --text-3:       #3d5470;
+  --text-3:       #7a8a9d;
 }
 
 [data-theme="forest"] {
@@ -62,7 +68,7 @@ body {
   --primary-dim:  rgba(74, 222, 128, 0.1);
   --text-1:       #e6f4ed;
   --text-2:       #7ab595;
-  --text-3:       #3a5c47;
+  --text-3:       #7c9385;
 }
 
 [data-theme="crimson"] {
@@ -78,7 +84,7 @@ body {
   --gold:         #fbbf24;
   --text-1:       #f4e8e8;
   --text-2:       #a87a7a;
-  --text-3:       #5c3c3c;
+  --text-3:       #968181;
 }
 
 [data-theme="dusk"] {
@@ -94,7 +100,7 @@ body {
   --gold:         #fde68a;
   --text-1:       #f4ede0;
   --text-2:       #a89070;
-  --text-3:       #5c4a30;
+  --text-3:       #928674;
 }
 
 [data-theme="rose"] {
@@ -110,16 +116,40 @@ body {
   --gold:         #fda4cf;
   --text-1:       #f4e8ef;
   --text-2:       #b07a98;
-  --text-3:       #5c3a4e;
+  --text-3:       #947e8b;
 }
 
 // ── Base ──────────────────────────────────────────────────────────────────────
+// The `!important` is load-bearing: Quasar ships its own `font-family` on body and
+// on several `.q-*` components, and this is what beats it everywhere at once.
+//
+// Which means a second face can't be introduced by adding a competing rule — it
+// would lose to this one. So an element opts into the display face by re-pointing
+// `--font-ui` (custom properties resolve per element, at use time), and this very
+// rule paints Fredoka for it. No specificity war, and it inherits to children.
 *,
 *::before,
 *::after {
-  font-family: 'Nunito', 'Segoe UI', system-ui, sans-serif !important;
+  font-family: var(--font-ui) !important;
   box-sizing: border-box;
 }
+
+.page-title,
+.dialog-title,
+.guide-title,
+.empty-title,
+.logo-name,
+.fairness-score {
+  --font-ui: var(--font-display);
+}
+
+// No `font-variant-numeric: tabular-nums` on the value columns, and that is
+// deliberate: measured in the browser, all ten of Nunito's digits already advance
+// 9px at 15px/800, so the columns don't jitter and the declaration would be inert.
+// Fredoka's digits *are* proportional (a `1` is 10px against a `2` at 15px) but it
+// ships no `tnum` feature, so asking for it changes nothing there either. Only the
+// fairness score is set in Fredoka, and its width already moves with the sign and
+// the digit count. Re-check this if either family is ever swapped.
 
 .q-app,
 body {
@@ -336,12 +366,17 @@ body {
   filter: drop-shadow(0 4px 12px rgba(0, 0, 0, 0.5));
 }
 
+// Opaque, not a 65%-black wash. The strip carries the form label, the demand stars
+// and the value, and a translucent scrim composites over whatever sprite happens to
+// sit behind it: against a pale pet every one of the twelve form colours dropped
+// under AA (1.45:1 for `normal`). An opaque plate makes the contrast a property of
+// the design instead of a property of the pet.
 .slot-meta {
   position: absolute;
   bottom: 0;
   left: 0;
   right: 0;
-  background: rgba(0, 0, 0, 0.65);
+  background: #0b0e18;
   border-radius: 0 0 9px 9px;
   padding: 3px 6px;
   display: flex;

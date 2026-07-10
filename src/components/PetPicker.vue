@@ -59,7 +59,7 @@
             <PetImage :name="pet.name" class="picker-card-img" />
             <div class="picker-card-name">{{ pet.name }}</div>
             <div class="picker-card-bottom">
-              <span class="picker-card-form" :style="isPet(pet.category) ? { color: FORM_COLOR_HEX[pet.form] } : {}">
+              <span class="picker-card-form" :style="isPet(pet.category) ? { color: FORM_TEXT_HEX[pet.form] } : {}">
                 {{ isPet(pet.category) ? FORM_LABELS[pet.form] : CATEGORY_LABELS[pet.category!] }}
               </span>
               <span class="picker-card-val" v-if="value != null">{{ value }}</span>
@@ -133,7 +133,7 @@
             <span
               v-if="category === 'pet'"
               class="form-pill"
-              :style="{ color: FORM_COLOR_HEX[form], marginLeft: 'auto' }"
+              :style="{ color: FORM_TEXT_HEX[form], marginLeft: 'auto' }"
             >{{ FORM_LABELS[form] }}</span>
           </div>
         </div>
@@ -157,7 +157,7 @@ import { useValuesStore } from 'src/stores/values'
 import { useRecentStore } from 'src/stores/recent'
 import { notifyAdded } from 'src/utils/notify'
 import {
-  FORM_LABELS, FORM_COLOR_HEX, CATEGORY_LABELS, ITEM_CATEGORY_OPTIONS,
+  FORM_LABELS, FORM_TEXT_HEX, CATEGORY_LABELS, ITEM_CATEGORY_OPTIONS,
   type PetForm, type InventoryPet, type ItemCategory, type PickerSelection,
 } from 'src/types'
 

@@ -5,7 +5,7 @@
     <button
       class="form-chip"
       :class="{ 'form-chip--active': flyPick }"
-      :style="flyPick ? { background: flyGrad } : {}"
+      :style="flyPick ? chipStyle('fly') : {}"
       title="Fly — can be flown"
       aria-label="Fly"
       :aria-pressed="flyPick"
@@ -14,7 +14,7 @@
     <button
       class="form-chip"
       :class="{ 'form-chip--active': ridePick }"
-      :style="ridePick ? { background: rideGrad } : {}"
+      :style="ridePick ? chipStyle('ride') : {}"
       title="Ride — can be ridden"
       aria-label="Ride"
       :aria-pressed="ridePick"
@@ -23,7 +23,7 @@
     <button
       class="form-chip"
       :class="{ 'form-chip--active': isNormal }"
-      :style="isNormal ? { background: normGrad } : {}"
+      :style="isNormal ? chipStyle('normal') : {}"
       title="Default — no add-ons"
       aria-label="Default"
       :aria-pressed="isNormal"
@@ -32,7 +32,7 @@
     <button
       class="form-chip"
       :class="{ 'form-chip--active': nmPick === 'n' }"
-      :style="nmPick === 'n' ? { background: nGrad } : {}"
+      :style="nmPick === 'n' ? chipStyle('n') : {}"
       title="Neon — glows in the dark"
       aria-label="Neon"
       :aria-pressed="nmPick === 'n'"
@@ -41,7 +41,7 @@
     <button
       class="form-chip"
       :class="{ 'form-chip--active': nmPick === 'm' }"
-      :style="nmPick === 'm' ? { background: mGrad } : {}"
+      :style="nmPick === 'm' ? chipStyle('m') : {}"
       title="Mega — mega-neon (4 neons combined)"
       aria-label="Mega"
       :aria-pressed="nmPick === 'm'"
@@ -53,7 +53,7 @@
 <script setup lang="ts">
 import { watch } from 'vue'
 import { useFormPicker } from 'src/composables/useFormPicker'
-import type { PetForm } from 'src/types'
+import { FORM_COLOR_HEX, FORM_ON_HEX, type PetForm } from 'src/types'
 
 // Single source of truth for the F/R/D/N/M toggle. Owns a useFormPicker instance
 // and exposes the derived PetForm as v-model, so every picker across the app
@@ -63,8 +63,13 @@ const emit = defineEmits<{ 'update:modelValue': [PetForm] }>()
 
 const {
   flyPick, ridePick, nmPick, form, reset, isNormal,
-  flyGrad, rideGrad, normGrad, nGrad, mGrad,
 } = useFormPicker(props.modelValue)
+
+// A flat fill, not the form gradient these chips used to carry: the letter sits on
+// top, and white-on-gradient crossed under AA wherever the bright stop landed
+// (1.67:1 over Mega's amber). `FORM_ON_HEX` picks the readable ink per fill.
+// The gradients live on surfaces with nothing written on them — see `.pet-thumb`.
+const chipStyle = (f: PetForm) => ({ background: FORM_COLOR_HEX[f], color: FORM_ON_HEX[f] })
 
 // Both watches guard on equality so the two-way binding can't loop.
 watch(form, (f) => { if (f !== props.modelValue) emit('update:modelValue', f) })
@@ -103,9 +108,9 @@ watch(() => props.modelValue, (v) => { if (v !== form.value) reset(v) })
   }
 }
 
+/* `background` and `color` are bound by `chipStyle()` — see the script block. */
 .form-chip--active {
   box-shadow: 0 3px 12px rgba(0, 0, 0, 0.45);
-  color: #fff;
   border-color: transparent;
 }
 </style>

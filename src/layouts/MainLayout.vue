@@ -117,7 +117,7 @@
           </p>
           <ul class="form-legend">
             <li v-for="f in formLegend" :key="f.k">
-              <span class="form-chip" :style="{ background: FORM_COLOR_HEX[f.form] }">{{ f.k }}</span>
+              <span class="form-chip" :style="{ background: FORM_COLOR_HEX[f.form], color: FORM_ON_HEX[f.form] }">{{ f.k }}</span>
               <span class="form-name">{{ f.label }}</span>
               <span class="form-desc">{{ f.desc }}</span>
             </li>
@@ -165,7 +165,7 @@ import { matInventory2, matSwapHoriz, matBalance, matChevronLeft, matChevronRigh
 import { version } from '../../package.json'
 import { useTheme } from 'src/composables/useTheme'
 import { useInventoryStore } from 'src/stores/inventory'
-import { FORM_COLOR_HEX } from 'src/types'
+import { FORM_COLOR_HEX, FORM_ON_HEX } from 'src/types'
 
 const $q = useQuasar()
 const inventory = useInventoryStore()
@@ -505,6 +505,9 @@ const formLegend = [
   align-items: center;
   gap: 10px;
 }
+/* `background` and `color` are bound per form in the template: white on these
+   fills failed AA on ten of the twelve (1.67:1 over Mega's amber). The dark ink
+   that replaced it needs no text-shadow to hold the letter down. */
 .form-chip {
   display: flex;
   align-items: center;
@@ -512,11 +515,9 @@ const formLegend = [
   width: 26px;
   height: 26px;
   border-radius: 7px;
-  color: #fff;
   font-size: 12px;
   font-weight: 800;
   flex-shrink: 0;
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
 }
 .form-name {
   font-size: 13px;

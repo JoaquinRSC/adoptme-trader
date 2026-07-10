@@ -64,7 +64,13 @@
 
     <!-- Pet grid -->
     <div class="pet-grid" v-else>
-      <div class="pet-card" v-for="pet in filteredSortedPets" :key="pet.id">
+      <div
+        class="pet-card"
+        v-for="pet in filteredSortedPets"
+        :key="pet.id"
+        :class="{ 'pet-card--formed': isFormed(pet) }"
+        :style="formVars(pet)"
+      >
 
         <!-- Thumbnail -->
         <div class="pet-thumb">
@@ -82,7 +88,7 @@
               :key="badge.letter"
               class="form-letter-badge"
               :class="{ 'form-letter-badge--square': badge.square }"
-              :style="{ background: badge.bg }"
+              :style="{ background: badge.bg, color: badge.ink }"
             >{{ badge.letter }}</span>
           </div>
           <span
@@ -190,7 +196,7 @@
                   <div class="preview-name">{{ newPetName }}</div>
                   <div
                     class="preview-form-badge"
-                    :style="{ color: FORM_COLOR_HEX[newPetForm], borderColor: FORM_COLOR_HEX[newPetForm] }"
+                    :style="{ color: FORM_TEXT_HEX[newPetForm], borderColor: FORM_TEXT_HEX[newPetForm] }"
                   >{{ FORM_LABELS[newPetForm] }}</div>
                 </div>
               </div>
@@ -333,7 +339,8 @@ import { useRecentStore } from 'src/stores/recent'
 import RecentChips from 'src/components/RecentChips.vue'
 import SourceToggle from 'src/components/SourceToggle.vue'
 import {
-  FORM_LABELS, FORM_COLOR_HEX, CATEGORY_LABELS, ITEM_CATEGORY_OPTIONS,
+  FORM_LABELS, FORM_TEXT_HEX, FORM_COLOR_HEX, FORM_ON_HEX, FORM_GRADIENT, FORM_RGB,
+  CATEGORY_LABELS, ITEM_CATEGORY_OPTIONS,
   type PetForm, type InventoryPet, type ItemCategory, type ValueSource,
 } from 'src/types'
 
@@ -341,11 +348,15 @@ const inventory = useInventoryStore()
 const values = useValuesStore()
 const recentStore = useRecentStore()
 
-const LETTER_BG: Record<string, string> = {
-  M: '#8830da',
-  F: '#3e96c8',
-  R: '#de2d75',
-  N: '#96cc5d',
+// Each badge letter is just one of the single-attribute forms, so its colour comes
+// from the one form palette. It used to be a private set (R pink, N green) that
+// flatly contradicted the sidebar legend, which reads FORM_COLOR_HEX (R green, N
+// violet) — the explainer taught colours the cards never painted.
+const LETTER_FORM: Record<string, PetForm> = {
+  M: 'm',
+  F: 'fly',
+  R: 'ride',
+  N: 'n',
 }
 
 const FORM_LETTERS: Record<PetForm, string[]> = {
@@ -364,7 +375,25 @@ const FORM_LETTERS: Record<PetForm, string[]> = {
 }
 
 function getFormBadges(form: PetForm) {
-  return FORM_LETTERS[form].map(l => ({ letter: l, bg: LETTER_BG[l] ?? '#6b7280', square: l === 'M' }))
+  return FORM_LETTERS[form].map(l => {
+    const attr = LETTER_FORM[l]
+    return { letter: l, bg: FORM_COLOR_HEX[attr], ink: FORM_ON_HEX[attr], square: l === 'M' }
+  })
+}
+
+// Only a pet with an actual form earns a colour. Items have none, and a Normal pet
+// is the baseline — giving it a grey edge would tint every card, which is the same
+// as tinting none of them.
+function isFormed (pet: InventoryPet): boolean {
+  return (!pet.category || pet.category === 'pet') && pet.form !== 'normal'
+}
+
+function formVars (pet: InventoryPet) {
+  if (!isFormed(pet)) return {}
+  return {
+    '--form-rgb':  FORM_RGB[pet.form],
+    '--form-grad': FORM_GRADIENT[pet.form],
+  }
 }
 
 // ── Add dialog ────────────────────────────────────────────────────────────────
@@ -948,6 +977,26 @@ function removeWithUndo (id: string) {
   .pet-card:hover .pet-actions { opacity: 1; }
 }
 
+/* The form as the card's own colour: a tinted edge, and the form's gradient washed
+   in behind the sprite. Only those two surfaces — the name and the value keep the
+   plain background, where their contrast is a known quantity.
+   `--form-rgb` / `--form-grad` are set inline by `formVars()`; an unformed card
+   never gets them and never matches these rules. */
+.pet-card--formed { border-color: rgba(var(--form-rgb), 0.38); }
+
+.pet-card--formed .pet-thumb::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: var(--form-grad);
+  opacity: 0.14;
+}
+
+/* Same specificity as `.pet-card:hover` above, so this has to follow it to win. */
+@media (hover: hover) {
+  .pet-card--formed:hover { border-color: rgba(var(--form-rgb), 0.75); }
+}
+
 /* Thumbnail */
 .pet-thumb {
   position: relative;
@@ -1002,7 +1051,6 @@ function removeWithUndo (id: string) {
   font-size: 10px;
   font-weight: 900;
   line-height: 1;
-  color: #fff;
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255,255,255,0.2);
 }
 

@@ -6,9 +6,9 @@ cerrar cada fase entera antes de empezar la siguiente — una app chica, fresca 
 pulida le gana a una app grande a medio hacer. El backlog existe para anotar
 sin comprometerse.
 
-## Estado (última actualización: 2026-07-09)
+## Estado (última actualización: 2026-07-10)
 
-**Fase 1 ✅ · Fase 1.5 ✅ · Fase 1.8 ✅ · Fase 2 ✅ (cerrada 2026-07-09).**
+**Fase 1 ✅ · Fase 1.5 ✅ · Fase 1.8 ✅ · Fase 2 ✅ · Fase 2.5 🚧 (en curso).**
 
 Cerrado en la Fase 2: modo avanzado eliminado, errores amables, borradores
 persistidos, fix del router SSR, tooltips + "How it works", contraste y
@@ -16,14 +16,13 @@ persistidos, fix del router SSR, tooltips + "How it works", contraste y
 `SourceToggle`), **fallback de imágenes** (`PetImage`), **undo al borrar**,
 **skeletons** (`SkeletonBar`), **pasada responsive**, **hover/touch** (nada
 escondido detrás de `:hover`), **touch targets de 44px**, **los 3 estados por
-página** y **accesibilidad básica** (focus visible + ARIA). No quedan bugs
-visuales conocidos.
+página** y **accesibilidad básica** (focus visible + ARIA). El **contraste AA**,
+último pendiente, se cerró el 2026-07-10 junto con la primera pasada de la 2.5.
 
-Queda pendiente de la Fase 2 sólo lo que se solapa con la 2.5: **contraste AA**.
-Y un ítem que nunca fue bloqueante: el batch de demands de las sugerencias
-(rendimiento, no corrección).
+Sigue abierto un ítem que nunca fue bloqueante: el batch de demands de las
+sugerencias (rendimiento, no corrección).
 
-Siguiente: **Fase 2.5 (identidad visual)**, que es la que le saca el "look de template".
+Siguiente en la 2.5: logo/mascota, nombre final, microcopy y emojis → Material.
 
 ### Deuda técnica conocida (2026-07-09)
 
@@ -351,21 +350,86 @@ dialog SE CIERRA tras cada pet agregado → armar una oferta de 5 pets = abrirlo
       Los tabs del picker NO son `role="tablist"`: un tablist de verdad debe
       navegarse con flechas y roving tabindex, y media implementación es peor que
       ninguna. Quedan como grupo de botones con `aria-pressed`.
-      Falta sólo el contraste AA, que se solapa con el pulido visual de la Fase 2.5.
+- [x] **Contraste AA** (2026-07-10, cerrado junto con la Fase 2.5).
+      `--text-3` no era un tercer nivel de texto: era texto ilegible. Fallaba en
+      los **6 temas** (1.88–2.28:1 contra el piso de 4.5:1) y lo usaban 35 lugares,
+      entre ellos `.page-sub` (13px), `.empty-panel` (12px) y todas las etiquetas
+      de valor. Subido a ≥4.5:1 en los 6 temas.
+      El hallazgo incómodo: al corregirlo aterriza casi encima de `--text-2`
+      (5.13 vs 5.56 en Midnight). **La rampa de 3 niveles sólo "funcionaba" porque
+      el tercero no se leía.** La jerarquía ahora la cargan el tamaño, el peso y la
+      mayúscula, que es donde corresponde. Los dos tokens sobreviven separados
+      (5.5:1 vs 4.5:1) pero conviene fusionarlos en una pasada futura.
+      Los otros tres fallos AA (leyenda, badges, `.slot-meta`) están en la 2.5.
+      Verificado en el browser sobre el build de producción: 0 fallos en badges,
+      chips ni etiquetas, en los 6 temas.
 
 ### Fase 2.5 — Identidad visual (que no parezca template/IA)
 La ejecución ya está; falta punto de vista. Pocas decisiones, mucho efecto:
-- [ ] **Apropiarse del sistema de colores por forma (F/R/D/N/M)** como lenguaje
-      visual central: bordes/tints de card por forma, gradientes de forma en
-      headers de trade. Es conocimiento del dominio — ninguna otra app lo tiene.
-- [ ] Tipografía display con carácter solo para títulos (redondeada/gordita,
-      onda Nunito/Baloo — pega con Adopt Me); el cuerpo queda sans limpia.
+- [x] **Apropiarse del sistema de colores por forma (F/R/D/N/M)** (2026-07-10).
+      Un solo origen de color por forma, con tres roles separados en `types.ts`:
+      `FORM_COLOR_HEX` (relleno), `FORM_TEXT_HEX` (texto), `FORM_ON_HEX` (tinta
+      sobre un relleno) y `FORM_RGB` (para variar el alfa en CSS; `color-mix()`
+      no llega a los targets chrome87/safari13.1). Las pet cards con forma llevan
+      borde `rgba(var(--form-rgb), .38)` y el `FORM_GRADIENT` lavado al 14% detrás
+      del sprite; una card `normal` o un ítem no se tiñen — teñir todo es no teñir
+      nada. Regla: **gradiente en superficies grandes sin texto encima; color plano
+      en chips con texto; `FORM_TEXT_HEX` cuando la forma ES el texto.**
+      Bugs reales que salieron de la pasada:
+      1. 🐛 La leyenda del "How it works" enseñaba colores que las cards no
+         pintaban: leía `FORM_COLOR_HEX` (R verde, N violeta) mientras los badges
+         usaban un `LETTER_BG` privado (R rosa, N verde). `LETTER_BG` eliminado.
+      2. 🐛 Los chips de la leyenda y los badges eran `color:#fff` sobre rellenos
+         brillantes: **10 de 12 no llegaban ni al piso de 3:1** (1.67:1 sobre el
+         ámbar de Mega). Resuelto con `FORM_ON_HEX`; el `text-shadow` que los
+         sostenía sobra y se fue.
+      3. 🐛 `.slot-meta` era `rgba(0,0,0,.65)` compuesto sobre un sprite
+         arbitrario → contraste no determinístico. Sobre un pet claro fallaban
+         **las 12 formas** (1.45:1 la peor). Ahora es una placa opaca `#0b0e18`.
+      ⚠️ Consecuencia asumida del diseño elegido: los 4 neones y los 4 megas
+      quedan casi indistinguibles entre sí (`n` vs `nfr` contrastan 1.03:1), y el
+      verde de `ride` es el mismo que `--positive` y que las ★ de demand High —
+      una card de Ride "se lee" como una card buena. Ver "Deuda de color".
+- [x] Tipografía display sólo para títulos (2026-07-10): **Fredoka** 500/600/700
+      para `.page-title`, `.dialog-title`, `.guide-title`, `.empty-title`,
+      `.logo-name` y `.fairness-score`. El cuerpo sigue en Nunito.
+      No se pudo "agregar una regla y listo": `* { font-family: … !important }`
+      existe para ganarle a Quasar, así que una segunda familia perdía siempre.
+      Un elemento se suma a la display **re-apuntando `--font-ui`** — las custom
+      properties se resuelven por elemento, así que la propia regla `*` pinta
+      Fredoka. Sin guerra de especificidad y hereda a los hijos.
+      Medido en el browser: **no se usan numerales tabulares y es a propósito.**
+      Los 10 dígitos de Nunito ya avanzan 9px a 15px/800 (las columnas no bailan),
+      y Fredoka —que sí es proporcional— no trae la feature `tnum`, así que pedirla
+      no cambiaba un píxel. Revisar si alguna vez se cambia una de las dos familias.
 - [ ] Logo + mascota propia (reemplaza huellita + wordmark). Clave para los
       previews de Discord de la Fase 3 (se tiene que reconocer a 60px).
 - [ ] Decidir el nombre final ("AM Trader"?) ANTES de comprar dominio.
+      Ojo: hoy conviven "AdoptMe Trader" (`index.html`, `<title>`) y "AM Trader"
+      (diálogo "How it works"). Unificar al decidir.
 - [ ] Microcopy con voz de trader (es-AR/en), no texto funcional de IA:
       "Nadie está buscando tu Frost Dragon todavía — probá en un rato".
+      Ya se corrigió el `<meta description>` + OG tags, que seguían vendiendo
+      "a live market scanner" — feature borrada el 2026-07-08.
 - [ ] Reemplazar emojis-como-íconos (🐾, 🦌, ⊘) por íconos Material (ya está el set).
+
+**Gradientes de forma en headers de trade — no se hizo, a propósito.** El plan lo
+pedía, pero `TradeBuilderPage.search()` arma todos los candidatos con un único
+`desiredForm`, así que **las 20 sugerencias comparten siempre la misma forma**: un
+borde o un gradiente por forma ahí sería una constante, no información. El gradiente
+se aplicó donde la forma sí varía (el thumb de las pet cards de My Pets).
+
+### Deuda de color (abierta, decidida a conciencia el 2026-07-10)
+
+`FORM_COLOR_HEX` asigna 12 colores a 12 combos, pero sólo discrimina 4:
+- `n`/`nf`/`nr`/`nfr` contrastan entre sí 1.03–1.31:1 → "un violeta".
+- `m`/`mf`/`mr`/`mfr` contrastan entre sí 1.05–1.68:1 → "un naranja".
+- `ride` (#34d399) == `--positive` == el verde de demand High.
+
+La alternativa evaluada era tratar la forma como **4 atributos que se apilan**
+(M/N/F/R), que es como habla el jugador ("neon fly ride") y como ya funcionan los
+badges. Se eligió mantener el sistema por combo. Si alguna vez molesta, el cambio
+es acotado: los badges ya son composicionales y `FORM_*` está centralizado.
 
 ### Fase 3 — Motor de crecimiento (antes que el login: primero tráfico, después retención)
 - [ ] **Links de trade compartibles**: armar un trade → link público + imagen OG linda
@@ -487,24 +551,24 @@ ads → Fly pago con margen.
 
 ## Primer paso concreto al retomar
 
-La Fase 2 está cerrada. Arranca la **Fase 2.5 (identidad visual)**.
+La Fase 2 está cerrada y la **Fase 2.5** va por la mitad: el sistema de color por
+forma, la tipografía display y el contraste AA ya están (2026-07-10).
 
 **Antes de escribir una línea de UI: correr la skill `/frontend-design`.**
 
-El primer paso es el que más rinde: **apropiarse del sistema de colores por forma
-(F/R/D/N/M)** como lenguaje visual. Es conocimiento del dominio que ninguna otra
-app del nicho tiene, y la mitad del trabajo ya está hecha:
-- `FORM_COLOR_HEX` y `FORM_GRADIENT` ya existen en `src/types.ts`.
-- Ya se usan en `FormChips.vue`, en los badges de `InventoryPage.vue` y en el
-  `.slot-form` de los pet slots.
-- Falta llevarlos a la **superficie** de las cards: borde/tint por forma en
-  `.pet-card` (InventoryPage) y en `.suggestion-card` (TradeBuilder), y gradiente
-  de forma en los headers de trade.
+Queda, en orden de impacto:
 
-Cuidado al hacerlo: el contraste AA sigue pendiente (último ítem de Fase 2) y se
-decide justo acá — los tints por forma no pueden comerse la legibilidad del
-nombre ni del valor. Resolver las dos cosas en la misma pasada.
+1. **Logo + mascota propia.** Es lo que más rinde de lo que falta: reemplaza la
+   huellita + wordmark y es la pieza que tiene que reconocerse a 60px en los
+   previews de Discord de la Fase 3. Hoy el logo es un emoji.
+2. **Nombre final**, antes de comprar dominio. Y unificar: `index.html` dice
+   "AdoptMe Trader", el diálogo de ayuda dice "AM Trader".
+3. **Microcopy con voz de trader** (es-AR/en). El copy funcional ya está limpio;
+   falta que tenga voz.
+4. **Emojis-como-íconos → Material** (🐾 en el logo y el empty state, 📦 en los
+   fallbacks de `PetImage`, ⊘). El set ya está instalado.
 
-Después, en orden de impacto: tipografía display sólo para títulos, logo/mascota
-(clave para los previews de Discord de la Fase 3), nombre final antes del dominio,
-microcopy con voz de trader, y reemplazar los emojis-como-íconos por Material.
+Al tocar color, el piso ya está medido y no se negocia: AA (4.5:1) para todo texto,
+en los **6 temas**, y `.slot-meta` es una placa opaca justamente para que el
+contraste no dependa del sprite que haya atrás. Hay un script de verificación de
+contraste reproducible en el historial de esta sesión; rehacerlo es barato.
