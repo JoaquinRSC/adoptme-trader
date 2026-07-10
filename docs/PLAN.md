@@ -27,8 +27,10 @@ producción con el service worker desregistrado: Fredoka pinta los títulos, el
 badge de forma peor medido da 7.08:1, la etiqueta peor medida 5.13:1, `.slot-meta`
 es opaco, y `/trade-builder` y `/check-values` SSRean su propio contenido.
 
-Siguiente en la 2.5, **en orden de impacto**: logo/mascota, nombre final,
-microcopy y emojis → Material. Detalle en "Primer paso concreto al retomar".
+Siguiente en la 2.5, **en orden de impacto**: el re-skin "Premium" (dirección
+elegida el 2026-07-10 — ver el ítem nuevo en la Fase 2.5, con tokens y camino
+de implementación), y después logo/mascota, nombre final, microcopy y
+emojis → Material. Detalle en "Primer paso concreto al retomar".
 
 ### Deuda técnica conocida (2026-07-10)
 
@@ -429,6 +431,54 @@ La ejecución ya está; falta punto de vista. Pocas decisiones, mucho efecto:
       Ya se corrigió el `<meta description>` + OG tags, que seguían vendiendo
       "a live market scanner" — feature borrada el 2026-07-08.
 - [ ] Reemplazar emojis-como-íconos (🐾, 🦌, ⊘) por íconos Material (ya está el set).
+- [ ] **Re-skin "Premium" (dirección elegida el 2026-07-10)** — terminación tipo
+      Linear/Raycast sobre el sistema existente, SIN tocar templates de Vue.
+      Maqueta aprobada: artifact "AM Trader — dirección premium" (v4) →
+      https://claude.ai/code/artifact/95dc7f4d-a393-4061-93a1-c9dd5de8e204
+      (las direcciones descartadas — sticker pastel, arcade cálido, minimal
+      papel/grafito — quedaron en el historial de versiones del artifact).
+      El diagnóstico que llevó acá: "moderno" no era ni pastel ni minimalismo de
+      hairlines — es **acabado**: profundidad, luz y detalle sobre la estructura
+      que ya existe.
+
+      **Se respeta** (no negociable, ya decidido):
+      - Colores por forma de `types.ts` con su regla de tres roles. En pills:
+        `rgba(var(--form-rgb), .14)` de fondo, `.30` de borde, `FORM_TEXT_HEX`
+        como texto.
+      - La arista de forma en el thumb/avatar (heredera del form edge actual).
+      - `--gold` #E7C368 para valores y total; **asciende a acento de marca**.
+      - Demand en estrellas ★★☆, Fredoka en títulos/marca, Nunito en la UI,
+        copy en inglés, logo 🐾 (hasta que llegue la mascota).
+
+      **Cambia** (tokens, en `app.scss`):
+      - Fondo: navy azulado → **negro neutro** `#0B0B0C→#121214` (degradé) con
+        glow ambiental dorado `radial-gradient` al 10% desde arriba-derecha.
+      - **Muere el índigo** `#7C6CF8`. CTA primario: degradé `#FFD479→#F0B53F`,
+        texto `#201503`, sombra `0 4px 20px rgba(240,181,63,.35)` + inset top
+        `rgba(255,255,255,.5)`.
+      - **Luz de arriba**: hairline `rgba(255,255,255,.22)` en el borde superior
+        de la pantalla (degradé horizontal) e `inset 0 1px 0 rgba(255,255,255,.06)`
+        en cada panel. Es EL truco que separa plano de premium.
+      - **Elevación**: paneles con degradé `rgba(255,255,255,.045)→.02` + borde
+        `.08` + sombra exterior blanda — se apoyan, no se encierran.
+      - **Controles táctiles**: el estado activo se "levanta" (degradé
+        `#2A2A2E→#202023` + borde `.12` + sombra chica), no solo cambia de color.
+      - Total de la oferta: el número más pesado de la pantalla, con gradiente
+        de texto dorado `#FFE9B3→#E7C368` (`background-clip: text`).
+      - Deltas financieros: verde `#4CD9A2` / rojo `#F2917E` — reservados para
+        ganancia/pérdida, nunca decorativos.
+      - **Temas: este oscuro reemplaza a los 6**; el selector de swatches se
+        retira del sidebar (un par claro puede volver después si hace falta).
+
+      **Camino de implementación** (pase de CSS puro):
+      1. Tokens nuevos en `app.scss` (fondo, dorado primario, hairlines, sombras).
+      2. Aplicar **solo en Trade Builder** y verificar en celular real
+         (⚠️ service worker: desregistrar antes de medir, sirve CSS viejo).
+      3. Extender a My Pets y Check Values; retirar el selector de temas.
+      4. **Re-medir AA sobre el fondo nuevo** (el dorado sobre negro neutro rinde
+         mejor que sobre navy, pero hay que verificarlo) y re-visitar la "Deuda
+         de color": el verde de `ride` vs `--positive` puede leerse distinto
+         sobre base neutra.
 
 **Gradientes de forma en headers de trade — no se hizo, a propósito.** El plan lo
 pedía, pero `TradeBuilderPage.search()` arma todos los candidatos con un único
