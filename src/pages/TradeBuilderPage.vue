@@ -35,7 +35,7 @@
             >
               <PetImage :name="item.pet.name" class="slot-img" />
               <span class="slot-meta">
-                <span class="slot-form" :style="(!item.pet.category || item.pet.category === 'pet') ? { color: FORM_TEXT_HEX[item.pet.form] } : {}">{{ item.pet.category && item.pet.category !== 'pet' ? CATEGORY_LABELS[item.pet.category] : FORM_LABELS[item.pet.form] }}</span>
+                <span class="slot-form" :style="isPet(item.pet.category) ? { color: FORM_TEXT_HEX[item.pet.form] } : {}">{{ isPet(item.pet.category) ? FORM_LABELS[item.pet.form] : CATEGORY_LABELS[item.pet.category!] }}</span>
                 <span v-if="item.demand" class="slot-demand" :class="`demand--${demandClass(item.demand)}`" :title="item.demand">{{ demandStars(item.demand) }}</span>
                 <span class="slot-val">
                   <SkeletonBar v-if="item.loading" width="1.6em" />
@@ -218,7 +218,7 @@ import PetImage from 'src/components/PetImage.vue'
 import SkeletonBar from 'src/components/SkeletonBar.vue'
 import { useRecentStore } from 'src/stores/recent'
 import {
-  FORM_LABELS, FORM_TEXT_HEX, CATEGORY_LABELS,
+  FORM_LABELS, FORM_TEXT_HEX, CATEGORY_LABELS, isPet,
   type PetForm, type InventoryPet, type PetSuggestion, type PickerSelection, type ValueSource,
 } from 'src/types'
 
@@ -350,12 +350,12 @@ const demandWarning = computed(() => {
 
 // ── Actions ───────────────────────────────────────────────────────────────────
 async function addOffered (pet: InventoryPet) {
-  if (!pet.category || pet.category === 'pet') recentStore.record(pet.name)
+  if (isPet(pet.category)) recentStore.record(pet.name)
   const item: OfferedItem = { pet, amvggValue: null, elveValue: null, demand: null, loading: true }
   offeredPets.value.push(item)
 
   try {
-    if (pet.category && pet.category !== 'pet') {
+    if (!isPet(pet.category)) {
       const res  = await fetch(`/api/item/details?name=${encodeURIComponent(pet.name)}&category=${pet.category}`)
       const data = await res.json() as { value: number | null; demand: string | null; elveValue: number | null }
       const found = offeredPets.value.find(o => o.pet.id === pet.id)

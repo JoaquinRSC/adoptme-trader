@@ -76,11 +76,11 @@
         <div class="pet-thumb">
           <PetImage
             :name="pet.name"
-            :fallback="!pet.category || pet.category === 'pet' ? '🐾' : '📦'"
+            :fallback="isPet(pet.category) ? '🐾' : '📦'"
             class="thumb-img"
           />
           <div
-            v-if="!pet.category || pet.category === 'pet'"
+            v-if="isPet(pet.category)"
             class="form-badges"
           >
             <span
@@ -88,7 +88,7 @@
               :key="badge.letter"
               class="form-letter-badge"
               :class="{ 'form-letter-badge--square': badge.square }"
-              :style="{ background: badge.bg, color: badge.ink }"
+              :style="badge.style"
             >{{ badge.letter }}</span>
           </div>
           <span
@@ -108,7 +108,7 @@
             <template v-else-if="activeValue(pet) !== null && activeValue(pet) !== undefined">
               <span class="value-num">{{ displayValue(pet) }}</span>
             </template>
-            <span v-else-if="pet.category && pet.category !== 'pet'" class="value-na">—</span>
+            <span v-else-if="!isPet(pet.category)" class="value-na">—</span>
             <button v-else class="value-fetch" @click="fetchActive(pet)">Fetch</button>
           </div>
           <div class="demand-row" v-if="petDemand[pet.id]">
@@ -339,7 +339,7 @@ import { useRecentStore } from 'src/stores/recent'
 import RecentChips from 'src/components/RecentChips.vue'
 import SourceToggle from 'src/components/SourceToggle.vue'
 import {
-  FORM_LABELS, FORM_TEXT_HEX, FORM_COLOR_HEX, FORM_ON_HEX, FORM_GRADIENT, FORM_RGB,
+  FORM_LABELS, FORM_TEXT_HEX, FORM_GRADIENT, FORM_RGB, formFill, isPet,
   CATEGORY_LABELS, ITEM_CATEGORY_OPTIONS,
   type PetForm, type InventoryPet, type ItemCategory, type ValueSource,
 } from 'src/types'
@@ -375,17 +375,18 @@ const FORM_LETTERS: Record<PetForm, string[]> = {
 }
 
 function getFormBadges(form: PetForm) {
-  return FORM_LETTERS[form].map(l => {
-    const attr = LETTER_FORM[l]
-    return { letter: l, bg: FORM_COLOR_HEX[attr], ink: FORM_ON_HEX[attr], square: l === 'M' }
-  })
+  return FORM_LETTERS[form].map(l => ({
+    letter: l,
+    style: formFill(LETTER_FORM[l]),
+    square: l === 'M',
+  }))
 }
 
 // Only a pet with an actual form earns a colour. Items have none, and a Normal pet
 // is the baseline — giving it a grey edge would tint every card, which is the same
 // as tinting none of them.
 function isFormed (pet: InventoryPet): boolean {
-  return (!pet.category || pet.category === 'pet') && pet.form !== 'normal'
+  return isPet(pet.category) && pet.form !== 'normal'
 }
 
 function formVars (pet: InventoryPet) {
@@ -702,7 +703,7 @@ function demandStarClass (d: DemandLevel): string {
 async function fetchValue (pet: InventoryPet) {
   loadingValue[pet.id] = true
   try {
-    if (pet.category && pet.category !== 'pet') {
+    if (!isPet(pet.category)) {
       const res  = await fetch(`/api/item/details?name=${encodeURIComponent(pet.name)}&category=${pet.category}`)
       const data = await res.json() as { value: number | null; demand: string | null }
       petValue[pet.id]  = data.value
@@ -722,7 +723,7 @@ async function fetchValue (pet: InventoryPet) {
 }
 
 async function fetchElveValue (pet: InventoryPet) {
-  if (pet.category && pet.category !== 'pet') {
+  if (!isPet(pet.category)) {
     try {
       const res  = await fetch(`/api/item/details?name=${encodeURIComponent(pet.name)}&category=${pet.category}`)
       const data = await res.json() as { elveValue: number | null }

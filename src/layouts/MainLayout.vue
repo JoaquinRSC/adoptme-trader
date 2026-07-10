@@ -117,7 +117,7 @@
           </p>
           <ul class="form-legend">
             <li v-for="f in formLegend" :key="f.k">
-              <span class="form-chip" :style="{ background: FORM_COLOR_HEX[f.form], color: FORM_ON_HEX[f.form] }">{{ f.k }}</span>
+              <span class="form-chip" :style="formFill(f.form)">{{ f.k }}</span>
               <span class="form-name">{{ f.label }}</span>
               <span class="form-desc">{{ f.desc }}</span>
             </li>
@@ -165,7 +165,7 @@ import { matInventory2, matSwapHoriz, matBalance, matChevronLeft, matChevronRigh
 import { version } from '../../package.json'
 import { useTheme } from 'src/composables/useTheme'
 import { useInventoryStore } from 'src/stores/inventory'
-import { FORM_COLOR_HEX, FORM_ON_HEX } from 'src/types'
+import { formFill } from 'src/types'
 
 const $q = useQuasar()
 const inventory = useInventoryStore()

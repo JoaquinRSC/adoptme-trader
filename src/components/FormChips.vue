@@ -53,7 +53,7 @@
 <script setup lang="ts">
 import { watch } from 'vue'
 import { useFormPicker } from 'src/composables/useFormPicker'
-import { FORM_COLOR_HEX, FORM_ON_HEX, type PetForm } from 'src/types'
+import { formFill, type PetForm } from 'src/types'
 
 // Single source of truth for the F/R/D/N/M toggle. Owns a useFormPicker instance
 // and exposes the derived PetForm as v-model, so every picker across the app
@@ -67,9 +67,9 @@ const {
 
 // A flat fill, not the form gradient these chips used to carry: the letter sits on
 // top, and white-on-gradient crossed under AA wherever the bright stop landed
-// (1.67:1 over Mega's amber). `FORM_ON_HEX` picks the readable ink per fill.
+// (1.67:1 over Mega's amber). `formFill` pairs each fill with readable ink.
 // The gradients live on surfaces with nothing written on them — see `.pet-thumb`.
-const chipStyle = (f: PetForm) => ({ background: FORM_COLOR_HEX[f], color: FORM_ON_HEX[f] })
+const chipStyle = formFill
 
 // Both watches guard on equality so the two-way binding can't loop.
 watch(form, (f) => { if (f !== props.modelValue) emit('update:modelValue', f) })

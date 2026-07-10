@@ -32,6 +32,13 @@ Siguiente en la 2.5: logo/mascota, nombre final, microcopy y emojis → Material
   y `TradeBuilderPage.vue` → `Type 'number | null' is not assignable to 'number'`.
   Sobreviven porque **ni el build de Quasar ni el CI corren typecheck** — sólo
   lint + build. Arreglarlos y sumar `vue-tsc --noEmit` al CI van juntos.
+- **Una ruta desconocida renderiza una página en blanco, no un 404.** Verificado
+  el 2026-07-10 en local y en producción: `curl /trade` devuelve un shell de 2804
+  bytes sin sidebar ni contenido (contra 10258 de `/inventory`), y el browser queda
+  en negro. Las rutas reales son `/inventory`, `/check-values` y `/trade-builder`.
+  No es el bug de hidratación del SSR (ese está arreglado) — es que no hay página
+  de error. Importa para la Fase 3: las páginas SSR por pet van a generar URLs que
+  alguien va a tipear mal.
 - El markup del `.source-toggle` ya está unificado, pero `.panel-header`,
   `.panel-count`, `.clear-draft-btn` y `.page-head/.page-title/.page-sub` siguen
   copy-pasteados entre Check Values y Trade Builder. No urge; si la Fase 2.5 los

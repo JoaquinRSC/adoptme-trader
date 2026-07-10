@@ -50,8 +50,8 @@
             >
               <PetImage :name="entry.name" class="slot-img" />
               <span class="slot-meta">
-                <span class="slot-form" :style="{ color: entry.category && entry.category !== 'pet' ? 'var(--text-2)' : FORM_TEXT_HEX[entry.form] }">
-                  {{ entry.category && entry.category !== 'pet' ? CATEGORY_LABELS[entry.category] : FORM_LABELS[entry.form] }}
+                <span class="slot-form" :style="{ color: isPet(entry.category) ? FORM_TEXT_HEX[entry.form] : 'var(--text-2)' }">
+                  {{ isPet(entry.category) ? FORM_LABELS[entry.form] : CATEGORY_LABELS[entry.category!] }}
                 </span>
                 <span v-if="entry.demand" class="slot-demand" :class="`demand--${demandClass(entry.demand)}`" :title="entry.demand">{{ demandStars(entry.demand) }}</span>
                 <span class="slot-val">
@@ -107,8 +107,8 @@
             >
               <PetImage :name="entry.name" class="slot-img" />
               <span class="slot-meta">
-                <span class="slot-form" :style="{ color: entry.category && entry.category !== 'pet' ? 'var(--text-2)' : FORM_TEXT_HEX[entry.form] }">
-                  {{ entry.category && entry.category !== 'pet' ? CATEGORY_LABELS[entry.category] : FORM_LABELS[entry.form] }}
+                <span class="slot-form" :style="{ color: isPet(entry.category) ? FORM_TEXT_HEX[entry.form] : 'var(--text-2)' }">
+                  {{ isPet(entry.category) ? FORM_LABELS[entry.form] : CATEGORY_LABELS[entry.category!] }}
                 </span>
                 <span v-if="entry.demand" class="slot-demand" :class="`demand--${demandClass(entry.demand)}`" :title="entry.demand">{{ demandStars(entry.demand) }}</span>
                 <span class="slot-val">
@@ -154,7 +154,7 @@ import { ref, computed, watch, onMounted } from 'vue'
 import { storeToRefs } from 'pinia'
 import { matBalance, matErrorOutline } from '@quasar/extras/material-icons'
 import { uid } from 'quasar'
-import { FORM_LABELS, FORM_TEXT_HEX, CATEGORY_LABELS, type PetForm, type ItemCategory, type PickerSelection } from 'src/types'
+import { FORM_LABELS, FORM_TEXT_HEX, CATEGORY_LABELS, isPet, type PetForm, type ItemCategory, type PickerSelection } from 'src/types'
 import { useValuesStore, type DemandLevel } from 'src/stores/values'
 import { useInventoryStore } from 'src/stores/inventory'
 import { useDraftsStore, type SideEntry } from 'src/stores/drafts'
@@ -277,7 +277,7 @@ async function addPetToSide(side: 'your' | 'them', name: string, form: PetForm, 
 
 async function refreshEntry (entry: SideEntry) {
   try {
-    if (entry.category && entry.category !== 'pet') {
+    if (!isPet(entry.category)) {
       const res  = await fetch(`/api/item/details?name=${encodeURIComponent(entry.name)}&category=${entry.category}`)
       const data = await res.json() as { value: number | null; demand: string | null; elveValue: number | null }
       entry.value  = valueSource.value === 'elvebredd' ? (data.elveValue ?? data.value) : data.value

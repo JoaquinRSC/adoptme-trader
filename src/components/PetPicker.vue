@@ -157,7 +157,7 @@ import { useValuesStore } from 'src/stores/values'
 import { useRecentStore } from 'src/stores/recent'
 import { notifyAdded } from 'src/utils/notify'
 import {
-  FORM_LABELS, FORM_TEXT_HEX, CATEGORY_LABELS, ITEM_CATEGORY_OPTIONS,
+  FORM_LABELS, FORM_TEXT_HEX, CATEGORY_LABELS, ITEM_CATEGORY_OPTIONS, isPet,
   type PetForm, type InventoryPet, type ItemCategory, type PickerSelection,
 } from 'src/types'
 
@@ -201,7 +201,6 @@ const searchLoading = ref(false)
 const activeIndex = ref(0)
 const searchInput = ref<QInput>()
 
-const isPet = (c?: ItemCategory) => !c || c === 'pet'
 
 // ── Mine tab ──────────────────────────────────────────────────────────────────
 const mineCategories = computed(() => {

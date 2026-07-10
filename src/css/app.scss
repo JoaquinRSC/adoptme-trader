@@ -1,4 +1,6 @@
-@import url('https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Nunito:wght@400;500;600;700;800;900&display=swap');
+// The two families load from a <link> in index.html, not an @import here: a CSS
+// @import can't be requested until this stylesheet has been fetched and parsed
+// down to that line, which puts the fonts one serial round trip behind the page.
 
 // ── Tap & selection (mobile) ───────────────────────────────────────────────────
 // App-like feel: tapping or scrolling never selects text or triggers the
@@ -143,13 +145,9 @@ body {
   --font-ui: var(--font-display);
 }
 
-// No `font-variant-numeric: tabular-nums` on the value columns, and that is
-// deliberate: measured in the browser, all ten of Nunito's digits already advance
-// 9px at 15px/800, so the columns don't jitter and the declaration would be inert.
-// Fredoka's digits *are* proportional (a `1` is 10px against a `2` at 15px) but it
-// ships no `tnum` feature, so asking for it changes nothing there either. Only the
-// fairness score is set in Fredoka, and its width already moves with the sign and
-// the digit count. Re-check this if either family is ever swapped.
+// No `tabular-nums` on the value columns, deliberately: measured in the browser,
+// Nunito's ten digits already advance uniformly, and Fredoka ships no `tnum`
+// feature, so the declaration would be inert. Re-check on a font swap.
 
 .q-app,
 body {

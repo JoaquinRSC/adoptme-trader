@@ -33,6 +33,13 @@ export const CATEGORY_LABELS: Record<ItemCategory, string> = {
   house:    'Houses',
 }
 
+/**
+ * Pets are the only category that has a form; eggs, strollers and the rest are
+ * items. `category` is optional because the inventory predates items, so an
+ * absent category means `pet` — which is why this can't just be `=== 'pet'`.
+ */
+export const isPet = (category?: ItemCategory): boolean => !category || category === 'pet'
+
 /** Every category except `pet`, as `{ label, value }` for the category pickers. */
 export const ITEM_CATEGORY_OPTIONS = (Object.entries(CATEGORY_LABELS) as [ItemCategory, string][])
   .filter(([value]) => value !== 'pet')
@@ -112,39 +119,32 @@ export const FORM_COLOR_HEX: Record<PetForm, string> = {
  * `--surface` / `--surface-2`.
  */
 export const FORM_TEXT_HEX: Record<PetForm, string> = {
+  ...FORM_COLOR_HEX,
   normal: '#888d99', // lifted from #6b7280 — 3.10:1 → 4.51:1
-  fly:    '#38bdf8',
-  ride:   '#34d399',
-  fr:     '#818cf8',
-  n:      '#a78bfa',
-  nf:     '#b197fc',
-  nr:     '#9c7ef0',
-  nfr:    '#c084fc',
-  m:      '#fbbf24',
-  mf:     '#f59e0b',
-  mr:     '#f97316',
-  mfr:    '#fb923c',
 }
+
+/** Near-black. Kept in step with the `.slot-meta` scrim in `app.scss`. */
+const FORM_INK = '#0b0e18'
 
 /**
  * What to paint on top of a flat `FORM_COLOR_HEX` fill. White fails on ten of the
- * twelve — 1.67:1 on Mega's amber, under even the 3:1 floor for large text —
- * while near-black clears 6:1 everywhere except `normal`, which is dark enough to
- * want white back.
+ * twelve — 1.67:1 on Mega's amber, under even the 3:1 floor for large text — while
+ * the ink clears 6:1 everywhere except `normal`, the one fill dark enough to want
+ * white back.
  */
-export const FORM_ON_HEX: Record<PetForm, string> = {
-  normal: '#ffffff',
-  fly:    '#0b0e18',
-  ride:   '#0b0e18',
-  fr:     '#0b0e18',
-  n:      '#0b0e18',
-  nf:     '#0b0e18',
-  nr:     '#0b0e18',
-  nfr:    '#0b0e18',
-  m:      '#0b0e18',
-  mf:     '#0b0e18',
-  mr:     '#0b0e18',
-  mfr:    '#0b0e18',
+export const FORM_ON_HEX = Object.fromEntries(
+  (Object.keys(FORM_COLOR_HEX) as PetForm[]).map(
+    form => [form, form === 'normal' ? '#ffffff' : FORM_INK],
+  ),
+) as Record<PetForm, string>
+
+/**
+ * A form's fill and the ink that reads on it, together. Always reach for this
+ * rather than `FORM_COLOR_HEX` alone: a fill without its ink inherits whatever
+ * colour it lands in, which is how the sidebar legend ended up at 1.67:1.
+ */
+export function formFill (form: PetForm) {
+  return { background: FORM_COLOR_HEX[form], color: FORM_ON_HEX[form] }
 }
 
 /**
