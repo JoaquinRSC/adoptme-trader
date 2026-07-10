@@ -12,19 +12,43 @@ sin comprometerse.
 
 Cerrado en la Fase 2: modo avanzado eliminado, errores amables, borradores
 persistidos, fix del router SSR, tooltips + "How it works", contraste y
-`max-width`, **selector de pets unificado** (`PetPicker`), **fallback de
-imágenes** (`PetImage`), **undo al borrar**, **skeletons** (`SkeletonBar`) y
-la **pasada responsive** de Check Values + Trade Builder. No quedan bugs
+`max-width`, **componentes unificados** (`PetPicker`, `FormChips`,
+`SourceToggle`), **fallback de imágenes** (`PetImage`), **undo al borrar**,
+**skeletons** (`SkeletonBar`), **pasada responsive**, **hover/touch** (nada
+escondido detrás de `:hover`), **touch targets de 44px**, **los 3 estados por
+página** y **accesibilidad básica** (focus visible + ARIA). No quedan bugs
 visuales conocidos.
 
-También: pasada responsive, hover/touch (nada escondido detrás de `:hover`),
-touch targets de 44px, los 3 estados por página y accesibilidad básica.
-
-Queda pendiente de la Fase 2 sólo lo que se solapa con la 2.5: contraste AA.
-Y dos ítems que nunca fueron bloqueantes: PWA instalable (ya hecha, falta tildarla
-abajo) y el batch de demands de las sugerencias (rendimiento, no corrección).
+Queda pendiente de la Fase 2 sólo lo que se solapa con la 2.5: **contraste AA**.
+Y un ítem que nunca fue bloqueante: el batch de demands de las sugerencias
+(rendimiento, no corrección).
 
 Siguiente: **Fase 2.5 (identidad visual)**, que es la que le saca el "look de template".
+
+### Deuda técnica conocida (2026-07-09)
+
+- **`vue-tsc` tira 2 errores de tipos preexistentes** (verificado contra HEAD con
+  un stash, no los introdujo ninguna sesión reciente):
+  `CheckValuesPage.vue` → `Type 'string | null' is not assignable to 'DemandLevel'`
+  y `TradeBuilderPage.vue` → `Type 'number | null' is not assignable to 'number'`.
+  Sobreviven porque **ni el build de Quasar ni el CI corren typecheck** — sólo
+  lint + build. Arreglarlos y sumar `vue-tsc --noEmit` al CI van juntos.
+- El markup del `.source-toggle` ya está unificado, pero `.panel-header`,
+  `.panel-count`, `.clear-draft-btn` y `.page-head/.page-title/.page-sub` siguen
+  copy-pasteados entre Check Values y Trade Builder. No urge; si la Fase 2.5 los
+  va a tocar igual, conviene extraerlos ahí.
+
+### Trampas del entorno (cuestan tiempo si se olvidan)
+
+1. **`flyctl deploy` construye la imagen del árbol LOCAL.** Deployar estando
+   detrás de `origin/master` pisa los `src/data/*.json` que el workflow de valores
+   acaba de publicar. Pasó el 2026-07-09. Como el workflow commitea cada 4 h,
+   estar detrás es lo normal → **`git fetch` + rebase antes de cada deploy**.
+2. **El service worker sirve CSS viejo** después de un deploy. Al verificar un
+   cambio visual, desregistralo y limpiá `caches`, o medís el build anterior.
+3. **Un server `dist/ssr` corriendo bloquea el directorio**: `rm -rf dist/ssr`
+   falla y `npm run build` puede salir con exit 0 reusando el output viejo.
+   Frenalo antes de rebuildear (`Get-NetTCPConnection -LocalPort <puerto>`).
 
 ## Diagnóstico
 
@@ -81,21 +105,29 @@ quedó una sola versión pública para todos. El código vive en el historial de
 
 ## Roadmap (en orden)
 
-### Fase 1 — Refresh automático de valores 🔴 prioridad máxima
+### Fase 1 — Refresh automático de valores ✅
 Sin confianza en los valores, nada más importa.
-- [ ] Endpoint `POST /api/refresh-values` protegido con token secreto (env var):
-      re-ejecuta la lógica de `fetch-values` en el server y reemplaza los Maps en memoria.
-- [ ] Nunca pisar el cache con datos parciales/vacíos: si el fetch falla, se conserva
-      el último cache bueno. Los JSON commiteados quedan como semilla/fallback de arranque.
-- [ ] Cron de GitHub Actions (gratis) cada 3-4 h que pegue al endpoint.
-      Despierta la máquina, refresca, la máquina se vuelve a dormir → compatible con
-      scale-to-zero, costo ~cero.
-- [ ] Persistir el último fetch exitoso en un volumen de Fly (~US$0.15/mes por GB)
-      para que un reinicio no vuelva a los valores del último deploy.
-- [ ] Probar Elvebredd desde la IP de Fly (curl ya bypasea el TLS fingerprint,
-      pero Cloudflare puede tratar distinto a IPs de datacenter). Backoff + fallback.
-- [ ] **Guardar snapshots desde el día uno** (fecha + valores): es la materia prima
-      del historial de tendencias de la Fase 5, se acumula solo mientras tanto.
+
+**Resuelto, pero con un diseño distinto al que está anotado abajo.** En vez de un
+endpoint que refresca los Maps en memoria + un volumen de Fly, ganó el camino más
+simple: `.github/workflows/refresh-values.yml` corre cada 4 h (`0 */4 * * *`),
+hace el fetch **desde el runner**, commitea los JSON a master si cambiaron y
+redeploya. El estado vive en git, no en un volumen.
+
+- [x] Refresh automático cada 4 h, sin endpoint y sin token: el runner fetchea y
+      commitea. Redeploya sólo si cambiaron los caches vivos (un cambio de sólo
+      snapshot se commitea pero no deploya).
+- [x] Nunca pisar el cache con datos vacíos: `snapshot-values.mjs` se niega a
+      escribir si las dos fuentes vienen vacías, y los JSON commiteados son la
+      semilla de arranque (`warmDetailsCache` / `warmElveCache`).
+- [x] **Snapshots desde el día uno**: `src/data/history/YYYY-MM-DD.json`,
+      idempotente por día UTC. Materia prima de las tendencias de la Fase 5.
+      El server todavía no los lee.
+- [x] Elvebredd desde el runner: `curl` bypasea el TLS fingerprint de Cloudflare
+      (Node fetch da 403). Confirmado end-to-end.
+- [~] ~~Endpoint `POST /api/refresh-values` con token~~ y ~~volumen de Fly~~:
+      **no aplican** con este diseño. Se dejan anotados por si algún día el
+      refresh tiene que ser en caliente (sin redeploy).
 
 ### Fase 2 — Limpieza para público
 - [x] ~~Ocultar Publish / Auto / Loop y Browse Market detrás de un flag~~ →
@@ -130,8 +162,9 @@ Sin confianza en los valores, nada más importa.
       → cross-request state pollution. Causa: `src/router/index.ts` exportaba un router
       singleton (compartido entre requests SSR concurrentes con `createMemoryHistory`).
       Fix: envolver en `defineRouter(() => createRouter(...))` → router fresco por request.
-- [ ] Arreglar `npm run lint` (no hay config de ESLint en el repo y eslint no está
-      en devDependencies — está roto).
+- [x] Arreglar `npm run lint`. Ya está: existe `eslint.config.mjs` (flat config,
+      `vue/flat/essential`), eslint está en devDependencies y el script corre limpio
+      sobre `src/`, `src-ssr/` y `scripts/`. El ítem quedó sin tildar.
 
 **Pulido visual** (un día de trabajo, no un rediseño):
 - [~] Subir tipografía y densidad ~20%: RECONSIDERADO. El diagnóstico era pesimista
@@ -160,6 +193,16 @@ dialog SE CIERRA tras cada pet agregado → armar una oferta de 5 pets = abrirlo
       YOU/THEM (3 pickers → 1 componente). El add-pet/add-item de Inventory NO lo
       usa: es un formulario (elegir → cantidad → confirmar), no un picker.
       `single/multi` no se implementó — ningún consumidor lo necesita.
+- [x] Extraer `SourceToggle.vue` (el switch AMV/Elve estaba copy-pasteado 3×:
+      My Pets, Check Values, Trade Builder — markup Y CSS). `v-model:ValueSource`;
+      `ValueSource` pasó de tipo privado de `drafts.ts` a `src/types.ts`. La
+      extracción NO era mecánica: el `setSource()` de Inventory mezclaba la
+      asignación con un efecto secundario (traer los valores de Elve al primer
+      switch); con `v-model` la asignación es del componente y el efecto volvió a
+      ser el `watch` que siempre fue. De paso: el padding había derivado
+      (Inventory 6×14 vs 6×16) y `.source-btn--disabled` era CSS muerto.
+      −130/+81 líneas. Verificado: fetch lazy de Elve dispara al primer switch y
+      no vuelve a disparar al re-clickear.
 - [x] Extraer `FormChips.vue` (el bloque F/R/D/N/M estaba copy-pasteado 4×:
       Inventory add-pet, Check Values YOU + THEM, Trade Builder). Ahora es un
       componente único con `v-model:PetForm` (encapsula `useFormPicker`), tooltips
@@ -189,7 +232,7 @@ dialog SE CIERRA tras cada pet agregado → armar una oferta de 5 pets = abrirlo
 - [x] Mobile: el dialog pasa a sheet full-screen (`maximized` bajo 600px). Hubo
       que borrar un `.picker-card { width: 94vw !important }` global de `app.scss`
       que le ganaba al sheet. Verificado a 390×760.
-- [ ] ~~Browse Market~~ — el código se eliminó el 2026-07-08; no aplica.
+- [x] ~~Browse Market~~ — el código se eliminó el 2026-07-08; no aplica.
 
 **Estado y consistencia (última pasada de revisión):**
 - [x] 🐛 **Tolerancia inconsistente en Trade Builder**: resuelto exponiendo el
@@ -381,8 +424,10 @@ La ejecución ya está; falta punto de vista. Pocas decisiones, mucho efecto:
 
 ## Transversal — calidad e infra (lo invisible que evita incendios)
 
-- [ ] **CI mínimo**: GitHub Action con build + typecheck en cada push/PR.
-      Hoy nada avisa si un commit rompe el deploy.
+- [~] **CI mínimo**: `.github/workflows/ci.yml` corre **lint + build** en cada push
+      y PR (saltea commits de sólo datos o sólo docs). Falta el **typecheck**:
+      `vue-tsc --noEmit` no corre en ningún lado, y por eso los 2 errores de tipos
+      de "Deuda técnica" sobreviven. Sumarlo junto con arreglarlos.
 - [ ] Error tracking con Sentry (free tier): enterarse de los errores de usuarios
       reales sin esperar que alguien los reporte.
 - [ ] Uptime monitor gratis (UptimeRobot) apuntando a `/api/ping`.
@@ -442,11 +487,24 @@ ads → Fly pago con margen.
 
 ## Primer paso concreto al retomar
 
-La Fase 2 está cerrada. Arranca la **Fase 2.5 (identidad visual)**, y el primer
-paso es el que más rinde: apropiarse del sistema de colores por forma
-(F/R/D/N/M) como lenguaje visual — bordes/tints de card por forma, gradientes de
-forma en los headers de trade. `FORM_COLOR_HEX` y `FORM_GRADIENT` ya existen en
-`src/types.ts` y ya se usan en los chips; falta llevarlos a las cards.
-Es conocimiento del dominio que ninguna otra app del nicho tiene.
+La Fase 2 está cerrada. Arranca la **Fase 2.5 (identidad visual)**.
 
-Antes de tocar UI nueva, correr la skill `/frontend-design`.
+**Antes de escribir una línea de UI: correr la skill `/frontend-design`.**
+
+El primer paso es el que más rinde: **apropiarse del sistema de colores por forma
+(F/R/D/N/M)** como lenguaje visual. Es conocimiento del dominio que ninguna otra
+app del nicho tiene, y la mitad del trabajo ya está hecha:
+- `FORM_COLOR_HEX` y `FORM_GRADIENT` ya existen en `src/types.ts`.
+- Ya se usan en `FormChips.vue`, en los badges de `InventoryPage.vue` y en el
+  `.slot-form` de los pet slots.
+- Falta llevarlos a la **superficie** de las cards: borde/tint por forma en
+  `.pet-card` (InventoryPage) y en `.suggestion-card` (TradeBuilder), y gradiente
+  de forma en los headers de trade.
+
+Cuidado al hacerlo: el contraste AA sigue pendiente (último ítem de Fase 2) y se
+decide justo acá — los tints por forma no pueden comerse la legibilidad del
+nombre ni del valor. Resolver las dos cosas en la misma pasada.
+
+Después, en orden de impacto: tipografía display sólo para títulos, logo/mascota
+(clave para los previews de Discord de la Fase 3), nombre final antes del dominio,
+microcopy con voz de trader, y reemplazar los emojis-como-íconos por Material.
