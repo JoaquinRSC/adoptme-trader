@@ -1,13 +1,13 @@
 {
-  "name": "AdoptMe Trader",
+  "name": "AM Trader",
   "short_name": "AM Trader",
-  "description": "Adopt Me trade manager: inventory, two-source value comparison, fairness scoring and market browsing.",
+  "description": "Adopt Me trade helper: your inventory, two-source value comparison, and demand-adjusted fairness scoring.",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
   "orientation": "portrait-primary",
-  "background_color": "#0c0e1a",
-  "theme_color": "#0c0e1a",
+  "background_color": "#0b0b0c",
+  "theme_color": "#0b0b0c",
   "icons": [
     {
       "src": "icons/icon-128x128.png",

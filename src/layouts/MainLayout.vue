@@ -22,18 +22,22 @@
       <div class="sidebar-inner">
         <!-- Logo -->
         <div class="sidebar-logo" :class="{ 'sidebar-logo--mini': collapsed }">
-          <svg class="logo-paw" viewBox="30 48 196 196" aria-hidden="true">
-            <g fill="currentColor">
-              <ellipse cx="66" cy="116" rx="22" ry="27" transform="rotate(-21.8 66 116)" />
-              <ellipse cx="104" cy="90" rx="22" ry="28" transform="rotate(-6.9 104 90)" />
-              <ellipse cx="152" cy="90" rx="22" ry="28" transform="rotate(6.9 152 90)" />
-              <ellipse cx="190" cy="116" rx="22" ry="27" transform="rotate(21.8 190 116)" />
-              <ellipse cx="128" cy="178" rx="51" ry="46" />
+          <!-- The Fair Scale: a level balance beam — the app answers "is this fair?". -->
+          <svg class="logo-mark" viewBox="0 0 64 64" aria-hidden="true">
+            <g fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+              <line x1="32" y1="13" x2="32" y2="47" />
+              <line x1="15" y1="18" x2="49" y2="18" />
+              <line x1="23" y1="50" x2="41" y2="50" />
+              <line x1="15" y1="18" x2="15" y2="24" />
+              <line x1="49" y1="18" x2="49" y2="24" />
+              <path d="M7 24 Q15 35 23 24" />
+              <path d="M41 24 Q49 35 57 24" />
             </g>
+            <circle cx="32" cy="10.5" r="2.8" fill="currentColor" />
           </svg>
           <div v-if="!collapsed">
-            <div class="logo-name">AdoptMe</div>
-            <div class="logo-tag">TRADER</div>
+            <div class="logo-name">AM Trader</div>
+            <div class="logo-tag">VALUE &amp; TRADES</div>
           </div>
         </div>
 
@@ -226,12 +230,12 @@ const formLegend = [
   padding: 20px 0;
 }
 
-.logo-paw {
-  width: 26px;
-  height: 26px;
+.logo-mark {
+  width: 27px;
+  height: 27px;
   flex-shrink: 0;
   color: var(--primary);
-  filter: drop-shadow(0 0 8px rgba(231, 195, 104, 0.5));
+  filter: drop-shadow(0 0 7px rgba(231, 195, 104, 0.45));
   transition: color 0.2s ease;
 }
 
