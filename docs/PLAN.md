@@ -641,24 +641,27 @@ ads → Fly pago con margen.
 
 ## Primer paso concreto al retomar
 
-La Fase 2 está cerrada y la **Fase 2.5** va por la mitad: el sistema de color por
-forma, la tipografía display y el contraste AA ya están (2026-07-10).
+La Fase 2 está cerrada y la **Fase 2.5** está casi lista: color por forma, tipografía
+display y AA (2026-07-10), y el **re-skin "Premium" + logo "The Fair Scale" + nombre
+"AM Trader"** (2026-07-11, deployado). Detalle en los ítems de la Fase 2.5 arriba.
 
 **Antes de escribir una línea de UI: correr la skill `/frontend-design`.**
 
-Queda, en orden de impacto:
+Quedan dos ítems, en orden de impacto:
 
-1. **Logo + mascota propia.** Es lo que más rinde de lo que falta: reemplaza la
-   huellita + wordmark y es la pieza que tiene que reconocerse a 60px en los
-   previews de Discord de la Fase 3. Hoy el logo es un emoji.
-2. **Nombre final**, antes de comprar dominio. Y unificar: `index.html` dice
-   "AdoptMe Trader", el diálogo de ayuda dice "AM Trader".
-3. **Microcopy con voz de trader** (es-AR/en). El copy funcional ya está limpio;
-   falta que tenga voz.
-4. **Emojis-como-íconos → Material** (🐾 en el logo y el empty state, 📦 en los
-   fallbacks de `PetImage`, ⊘). El set ya está instalado.
+1. **Microcopy con voz de trader** (es-AR/en). El copy funcional ya está limpio;
+   falta que tenga voz. Ej.: "Nadie está buscando tu Frost Dragon todavía — probá
+   en un rato" en vez de "No pets found". La mascota "Nest" (huevo, dirección B del
+   artifact de logos) puede darle cara a los empty states y a las share cards.
+2. **Emojis-como-íconos → Material** (quedan 🦌 en el empty state, 📦 en los
+   fallbacks de `PetImage`, ⊘). El 🐾 ya salió con el logo nuevo. El set ya está
+   instalado.
 
-Al tocar color, el piso ya está medido y no se negocia: AA (4.5:1) para todo texto,
-en los **6 temas**, y `.slot-meta` es una placa opaca justamente para que el
-contraste no dependa del sprite que haya atrás. Hay un script de verificación de
-contraste reproducible en el historial de esta sesión; rehacerlo es barato.
+Al tocar color, el piso ya está medido y no se negocia: AA (4.5:1) para todo texto
+(ahora sobre **un solo tema oscuro**, no seis), y `.slot-meta` es una placa opaca
+justamente para que el contraste no dependa del sprite que haya atrás. El chequeo de
+contraste se rehace en el browser sobre el build de producción (barato).
+
+Notas para la Fase 3 que salen de esta sesión: el `og-image.png` y el favicon/PWA ya
+son la marca nueva (la balanza), así que los share links y los previews de Discord
+arrancan con identidad propia. La mascota "Nest" quedó diseñada pero sin construir.
