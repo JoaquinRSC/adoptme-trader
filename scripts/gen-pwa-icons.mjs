@@ -150,25 +150,12 @@ function encodePng({ w, h, data }) {
   ])
 }
 
-// The source .ico has a dark navy square baked in as its background — invisible
-// on dark home screens. Repaint those dark pixels with the brand purple so the
-// result is a white "A" on a solid, high-contrast purple tile.
-function repaintDarkBackground(src, bg) {
-  const { w, h, data } = src
-  const out = Buffer.from(data)
-  for (let i = 0; i < w * h; i++) {
-    const R = data[i * 4], G = data[i * 4 + 1], B = data[i * 4 + 2], a = data[i * 4 + 3]
-    const lum = 0.299 * R + 0.587 * G + 0.114 * B
-    if (a > 0 && lum < 60) {
-      out[i * 4] = bg[0]; out[i * 4 + 1] = bg[1]; out[i * 4 + 2] = bg[2]; out[i * 4 + 3] = 255
-    }
-  }
-  return { w, h, data: out }
-}
-
 // ── Run ───────────────────────────────────────────────────────────────────────
-const BG = [124, 108, 248] // brand primary #7c6cf8
-const src = repaintDarkBackground(decodeIco(readFileSync(join(iconsDir, 'icon.ico'))), BG)
+// The master (icon.ico, from gen-icon-source.mjs) is already the finished gold
+// tile, so there's no dark square to repaint. BG only fills the safe-zone padding
+// on the maskable icons; matching it to the gradient's foot keeps that seamless.
+const BG = [240, 181, 63] // gold #f0b53f
+const src = decodeIco(readFileSync(join(iconsDir, 'icon.ico')))
 
 // Standard icons: full-bleed on the brand color — always visible, never blank.
 const plain = [128, 192, 256, 384, 512]

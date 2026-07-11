@@ -44,7 +44,7 @@ export default configure(function (/* ctx */) {
       // so bumping ICON_VERSION is the only reliable way to force "Add to Home
       // Screen" to refetch a changed icon. Bump it whenever the icons change.
       injectPwaMetaTags: ({ publicPath, pwaManifest }) => {
-        const ICON_VERSION = '2'
+        const ICON_VERSION = '3'
         const themeColor = pwaManifest.theme_color
         const v = (path: string) => `${publicPath}${path}?v=${ICON_VERSION}`
         return (
