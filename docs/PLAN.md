@@ -27,12 +27,11 @@ producción con el service worker desregistrado: Fredoka pinta los títulos, el
 badge de forma peor medido da 7.08:1, la etiqueta peor medida 5.13:1, `.slot-meta`
 es opaco, y `/trade-builder` y `/check-values` SSRean su propio contenido.
 
-El re-skin "Premium" se **cerró el 2026-07-11** (negro neutro + dorado de marca,
-índigo eliminado, 6 temas → 1; ver el ítem en la Fase 2.5). Sigue en la 2.5, **en
-orden de impacto**: logo/mascota (dirección elegida: **A "The Fair Scale"**, la
-balanza — dorada sobre negro), nombre final (**decidido: "AM Trader"**; falta
-unificarlo en `index.html` y en el wordmark del sidebar, que aún dicen "AdoptMe"),
-microcopy con voz de trader y emojis → Material.
+El re-skin "Premium", el **logo "The Fair Scale"** (la balanza dorada, en el sidebar
+y en todos los íconos + OG) y el **nombre "AM Trader"** (unificado en todos lados) se
+cerraron y **deployaron el 2026-07-11**. Queda en la 2.5, **en orden de impacto**:
+microcopy con voz de trader (es-AR/en) y emojis → Material. La mascota "Nest" (huevo)
+quedó disponible como personaje secundario para las share cards de la Fase 3.
 
 ### Deuda técnica conocida (2026-07-10)
 
@@ -423,11 +422,19 @@ La ejecución ya está; falta punto de vista. Pocas decisiones, mucho efecto:
       Los 10 dígitos de Nunito ya avanzan 9px a 15px/800 (las columnas no bailan),
       y Fredoka —que sí es proporcional— no trae la feature `tnum`, así que pedirla
       no cambiaba un píxel. Revisar si alguna vez se cambia una de las dos familias.
-- [ ] Logo + mascota propia (reemplaza huellita + wordmark). Clave para los
-      previews de Discord de la Fase 3 (se tiene que reconocer a 60px).
-- [ ] Decidir el nombre final ("AM Trader"?) ANTES de comprar dominio.
-      Ojo: hoy conviven "AdoptMe Trader" (`index.html`, `<title>`) y "AM Trader"
-      (diálogo "How it works"). Unificar al decidir.
+- [x] **Logo propio (hecho 2026-07-11): "The Fair Scale"** — una balanza nivelada
+      (la app responde "¿es fair?"), dorada sobre negro, reemplaza la huella. En el
+      sidebar como SVG y en todos los íconos raster: `scripts/gen-icon-source.mjs`
+      rasteriza el `icon.ico` máster desde la MISMA geometría del SVG (favicon e
+      in-app no pueden divergir), `gen-pwa-icons.mjs` deriva los PNG, y hay un
+      `og-image.png` nuevo. `ICON_VERSION` subido a 3. Se eligió A sobre la mascota-
+      huevo (B) y el monograma swap (C); las 3 quedaron en un artifact. **La mascota
+      "Nest" (huevo) sigue disponible como personaje secundario** para share cards.
+- [x] **Nombre final: "AM Trader" (unificado 2026-07-11).** Estaba partido entre
+      "AdoptMe Trader" (`index.html`, título, OG, manifest) y "AM Trader" (wordmark,
+      "How it works"). Ahora es "AM Trader" en todos lados. La key de localStorage
+      quedó en `adoptme_inventory` a propósito: renombrarla borraría el inventario
+      de los usuarios ([[feedback_localstorage_migration]]).
 - [ ] Microcopy con voz de trader (es-AR/en), no texto funcional de IA:
       "Nadie está buscando tu Frost Dragon todavía — probá en un rato".
       Ya se corrigió el `<meta description>` + OG tags, que seguían vendiendo
