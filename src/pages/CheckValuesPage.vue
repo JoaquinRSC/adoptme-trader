@@ -396,12 +396,13 @@ function addToThem (sel: PickerSelection) {
 
 /* ── Panel ── */
 .cv-panel {
-  background: var(--surface);
+  background: var(--elev-fill);
   border: 1px solid var(--border);
   border-radius: 16px;
   overflow: hidden;
   display: flex;
   flex-direction: column;
+  box-shadow: var(--elev-shadow);
 }
 
 .panel-header {
@@ -457,7 +458,7 @@ function addToThem (sel: PickerSelection) {
 .total-value {
   font-size: 18px;
   font-weight: 800;
-  color: var(--text-1);
+  color: var(--gold);
 }
 
 /* ── Center diff ── */

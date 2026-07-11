@@ -24,102 +24,49 @@ body {
   --font-ui:      'Nunito', 'Segoe UI', system-ui, sans-serif;
   --font-display: 'Fredoka', 'Nunito', 'Segoe UI', system-ui, sans-serif;
 
-  --bg:           #090b15;
-  --surface:      #151827;
-  --surface-2:    #1f2338;
-  --surface-3:    #2b3049;
-  --border:       rgba(255, 255, 255, 0.10);
-  --border-hi:    rgba(255, 255, 255, 0.17);
-  --primary:      #7c6cf8;
-  --primary-glow: rgba(124, 108, 248, 0.22);
-  --primary-dim:  rgba(124, 108, 248, 0.1);
-  --gold:         #f0b429;
-  --gold-dim:     rgba(240, 180, 41, 0.12);
-  --positive:     #34d399;
-  --negative:     #f87171;
-  --text-1:       #e8eaf2;
-  --text-2:       #8b90a4;
-  --text-3:       #878a97;
+  // Premium re-skin (2026-07-10): one dark theme replaces the six. Neutral black
+  // ground, gold as the brand accent, a top-light that separates flat from lifted.
+  // Depth and finish over the existing structure — no navy, no indigo.
+  --bg:           #0b0b0c;   // base; the body paints a gradient + gold glow over it
+  --bg-2:         #121214;
+  --surface:      #151517;
+  --surface-2:    #1c1c20;
+  --surface-3:    #26262b;
+  --border:       rgba(255, 255, 255, 0.08);
+  --border-hi:    rgba(255, 255, 255, 0.14);
+  --hairline:     rgba(255, 255, 255, 0.22);  // the screen's top edge of light
+  --lift:         rgba(255, 255, 255, 0.06);   // inset top light on a raised panel
+  // A raised panel, in one place: a faint top-lit wash over the surface, plus an
+  // inset highlight and a soft drop. Every elevated container points here.
+  --elev-fill:    linear-gradient(180deg, rgba(255, 255, 255, 0.045), rgba(255, 255, 255, 0.02)), var(--surface);
+  --elev-shadow:  inset 0 1px 0 var(--lift), 0 12px 30px -18px rgba(0, 0, 0, 0.7);
+
+  // Gold is the brand accent now. --primary points at it so every focus ring,
+  // active pip and field border inherits the one accent.
+  --primary:      #e7c368;
+  --primary-glow: rgba(231, 195, 104, 0.22);
+  --primary-dim:  rgba(231, 195, 104, 0.10);
+  --gold:         #e7c368;
+  --gold-dim:     rgba(231, 195, 104, 0.12);
+  // The primary CTA, in one place: a gold gradient with dark ink and a warm glow.
+  --cta-from:     #ffd479;
+  --cta-to:       #f0b53f;
+  --cta-ink:      #201503;
+  --cta-shadow:   rgba(240, 181, 63, 0.35);
+  --cta-bg:       linear-gradient(180deg, var(--cta-from), var(--cta-to));
+  --cta-glow:     0 4px 20px var(--cta-shadow), inset 0 1px 0 rgba(255, 255, 255, 0.5);
+
+  // Reserved for gain/loss, never decoration.
+  --positive:     #4cd9a2;
+  --negative:     #f2917e;
+
+  --text-1:       #f1f0ec;
+  --text-2:       #9c9ba3;
+  --text-3:       #8d8c95;
 }
 
-// ── Themes ────────────────────────────────────────────────────────────────────
-[data-theme="ocean"] {
-  --bg:           #080f1a;
-  --surface:      #0e1a2b;
-  --surface-2:    #152238;
-  --surface-3:    #1c2d47;
-  --border:       rgba(56, 189, 248, 0.12);
-  --border-hi:    rgba(56, 189, 248, 0.19);
-  --primary:      #38bdf8;
-  --primary-glow: rgba(56, 189, 248, 0.22);
-  --primary-dim:  rgba(56, 189, 248, 0.1);
-  --text-1:       #e2eeff;
-  --text-2:       #7ba3c8;
-  --text-3:       #7a8a9d;
-}
-
-[data-theme="forest"] {
-  --bg:           #091410;
-  --surface:      #0f1f18;
-  --surface-2:    #162b21;
-  --surface-3:    #1d3829;
-  --border:       rgba(74, 222, 128, 0.12);
-  --border-hi:    rgba(74, 222, 128, 0.19);
-  --primary:      #4ade80;
-  --primary-glow: rgba(74, 222, 128, 0.22);
-  --primary-dim:  rgba(74, 222, 128, 0.1);
-  --text-1:       #e6f4ed;
-  --text-2:       #7ab595;
-  --text-3:       #7c9385;
-}
-
-[data-theme="crimson"] {
-  --bg:           #140c0c;
-  --surface:      #1f1212;
-  --surface-2:    #2c1a1a;
-  --surface-3:    #3a2222;
-  --border:       rgba(248, 113, 113, 0.12);
-  --border-hi:    rgba(248, 113, 113, 0.19);
-  --primary:      #f87171;
-  --primary-glow: rgba(248, 113, 113, 0.22);
-  --primary-dim:  rgba(248, 113, 113, 0.1);
-  --gold:         #fbbf24;
-  --text-1:       #f4e8e8;
-  --text-2:       #a87a7a;
-  --text-3:       #968181;
-}
-
-[data-theme="dusk"] {
-  --bg:           #12100a;
-  --surface:      #1c190f;
-  --surface-2:    #252016;
-  --surface-3:    #302a1c;
-  --border:       rgba(240, 180, 41, 0.12);
-  --border-hi:    rgba(240, 180, 41, 0.19);
-  --primary:      #f0b429;
-  --primary-glow: rgba(240, 180, 41, 0.22);
-  --primary-dim:  rgba(240, 180, 41, 0.1);
-  --gold:         #fde68a;
-  --text-1:       #f4ede0;
-  --text-2:       #a89070;
-  --text-3:       #928674;
-}
-
-[data-theme="rose"] {
-  --bg:           #140a10;
-  --surface:      #1f1019;
-  --surface-2:    #2c1524;
-  --surface-3:    #3a1d30;
-  --border:       rgba(244, 114, 182, 0.12);
-  --border-hi:    rgba(244, 114, 182, 0.19);
-  --primary:      #f472b6;
-  --primary-glow: rgba(244, 114, 182, 0.22);
-  --primary-dim:  rgba(244, 114, 182, 0.1);
-  --gold:         #fda4cf;
-  --text-1:       #f4e8ef;
-  --text-2:       #b07a98;
-  --text-3:       #947e8b;
-}
+// The six colour themes were retired with the Premium re-skin (2026-07-10): one
+// dark identity, gold accent. `useTheme.ts` stays parked for a future light pair.
 
 // ── Base ──────────────────────────────────────────────────────────────────────
 // The `!important` is load-bearing: Quasar ships its own `font-family` on body and
@@ -151,8 +98,23 @@ body {
 
 .q-app,
 body {
-  background: var(--bg) !important;
+  background:
+    radial-gradient(115% 85% at 88% -8%, rgba(231, 195, 104, 0.10), transparent 55%),
+    linear-gradient(163deg, var(--bg-2), var(--bg)) !important;
+  background-attachment: fixed !important;
   color: var(--text-1) !important;
+}
+
+// The top edge of light — the single trick that reads as "premium" over "flat".
+// A fixed 1px hairline across the whole screen top, above everything.
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0 0 auto 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--hairline) 25%, var(--hairline) 75%, transparent);
+  z-index: 9999;
+  pointer-events: none;
 }
 
 // ── Scrollbar ─────────────────────────────────────────────────────────────────
@@ -163,7 +125,7 @@ body {
 
 // ── Quasar patches ────────────────────────────────────────────────────────────
 .q-page-container {
-  background: var(--bg) !important;
+  background: transparent !important;  // let the body's gradient + glow show through
 }
 
 .q-drawer {
@@ -510,8 +472,7 @@ body {
   .recent-chip,
   .cat-chip,
   .cat-picker-btn,
-  .picker-tab,
-  .theme-swatch {
+  .picker-tab {
     @include touch-hit;
   }
 }

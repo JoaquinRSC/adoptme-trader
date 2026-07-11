@@ -27,10 +27,12 @@ producción con el service worker desregistrado: Fredoka pinta los títulos, el
 badge de forma peor medido da 7.08:1, la etiqueta peor medida 5.13:1, `.slot-meta`
 es opaco, y `/trade-builder` y `/check-values` SSRean su propio contenido.
 
-Siguiente en la 2.5, **en orden de impacto**: el re-skin "Premium" (dirección
-elegida el 2026-07-10 — ver el ítem nuevo en la Fase 2.5, con tokens y camino
-de implementación), y después logo/mascota, nombre final, microcopy y
-emojis → Material. Detalle en "Primer paso concreto al retomar".
+El re-skin "Premium" se **cerró el 2026-07-11** (negro neutro + dorado de marca,
+índigo eliminado, 6 temas → 1; ver el ítem en la Fase 2.5). Sigue en la 2.5, **en
+orden de impacto**: logo/mascota (dirección elegida: **A "The Fair Scale"**, la
+balanza — dorada sobre negro), nombre final (**decidido: "AM Trader"**; falta
+unificarlo en `index.html` y en el wordmark del sidebar, que aún dicen "AdoptMe"),
+microcopy con voz de trader y emojis → Material.
 
 ### Deuda técnica conocida (2026-07-10)
 
@@ -431,7 +433,7 @@ La ejecución ya está; falta punto de vista. Pocas decisiones, mucho efecto:
       Ya se corrigió el `<meta description>` + OG tags, que seguían vendiendo
       "a live market scanner" — feature borrada el 2026-07-08.
 - [ ] Reemplazar emojis-como-íconos (🐾, 🦌, ⊘) por íconos Material (ya está el set).
-- [ ] **Re-skin "Premium" (dirección elegida el 2026-07-10)** — terminación tipo
+- [x] **Re-skin "Premium" (hecho 2026-07-11)** — terminación tipo
       Linear/Raycast sobre el sistema existente, SIN tocar templates de Vue.
       Maqueta aprobada: artifact "AM Trader — dirección premium" (v4) →
       https://claude.ai/code/artifact/95dc7f4d-a393-4061-93a1-c9dd5de8e204
@@ -479,6 +481,20 @@ La ejecución ya está; falta punto de vista. Pocas decisiones, mucho efecto:
          mejor que sobre navy, pero hay que verificarlo) y re-visitar la "Deuda
          de color": el verde de `ride` vs `--positive` puede leerse distinto
          sobre base neutra.
+
+      **Ejecutado (2026-07-11), los 4 pasos.** Tokens en `app.scss`: fondo negro
+      neutro con glow dorado + hairline de luz arriba (`body::before`), dorado
+      como `--primary` (murió el índigo), verdes/rojos financieros. La elevación y
+      el CTA dorado se centralizaron en 4 tokens (`--elev-fill`, `--elev-shadow`,
+      `--cta-bg`, `--cta-glow`) en vez de copy-pastearse por página. Aplicado a las
+      3 páginas (paneles elevados, CTAs dorados con tinta oscura, totales dorados);
+      el `$primary` de Quasar pasó a dorado para que el `q-btn-toggle` de tolerancia
+      no quedara índigo. **Los 6 temas y el selector de swatches se retiraron**
+      (`useTheme.ts` queda parqueado para un futuro par claro). AA re-medido en el
+      browser sobre el build de producción: todo ≥5.11:1 en los pares críticos
+      (text-3 5.11, dorado 10–11, deltas 7.4–9.5, tinta CTA sobre dorado 11).
+      Verificado desktop + mobile 390px con el SW desregistrado. La "Deuda de
+      color" (ride == positive) sigue abierta, ahora sobre base neutra.
 
 **Gradientes de forma en headers de trade — no se hizo, a propósito.** El plan lo
 pedía, pero `TradeBuilderPage.search()` arma todos los candidatos con un único

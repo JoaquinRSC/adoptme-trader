@@ -516,12 +516,13 @@ function deltaChipClass (delta: number) {
 
 /* Panel */
 .trade-panel {
-  background: var(--surface);
+  background: var(--elev-fill);
   border: 1px solid var(--border);
   border-radius: 14px;
   overflow: hidden;
   display: flex;
   flex-direction: column;
+  box-shadow: var(--elev-shadow);
 }
 
 .panel-header {
@@ -582,7 +583,14 @@ function deltaChipClass (delta: number) {
 .footer-totals { display: flex; flex-direction: column; align-items: flex-end; gap: 2px; }
 .footer-total-row { display: flex; align-items: baseline; gap: 5px; }
 .footer-src { font-size: 10px; font-weight: 700; color: var(--text-3); text-transform: uppercase; letter-spacing: 0.5px; }
-.footer-value { font-size: 14px; font-weight: 800; color: var(--gold); }
+.footer-value {
+  font-size: 14px;
+  font-weight: 800;
+  background: linear-gradient(180deg, #ffe9b3, var(--gold));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
 
 /* Controls */
 .trade-controls {
@@ -646,6 +654,10 @@ function deltaChipClass (delta: number) {
   border-radius: 8px;
   overflow: hidden;
 }
+/* The active pill is gold (Quasar primary); white text fails on it, so ink dark. */
+.tolerance-toggle :deep(.q-btn--active) {
+  color: var(--cta-ink) !important;
+}
 
 .demand-warning {
   display: flex;
@@ -673,13 +685,14 @@ function deltaChipClass (delta: number) {
   padding: 9px 14px;
   border: none;
   border-radius: 10px;
-  background: var(--primary);
-  color: #fff;
+  background: var(--cta-bg);
+  color: var(--cta-ink);
   font-size: 12px;
-  font-weight: 700;
+  font-weight: 800;
   cursor: pointer;
   width: 100%;
   justify-content: center;
+  box-shadow: var(--cta-glow);
   transition: opacity 0.15s, transform 0.1s;
 }
 @media (hover: hover) {
@@ -737,9 +750,9 @@ function deltaChipClass (delta: number) {
   .suggestion-card:hover { border-color: var(--border-hi); }
 }
 
-.sug-card--green { background: rgba(52, 211, 153, 0.06); }
-.sug-card--amber { background: rgba(240, 180, 41, 0.06); }
-.sug-card--red   { background: rgba(248, 113, 113, 0.06); }
+.sug-card--green { background: rgba(76, 217, 162, 0.06); }
+.sug-card--amber { background: rgba(231, 195, 104, 0.06); }
+.sug-card--red   { background: rgba(242, 145, 126, 0.06); }
 
 .sug-thumb {
   position: relative;
@@ -808,9 +821,9 @@ function deltaChipClass (delta: number) {
   border-radius: 20px;
   flex-shrink: 0;
 }
-.chip--green { background: rgba(52, 211, 153, 0.15); color: #34d399; }
-.chip--amber { background: rgba(240, 180, 41, 0.15);  color: #f0b429; }
-.chip--red   { background: rgba(248, 113, 113, 0.15); color: #f87171; }
+.chip--green { background: rgba(76, 217, 162, 0.15); color: var(--positive); }
+.chip--amber { background: rgba(231, 195, 104, 0.15); color: var(--gold); }
+.chip--red   { background: rgba(242, 145, 126, 0.15); color: var(--negative); }
 
 .sug-card--selected {
   border-color: var(--primary) !important;

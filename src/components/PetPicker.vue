@@ -431,7 +431,7 @@ function reset () {
 @media (hover: hover) {
   .cat-picker-btn:hover { border-color: var(--primary); color: var(--text-1); }
 }
-.cat-picker-btn--active { background: var(--primary); border-color: var(--primary); color: #fff; }
+.cat-picker-btn--active { background: var(--primary); border-color: var(--primary); color: var(--cta-ink); }
 
 .results-panel {
   margin-top: 10px;

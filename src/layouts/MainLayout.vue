@@ -69,20 +69,6 @@
             <q-icon :name="matHelpOutline" size="18px" />
             <span v-if="!collapsed">How it works</span>
           </button>
-          <!-- Colour-only buttons: without an aria-label they announce as nothing. -->
-          <div class="theme-picker" :class="{ 'theme-picker--mini': collapsed }" role="group" aria-label="Colour theme">
-            <button
-              v-for="t in themes"
-              :key="t.id"
-              class="theme-swatch"
-              :class="{ 'theme-swatch--active': currentTheme === t.id }"
-              :style="{ background: t.accent }"
-              :title="t.label"
-              :aria-label="t.label"
-              :aria-pressed="currentTheme === t.id"
-              @click="applyTheme(t.id)"
-            />
-          </div>
           <div v-if="!collapsed" class="footer-version">v{{ version }}</div>
           <!-- Collapse/mini is a desktop-only concept; on phones the drawer is an
                overlay, so hide it there (gt-xs = visible only ≥600px). -->
@@ -163,7 +149,6 @@ import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useQuasar } from 'quasar'
 import { matInventory2, matSwapHoriz, matBalance, matChevronLeft, matChevronRight, matMenu, matHelpOutline } from '@quasar/extras/material-icons'
 import { version } from '../../package.json'
-import { useTheme } from 'src/composables/useTheme'
 import { useInventoryStore } from 'src/stores/inventory'
 import { formFill } from 'src/types'
 
@@ -179,7 +164,6 @@ function closeDrawerOnMobile() {
 // Read after mount (in onMounted) — reading localStorage here would diverge from
 // the SSR render (always expanded) and cause a hydration mismatch on the drawer width.
 const collapsed = ref(false)
-const { current: currentTheme, themes, apply: applyTheme, init: initTheme } = useTheme()
 
 function toggleCollapse() {
   collapsed.value = !collapsed.value
@@ -189,7 +173,6 @@ function toggleCollapse() {
 let pingInterval: ReturnType<typeof setInterval> | null = null
 onMounted(() => {
   inventory.hydrate()
-  initTheme()
   if (localStorage.getItem('sidebar-collapsed') === 'true') collapsed.value = true
   pingInterval = setInterval(() => { void fetch('/api/ping') }, 60_000)
 })
@@ -248,7 +231,7 @@ const formLegend = [
   height: 26px;
   flex-shrink: 0;
   color: var(--primary);
-  filter: drop-shadow(0 0 8px rgba(124, 108, 248, 0.5));
+  filter: drop-shadow(0 0 8px rgba(231, 195, 104, 0.5));
   transition: color 0.2s ease;
 }
 
@@ -340,31 +323,6 @@ const formLegend = [
   padding: 14px 0;
   align-items: center;
 }
-
-.theme-picker {
-  display: flex;
-  gap: 7px;
-  align-items: center;
-}
-.theme-picker--mini {
-  flex-direction: column;
-  gap: 6px;
-}
-
-.theme-swatch {
-  width: 17px;
-  height: 17px;
-  border-radius: 50%;
-  border: 2px solid transparent;
-  cursor: pointer;
-  padding: 0;
-  transition: transform 0.15s, border-color 0.15s;
-  flex-shrink: 0;
-}
-@media (hover: hover) {
-  .theme-swatch:hover { transform: scale(1.2); }
-}
-.theme-swatch--active { border-color: var(--text-1); }
 
 .footer-version {
   font-size: 11px;

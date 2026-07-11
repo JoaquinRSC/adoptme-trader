@@ -1,9 +1,12 @@
-$primary: #7c6cf8;
-$secondary: #34d399;
-$accent: #f0b429;
-$dark: #141624;
-$dark-page: #0c0e1a;
-$positive: #34d399;
-$negative: #f87171;
+// Premium re-skin: gold is the brand accent, neutral-black grounds. These are
+// Sass compile-time vars for Quasar's own component theming; the CSS custom
+// properties in app.scss carry the same palette for our own styles.
+$primary: #e7c368;
+$secondary: #4cd9a2;
+$accent: #e7c368;
+$dark: #151517;
+$dark-page: #0b0b0c;
+$positive: #4cd9a2;
+$negative: #f2917e;
 $info: #38bdf8;
-$warning: #f0b429;
+$warning: #e7c368;

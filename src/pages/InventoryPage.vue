@@ -834,11 +834,12 @@ function removeWithUndo (id: string) {
   padding: 8px 16px;
   border: none;
   border-radius: 10px;
-  background: var(--primary);
-  color: #fff;
+  background: var(--cta-bg);
+  color: var(--cta-ink);
   font-size: 13px;
-  font-weight: 700;
+  font-weight: 800;
   cursor: pointer;
+  box-shadow: var(--cta-glow);
   transition: opacity 0.15s, transform 0.1s;
 }
 @media (hover: hover) { .btn-primary:hover { opacity: 0.88; } }
@@ -920,7 +921,7 @@ function removeWithUndo (id: string) {
 @media (hover: hover) {
   .cat-chip:hover { border-color: var(--primary); color: var(--text-1); }
 }
-.cat-chip--active { background: var(--primary); border-color: var(--primary); color: #fff; }
+.cat-chip--active { background: var(--primary); border-color: var(--primary); color: var(--cta-ink); }
 
 .btn-ghost {
   display: inline-flex;
@@ -963,17 +964,18 @@ function removeWithUndo (id: string) {
 /* Pet card */
 .pet-card {
   position: relative;
-  background: var(--surface);
+  background: var(--elev-fill);
   border: 1px solid var(--border);
   border-radius: 14px;
   overflow: hidden;
+  box-shadow: inset 0 1px 0 var(--lift), 0 6px 18px -12px rgba(0, 0, 0, 0.6);
   transition: border-color 0.2s, transform 0.15s, box-shadow 0.2s;
 }
 @media (hover: hover) {
   .pet-card:hover {
     border-color: var(--border-hi);
     transform: translateY(-2px);
-    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+    box-shadow: inset 0 1px 0 var(--lift), 0 12px 28px rgba(0, 0, 0, 0.45);
   }
   .pet-card:hover .pet-actions { opacity: 1; }
 }
@@ -1110,7 +1112,7 @@ function removeWithUndo (id: string) {
   transition: background 0.12s;
 }
 @media (hover: hover) {
-  .value-fetch:hover { background: rgba(124, 108, 248, 0.2); }
+  .value-fetch:hover { background: rgba(231, 195, 104, 0.2); }
 }
 
 /* Demand stars */
@@ -1223,8 +1225,9 @@ function removeWithUndo (id: string) {
   flex: 1;
   overflow-y: auto;
   border-radius: 10px;
-  background: var(--surface);
+  background: var(--elev-fill);
   border: 1px solid var(--border);
+  box-shadow: var(--elev-shadow);
 }
 
 .results-state {
@@ -1286,9 +1289,10 @@ function removeWithUndo (id: string) {
 
 /* Pet preview */
 .pet-preview-card {
-  background: var(--surface);
+  background: var(--elev-fill);
   border: 1px solid var(--border);
   border-radius: 12px;
+  box-shadow: inset 0 1px 0 var(--lift);
   min-height: 76px;
   display: flex;
   align-items: center;
