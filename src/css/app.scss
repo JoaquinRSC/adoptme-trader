@@ -565,14 +565,16 @@ body {
   .sort-btn,
   .btn-primary,
   .btn-secondary,
-  .btn-ghost,
   .btn-danger,
   .btn-retry,
   .form-chip,
   .recent-chip,
   .cat-chip,
   .cat-picker-btn,
-  .picker-tab {
+  .picker-tab,
+  .picker-done--ghost,
+  .qty-btn,
+  .dialog-close {
     @include touch-hit;
   }
 }

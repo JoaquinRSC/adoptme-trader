@@ -168,195 +168,158 @@
       </div>
     </q-dialog>
 
-    <!-- Add pet dialog -->
-    <q-dialog v-model="showAdd" persistent @hide="resetSearch">
-      <q-card class="add-card">
-        <div class="add-header">
+    <!-- Add pet dialog: one column, search-first. The config bar only exists
+         once a pet is picked — no dead "pick a pet" placeholder taking space. -->
+    <q-dialog v-model="showAdd" :maximized="$q.screen.lt.sm" @hide="resetSearch">
+      <q-card class="add-card" :class="{ 'add-card--sheet': $q.screen.lt.sm }">
+        <header class="add-head">
           <div class="dialog-title">Add Pet</div>
-        </div>
+          <button class="dialog-close" aria-label="Close" @click="showAdd = false">
+            <q-icon :name="matClose" size="18px" />
+          </button>
+        </header>
 
-        <div class="add-body">
-          <!-- LEFT: Search + results -->
-          <div class="add-left">
-            <q-input
-              ref="searchInputRef"
-              v-model="searchQuery"
-              label="Search pets…"
-              outlined dense autofocus
-              autocomplete="off"
-              @update:model-value="onSearchInput"
-              @keydown.enter.prevent="pickFirstResult"
-              @keydown.escape.prevent="showAdd = false"
-              @keydown.up.prevent="dropIndex = Math.max(dropIndex - 1, 0)"
-              @keydown.down.prevent="dropIndex = Math.min(dropIndex + 1, searchResults.length - 1)"
-            >
-              <template #prepend>
-                <q-icon :name="matSearch" size="16px" style="color:var(--text-3)" />
-              </template>
-            </q-input>
+        <div class="add-flow">
+          <q-input
+            ref="searchInputRef"
+            v-model="searchQuery"
+            placeholder="Search pets…"
+            outlined dense autofocus
+            autocomplete="off"
+            @update:model-value="onSearchInput"
+            @keydown.enter.prevent="pickFirstResult"
+            @keydown.escape.prevent="showAdd = false"
+            @keydown.up.prevent="dropIndex = Math.max(dropIndex - 1, 0)"
+            @keydown.down.prevent="dropIndex = Math.min(dropIndex + 1, searchResults.length - 1)"
+          >
+            <template #prepend>
+              <q-icon :name="matSearch" size="16px" style="color:var(--text-3)" />
+            </template>
+          </q-input>
 
-            <div class="results-panel">
-              <div v-if="searching && !searchResults.length" class="results-state">
-                <q-spinner size="14px" color="primary" /><span>Searching…</span>
-              </div>
-              <RecentChips
-                v-else-if="!searchQuery.trim() && recentStore.list.length"
-                :names="recentStore.list"
-                @select="selectPet"
-              />
-              <div v-else-if="!searchQuery.trim()" class="results-state">
-                Start typing to find a pet
-              </div>
-              <div v-else-if="!searchResults.length" class="results-state">
-                No results for "{{ searchQuery }}"
-              </div>
-              <div
-                v-for="(name, i) in searchResults"
-                :key="name"
-                class="result-item"
-                :class="{ 'result-item--active': i === dropIndex }"
-                @mousedown.prevent="selectPet(name)"
-                @mouseover="dropIndex = i"
-              >
-                <PetImage :name="name" class="result-img" />
-                <span class="result-name">{{ name }}</span>
-                <q-icon v-if="newPetName === name" :name="matCheck" size="13px" style="color:var(--primary);margin-left:auto" />
-              </div>
+          <div class="add-results">
+            <div v-if="searching && !searchResults.length" class="results-state">
+              <q-spinner size="14px" color="primary" /><span>Searching…</span>
             </div>
-          </div>
-
-          <!-- RIGHT: Config -->
-          <div class="add-right">
-            <!-- Pet preview -->
-            <div class="pet-preview-card">
-              <div v-if="newPetName" class="preview-filled">
-                <PetImage :name="newPetName" class="preview-img" />
-                <div class="preview-info">
-                  <div class="preview-name">{{ newPetName }}</div>
-                  <div class="preview-form-badge" :style="formFill(newPetForm)">
-                    {{ FORM_LABELS[newPetForm] }}
-                  </div>
-                </div>
-              </div>
-              <div v-else class="preview-empty">Pick a pet from the list</div>
-            </div>
-
-            <!-- Form chips -->
-            <div class="form-section">
-              <div class="form-section-label">Form</div>
-              <FormChips v-model="newPetForm" />
-            </div>
-
-            <!-- Quantity -->
-            <q-input
-              v-model.number="newPetQty"
-              type="number"
-              label="Quantity"
-              outlined dense
-              :min="1"
+            <RecentChips
+              v-else-if="!searchQuery.trim() && recentStore.list.length"
+              :names="recentStore.list"
+              @select="selectPet"
             />
-
-            <!-- Actions -->
-            <div class="add-actions">
-              <button class="btn-ghost" @click="showAdd = false">Cancel</button>
-              <button
-                class="btn-primary"
-                :disabled="!newPetName.trim()"
-                @click="confirmAdd"
-              >Add to Inventory</button>
+            <div v-else-if="!searchQuery.trim()" class="results-state">
+              Start typing to find a pet
+            </div>
+            <div v-else-if="!searchResults.length" class="results-state">
+              No results for "{{ searchQuery }}"
+            </div>
+            <div
+              v-for="(name, i) in searchResults"
+              :key="name"
+              class="result-item"
+              :class="{ 'result-item--active': i === dropIndex }"
+              @mousedown.prevent="selectPet(name)"
+              @mouseover="dropIndex = i"
+            >
+              <PetImage :name="name" class="result-img" />
+              <span class="result-name">{{ name }}</span>
+              <q-icon v-if="newPetName === name" :name="matCheck" size="15px" style="color:var(--primary);margin-left:auto" />
             </div>
           </div>
         </div>
+
+        <footer class="add-confirm" v-if="newPetName">
+          <div class="confirm-row">
+            <PetImage :name="newPetName" class="confirm-img" />
+            <div class="confirm-name">{{ newPetName }}</div>
+            <QtyStepper v-model="newPetQty" />
+          </div>
+          <FormChips v-model="newPetForm" />
+          <button class="btn-primary confirm-add" @click="confirmAdd">
+            Add to Inventory
+          </button>
+        </footer>
       </q-card>
     </q-dialog>
 
-    <!-- Add Item dialog (non-pets) -->
-    <q-dialog v-model="showAddItem" persistent @hide="resetItemSearch">
-      <q-card class="add-card">
-        <div class="add-header">
+    <!-- Add Item dialog (non-pets): same flow; category is a chip row, not a
+         stock dropdown. -->
+    <q-dialog v-model="showAddItem" :maximized="$q.screen.lt.sm" @hide="resetItemSearch">
+      <q-card class="add-card" :class="{ 'add-card--sheet': $q.screen.lt.sm }">
+        <header class="add-head">
           <div class="dialog-title">Add Item</div>
-        </div>
-        <div class="add-body">
-          <div class="add-left">
-            <q-select
-              v-model="newItemCategory"
-              :options="ITEM_CATEGORY_OPTIONS"
-              emit-value map-options
-              outlined dense
-              label="Category"
-              style="margin-bottom:8px"
-              @update:model-value="onItemCategoryChange"
-            />
-            <q-input
-              ref="itemSearchInputRef"
-              v-model="itemSearchQuery"
-              :label="`Search ${newItemCategory ? CATEGORY_LABELS[newItemCategory] : 'items'}…`"
-              outlined dense autofocus
-              autocomplete="off"
-              @update:model-value="onItemSearchInput"
-              @keydown.enter.prevent="pickFirstItemResult"
-              @keydown.escape.prevent="showAddItem = false"
-              @keydown.up.prevent="itemDropIndex = Math.max(itemDropIndex - 1, 0)"
-              @keydown.down.prevent="itemDropIndex = Math.min(itemDropIndex + 1, itemSearchResults.length - 1)"
+          <button class="dialog-close" aria-label="Close" @click="showAddItem = false">
+            <q-icon :name="matClose" size="18px" />
+          </button>
+        </header>
+
+        <div class="add-flow">
+          <div class="cat-filter cat-filter--dialog" role="group" aria-label="Item category">
+            <button
+              v-for="opt in ITEM_CATEGORY_OPTIONS"
+              :key="opt.value"
+              class="cat-chip"
+              :class="{ 'cat-chip--active': newItemCategory === opt.value }"
+              :aria-pressed="newItemCategory === opt.value"
+              @click="pickItemCategory(opt.value)"
+            >{{ opt.label }}</button>
+          </div>
+
+          <q-input
+            ref="itemSearchInputRef"
+            v-model="itemSearchQuery"
+            :placeholder="newItemCategory ? `Search ${CATEGORY_LABELS[newItemCategory]}…` : 'Search items…'"
+            outlined dense
+            autocomplete="off"
+            :disable="!newItemCategory"
+            @update:model-value="onItemSearchInput"
+            @keydown.enter.prevent="pickFirstItemResult"
+            @keydown.escape.prevent="showAddItem = false"
+            @keydown.up.prevent="itemDropIndex = Math.max(itemDropIndex - 1, 0)"
+            @keydown.down.prevent="itemDropIndex = Math.min(itemDropIndex + 1, itemSearchResults.length - 1)"
+          >
+            <template #prepend>
+              <q-icon :name="matSearch" size="16px" style="color:var(--text-3)" />
+            </template>
+          </q-input>
+
+          <div class="add-results">
+            <div v-if="!newItemCategory" class="results-state">
+              Pick a category to start
+            </div>
+            <div v-else-if="itemSearching && !itemSearchResults.length" class="results-state">
+              <q-spinner size="14px" color="primary" /><span>Searching…</span>
+            </div>
+            <div v-else-if="!itemSearchQuery.trim()" class="results-state">
+              Start typing to find {{ CATEGORY_LABELS[newItemCategory] }}
+            </div>
+            <div v-else-if="!itemSearchResults.length" class="results-state">
+              No results for "{{ itemSearchQuery }}"
+            </div>
+            <div
+              v-for="(name, i) in itemSearchResults"
+              :key="name"
+              class="result-item"
+              :class="{ 'result-item--active': i === itemDropIndex }"
+              @mousedown.prevent="selectItem(name)"
+              @mouseover="itemDropIndex = i"
             >
-              <template #prepend>
-                <q-icon :name="matSearch" size="16px" style="color:var(--text-3)" />
-              </template>
-            </q-input>
-            <div class="results-panel">
-              <div v-if="itemSearching && !itemSearchResults.length" class="results-state">
-                <q-spinner size="14px" color="primary" /><span>Searching…</span>
-              </div>
-              <div v-else-if="!itemSearchQuery.trim()" class="results-state">
-                Start typing to find an item
-              </div>
-              <div v-else-if="!itemSearchResults.length" class="results-state">
-                No results for "{{ itemSearchQuery }}"
-              </div>
-              <div
-                v-for="(name, i) in itemSearchResults"
-                :key="name"
-                class="result-item"
-                :class="{ 'result-item--active': i === itemDropIndex }"
-                @mousedown.prevent="selectItem(name)"
-                @mouseover="itemDropIndex = i"
-              >
-                <PetImage :name="name" :fallback="matInventory2" class="result-img" />
-                <span class="result-name">{{ name }}</span>
-                <q-icon v-if="newItemName === name" :name="matCheck" size="13px" style="color:var(--primary);margin-left:auto" />
-              </div>
-            </div>
-          </div>
-          <div class="add-right">
-            <div class="pet-preview-card">
-              <div v-if="newItemName" class="preview-filled">
-                <PetImage :name="newItemName" :fallback="matInventory2" class="preview-img" />
-                <div class="preview-info">
-                  <div class="preview-name">{{ newItemName }}</div>
-                  <div class="preview-form-badge preview-form-badge--outline" style="color:var(--primary);border-color:var(--primary)">
-                    {{ newItemCategory ? CATEGORY_LABELS[newItemCategory] : '' }}
-                  </div>
-                </div>
-              </div>
-              <div v-else class="preview-empty">Pick an item from the list</div>
-            </div>
-            <q-input
-              v-model.number="newItemQty"
-              type="number"
-              label="Quantity"
-              outlined dense
-              :min="1"
-            />
-            <div class="add-actions">
-              <button class="btn-ghost" @click="showAddItem = false">Cancel</button>
-              <button
-                class="btn-primary"
-                :disabled="!newItemName.trim() || !newItemCategory"
-                @click="confirmAddItem"
-              >Add to Inventory</button>
+              <PetImage :name="name" :fallback="matInventory2" class="result-img" />
+              <span class="result-name">{{ name }}</span>
+              <q-icon v-if="newItemName === name" :name="matCheck" size="15px" style="color:var(--primary);margin-left:auto" />
             </div>
           </div>
         </div>
+
+        <footer class="add-confirm" v-if="newItemName">
+          <div class="confirm-row">
+            <PetImage :name="newItemName" :fallback="matInventory2" class="confirm-img" />
+            <div class="confirm-name">{{ newItemName }}</div>
+            <QtyStepper v-model="newItemQty" />
+          </div>
+          <button class="btn-primary confirm-add" @click="confirmAddItem">
+            Add to Inventory
+          </button>
+        </footer>
       </q-card>
     </q-dialog>
 
@@ -365,14 +328,16 @@
 
 <script setup lang="ts">
 import { ref, reactive, computed, onMounted, nextTick, watch } from 'vue'
+import { useQuasar } from 'quasar'
 import FormChips from 'src/components/FormChips.vue'
 import PetImage from 'src/components/PetImage.vue'
 import SkeletonBar from 'src/components/SkeletonBar.vue'
-import { matAdd, matDeleteOutline, matSearch, matCheck, matArrowDownward, matArrowUpward, matSwapVert, matPets, matInventory2 } from '@quasar/extras/material-icons'
+import QtyStepper from 'src/components/QtyStepper.vue'
+import { matAdd, matDeleteOutline, matSearch, matCheck, matClose, matArrowDownward, matArrowUpward, matSwapVert, matPets, matInventory2 } from '@quasar/extras/material-icons'
 import { useInventoryStore } from 'src/stores/inventory'
 import { useValuesStore, type DemandLevel } from 'src/stores/values'
 import { ADOPT_ME_PETS } from 'src/data/pets'
-import { notifyLoadError, notifyRemoved } from 'src/utils/notify'
+import { notifyAdded, notifyLoadError, notifyRemoved } from 'src/utils/notify'
 import { formatValue, demandStars, demandClass } from 'src/utils/format'
 import { useRecentStore } from 'src/stores/recent'
 import RecentChips from 'src/components/RecentChips.vue'
@@ -383,6 +348,7 @@ import {
   type PetForm, type InventoryPet, type ItemCategory, type ValueSource,
 } from 'src/types'
 
+const $q = useQuasar()
 const inventory = useInventoryStore()
 const values = useValuesStore()
 const recentStore = useRecentStore()
@@ -485,18 +451,20 @@ function openAdd () {
   void ensureAmvggList()
 }
 
+// Adding closes the dialog: on a phone the common case is one pet, and the
+// reward is seeing it land in the collection. Quantity covers duplicates and
+// reopening is one tap. (It used to stay open and clear silently, which read
+// as "nothing happened".)
 function confirmAdd () {
   if (!newPetName.value.trim()) return
   const count = Math.max(1, newPetQty.value)
-  inventory.addPet(newPetName.value.trim(), newPetForm.value, count)
-  recentStore.record(newPetName.value.trim())
+  const name  = newPetName.value.trim()
+  inventory.addPet(name, newPetForm.value, count)
+  recentStore.record(name)
   const added = inventory.pets.slice(-count)
   for (const pet of added) void fetchValue(pet)
-  newPetName.value    = ''
-  newPetQty.value     = 1
-  searchQuery.value   = ''
-  searchResults.value = []
-  void nextTick(() => searchInputRef.value?.focus())
+  notifyAdded(count > 1 ? `${name} ×${count}` : name)
+  showAdd.value = false
 }
 
 // ── Pet search autocomplete ───────────────────────────────────────────────────
@@ -644,10 +612,14 @@ function openAddItem () {
   showAddItem.value       = true
 }
 
-function onItemCategoryChange () {
+// Chip-row category picker: selecting one clears the previous category's
+// search and sends focus to the (now enabled) search field.
+function pickItemCategory (cat: ItemCategory) {
+  newItemCategory.value   = cat
   newItemName.value       = ''
   itemSearchQuery.value   = ''
   itemSearchResults.value = []
+  void nextTick(() => itemSearchInputRef.value?.focus())
 }
 
 let itemSearchTimer: ReturnType<typeof setTimeout> | null = null
@@ -682,17 +654,16 @@ function pickFirstItemResult () {
   }
 }
 
+// Same close-on-add contract as confirmAdd.
 function confirmAddItem () {
   if (!newItemName.value.trim() || !newItemCategory.value) return
   const count = Math.max(1, newItemQty.value)
-  inventory.addItem(newItemName.value.trim(), newItemCategory.value, count)
+  const name  = newItemName.value.trim()
+  inventory.addItem(name, newItemCategory.value, count)
   const added = inventory.pets.slice(-count)
   for (const item of added) void fetchValue(item)
-  newItemName.value       = ''
-  newItemQty.value        = 1
-  itemSearchQuery.value   = ''
-  itemSearchResults.value = []
-  void nextTick(() => itemSearchInputRef.value?.focus())
+  notifyAdded(count > 1 ? `${name} ×${count}` : name)
+  showAddItem.value = false
 }
 
 function resetItemSearch () {
@@ -921,23 +892,6 @@ function removeWithUndo (id: string) {
 }
 @media (hover: hover) {
   .btn-secondary:hover { background: var(--surface-3); border-color: var(--primary); }
-}
-
-.btn-ghost {
-  display: inline-flex;
-  align-items: center;
-  padding: 8px 16px;
-  border: 1px solid var(--border-hi);
-  border-radius: 10px;
-  background: transparent;
-  color: var(--text-2);
-  font-size: 13px;
-  font-weight: 700;
-  cursor: pointer;
-  transition: background 0.15s, color 0.15s;
-}
-@media (hover: hover) {
-  .btn-ghost:hover { background: var(--surface-3); color: var(--text-1); }
 }
 
 .btn-danger {
@@ -1259,16 +1213,30 @@ function removeWithUndo (id: string) {
 }
 .sheet-actions .btn-primary { flex: 1; justify-content: center; }
 
-/* ── Add dialogs ── */
+/* ── Add dialogs ──
+   One column: search on top, results filling the middle, and a confirm bar
+   that only exists once something is picked. Full-screen sheet on phones. */
 .add-card {
-  width: 620px;
+  width: 440px;
   max-width: 94vw;
+  height: 620px;
+  max-height: 84vh;
+  display: flex;
+  flex-direction: column;
   overflow: hidden;
 }
+.add-card--sheet {
+  width: 100%;
+  max-width: none;
+  height: 100%;
+  max-height: none;
+}
 
-.add-header {
-  padding: 20px 24px 16px;
-  border-bottom: 1px solid var(--border);
+.add-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 18px 12px;
 }
 
 .dialog-title {
@@ -1277,30 +1245,45 @@ function removeWithUndo (id: string) {
   color: var(--text-1);
 }
 
-.add-body {
+.dialog-close {
   display: flex;
-  height: 420px;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border: none;
+  border-radius: 50%;
+  background: var(--surface-3);
+  color: var(--text-2);
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+@media (hover: hover) {
+  .dialog-close:hover { color: var(--text-1); }
 }
 
-/* Left panel — search + results list */
-.add-left {
-  width: 250px;
-  flex-shrink: 0;
+.add-flow {
   display: flex;
   flex-direction: column;
   gap: 10px;
-  padding: 16px;
-  border-right: 1px solid var(--border);
-  overflow: hidden;
+  padding: 0 18px 14px;
+  flex: 1;
+  min-height: 0;
 }
 
-.results-panel {
+.cat-filter--dialog {
+  margin-top: 0;
+}
+
+.add-results {
   flex: 1;
+  min-height: 100px;
   overflow-y: auto;
-  border-radius: 10px;
+  border-radius: 12px;
   background: var(--elev-fill);
   border: 1px solid var(--border);
-  box-shadow: var(--elev-shadow);
+  box-shadow: inset 0 1px 0 var(--lift);
+  padding: 4px;
 }
 
 .results-state {
@@ -1310,7 +1293,7 @@ function removeWithUndo (id: string) {
   gap: 8px;
   height: 100%;
   min-height: 80px;
-  font-size: 12px;
+  font-size: 12.5px;
   color: var(--text-3);
   text-align: center;
   padding: 16px;
@@ -1319,8 +1302,10 @@ function removeWithUndo (id: string) {
 .result-item {
   display: flex;
   align-items: center;
-  gap: 9px;
-  padding: 7px 10px;
+  gap: 10px;
+  min-height: 46px;
+  padding: 6px 10px;
+  border-radius: 9px;
   cursor: pointer;
   transition: background 0.1s;
 }
@@ -1335,14 +1320,14 @@ function removeWithUndo (id: string) {
 
 .result-img {
   flex-shrink: 0;
-  width: 30px;
-  height: 30px;
-  object-fit: cover;
-  font-size: 13px;
+  width: 32px;
+  height: 32px;
+  object-fit: contain;
+  font-size: 14px;
 }
 
 .result-name {
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 600;
   color: var(--text-1);
   flex: 1;
@@ -1351,119 +1336,47 @@ function removeWithUndo (id: string) {
   text-overflow: ellipsis;
 }
 
-/* Right panel — config */
-.add-right {
-  flex: 1;
+/* Confirm bar: preview + quantity + form + one full-width CTA. */
+.add-confirm {
   display: flex;
   flex-direction: column;
-  gap: 12px;
-  padding: 16px;
-}
-
-/* Pet preview */
-.pet-preview-card {
+  gap: 10px;
+  padding: 12px 18px calc(14px + env(safe-area-inset-bottom));
+  border-top: 1px solid var(--border);
   background: var(--elev-fill);
-  border: 1px solid var(--border);
-  border-radius: 12px;
   box-shadow: inset 0 1px 0 var(--lift);
-  min-height: 76px;
-  display: flex;
-  align-items: center;
 }
 
-.preview-filled {
+.confirm-row {
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 10px 14px;
-  width: 100%;
+  gap: 10px;
 }
 
-.preview-img {
-  width: 52px;
-  height: 52px;
+.confirm-img {
+  width: 42px;
+  height: 42px;
   flex-shrink: 0;
   object-fit: contain;
-  font-size: 22px;
+  font-size: 19px;
   filter: drop-shadow(0 2px 8px rgba(0, 0, 0, 0.4));
 }
 
-.preview-info {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
+.confirm-name {
+  flex: 1;
   min-width: 0;
-}
-
-.preview-name {
-  font-size: 13px;
-  font-weight: 700;
+  font-size: 14px;
+  font-weight: 800;
   color: var(--text-1);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
-/* Filled with the form's colour pair (or primary for items — the border+text
-   variant survives only there, where --primary adapts per theme). */
-.preview-form-badge {
-  font-size: 10px;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  border-radius: 5px;
-  padding: 2px 7px;
-  align-self: flex-start;
-}
-.preview-form-badge--outline { border: 1px solid; }
-
-.preview-empty {
-  font-size: 12px;
-  color: var(--text-3);
-  padding: 0 16px;
+.confirm-add {
   width: 100%;
-  text-align: center;
-}
-
-/* Form chips */
-.form-section-label {
-  font-size: 10px;
-  font-weight: 700;
-  color: var(--text-3);
-  text-transform: uppercase;
-  letter-spacing: 0.07em;
-  margin-bottom: 4px;
-}
-
-/* Actions */
-.add-actions {
-  display: flex;
-  gap: 8px;
-  justify-content: flex-end;
-  margin-top: auto;
-  padding-top: 4px;
-}
-
-/* ── Mobile ── */
-@media (max-width: 599px) {
-  /* Add Pet / Add Item dialog: stack search and config vertically so neither
-     column gets crushed (the side-by-side layout overflows a phone width).
-     !important because the base `.add-*` rules are declared later in this file
-     (equal specificity → source order wins), so they'd otherwise override these. */
-  .add-card { width: 96vw !important; max-width: 96vw !important; }
-  .add-body {
-    flex-direction: column;
-    height: auto !important;
-    max-height: 78vh;
-    overflow-y: auto;
-  }
-  .add-left {
-    width: 100% !important;
-    border-right: none;
-    border-bottom: 1px solid var(--border);
-  }
-  .results-panel { flex: none !important; height: 200px !important; }
-  .add-right { width: 100% !important; }
+  justify-content: center;
+  padding: 12px 16px;
 }
 
 /* ── Motion ──
