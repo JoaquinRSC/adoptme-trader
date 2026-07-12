@@ -229,6 +229,13 @@ body::before {
   border: 1px solid var(--border-hi);
 }
 
+// With black-translucent the viewport starts under the iOS status bar, so a
+// maximized dialog (the mobile PetPicker sheet) must keep its header clear of
+// the clock. env() is 0 everywhere else, so this is iOS-only by construction.
+.q-dialog__inner--maximized > * {
+  padding-top: env(safe-area-inset-top);
+}
+
 .q-dialog__inner:not(.q-dialog__inner--maximized) > .q-card {
   border-radius: 16px !important;
 }

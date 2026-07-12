@@ -298,7 +298,11 @@ const formLegend = [
   -webkit-backdrop-filter: blur(16px);
   backdrop-filter: blur(16px);
   border-top: 1px solid var(--border);
-  padding-bottom: env(safe-area-inset-bottom);
+  /* Keep clear of the home indicator, but eat 12px of the inset: the full
+     ~34px left the icon cluster hugging the bar's top edge with a void below
+     (reported as "the footer looks asymmetric" on an iPhone 15). Non-iOS
+     devices resolve env() to 0 and the max() keeps them at 0. */
+  padding-bottom: max(calc(env(safe-area-inset-bottom) - 12px), 0px);
 }
 @media (min-width: 768px) {
   .tab-bar { display: none; }

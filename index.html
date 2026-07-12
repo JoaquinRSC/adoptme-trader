@@ -8,6 +8,13 @@
     <link rel="icon" type="image/x-icon" href="icons/icon.ico" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="mobile-web-app-capable" content="yes" />
+    <!-- black-translucent: iOS paints NOTHING behind the status bar and lets the
+         app show through — with "default" the bar is an opaque white strip no
+         matter the theme. The topbar pads itself with env(safe-area-inset-top),
+         so our own chrome colour fills that zone in both themes. The bar's TEXT
+         follows the system theme; the app's default mode is auto for exactly
+         that reason (they can only disagree if the user forces an override). -->
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <!-- Browser/PWA chrome tint per scheme. The iOS standalone status bar can't
          be driven by an in-app toggle (it follows the SYSTEM theme), which is
          exactly why the app's default theme mode is "auto": both always agree. -->
