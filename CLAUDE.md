@@ -61,20 +61,21 @@ All `/api/*` endpoints are public — the app has no authentication. They all se
 
 ### Key files
 
-- `src/types.ts` — `PetForm` union, `ValueSource`, `FORM_LABELS`, the four form-colour maps (see below), `InventoryPet`, `PetSuggestion`
+- `src/types.ts` — `PetForm` union, `ValueSource`, `FORM_LABELS`, the four form-colour maps (see below), `InventoryPet`
 - `src/stores/inventory.ts` — CRUD for `InventoryPet[]`, persisted to `localStorage`
 - `src/stores/values.ts` — In-memory value cache + `DemandLevel` type + `PetDetails` interface; wraps API fetch calls; `getBatch` for bulk pre-loading
-- `src/components/PetPicker.vue` — **the** pet/item picker dialog. Props: `mine` (omit for a search-only picker, e.g. the THEM side), `mineLabel`, `mineEmptyText`. Emits `add` with a `PickerSelection`. Owns its toast, its value pre-fetch, its keyboard handling (autofocus, ↑↓, Enter, Esc) and its mobile full-screen sheet (`maximized` below Quasar's `sm`). Used by Trade Builder + Check Values (both sides) — add new "add a pet to a list" surfaces here, not by copy-pasting
-- `src/components/FormChips.vue` — F/R/D/N/M toggle with `v-model:PetForm` (wraps `useFormPicker`); used by `PetPicker` and the Inventory add-pet dialog
-- `src/components/SourceToggle.vue` — **the** AMV/Elve switch, `v-model:ValueSource`. Used by all three pages; owns its markup, CSS and ARIA. Don't inline another one
-- `src/components/SkeletonBar.vue` — shimmer placeholder shaped like the text it stands in for (`width` prop, height = 1em). Use it for values that are loading; keep `q-spinner` only where the user triggered an action (search, "Find matches")
-- `src/components/PetImage.vue` — every pet/item thumbnail. Tries the direct AMVGG sprite URL, falls back to `/api/pet/image` (which scrapes + caches), then to an emoji that keeps the element's box. Takes `name` + optional `fallback` emoji; sizing comes from the class the caller passes. Never write a raw `<img src="https://amvgg.com/items/...">` again
+- `src/components/PetPicker.vue` — **the** pet/item picker dialog. Props: `mine` (omit for a search-only picker, e.g. the THEM side), `mineLabel`, `mineEmptyText`. Emits `add` with a `PickerSelection`. Owns its toast, its value pre-fetch, its keyboard handling (autofocus, ↑↓, Enter, Esc) and its mobile full-screen sheet (`maximized` below Quasar's `sm`). Used by the Trade page (both sides) — add new "add a pet to a list" surfaces here, not by copy-pasting
+- `src/components/FormChips.vue` — F/R/D/N/M toggle with `v-model:PetForm` (wraps `useFormPicker`); used by `PetPicker`, the Inventory add-pet dialog and the pet detail sheet
+- `src/components/SourceToggle.vue` — **the** AMV/Elve switch, `v-model:ValueSource`. Used by both pages; owns its markup, CSS and ARIA. Don't inline another one
+- `src/components/SkeletonBar.vue` — shimmer placeholder shaped like the text it stands in for (`width` prop, height = 1em). Use it for values that are loading; keep `q-spinner` only where the user triggered an action (search)
+- `src/components/PetImage.vue` — every pet/item thumbnail. Tries the direct AMVGG sprite URL, falls back to `/api/pet/image` (which scrapes + caches), then to a Material icon that keeps the element's box. Takes `name` + optional `fallback` icon; sizing comes from the class the caller passes. Never write a raw `<img src="https://amvgg.com/items/...">` again
+- `src/utils/format.ts` — `formatValue` (every value the UI prints: ≤2 decimals, no float noise) + `demandStars`/`demandClass`. Never print a raw value
 - `src/composables/useFormPicker.ts` — 5-button F/R/D/N/M toggle that derives `PetForm` from booleans; wrapped by `FormChips.vue`
-- `src/composables/useTheme.ts` — 5 color themes (Midnight/Ocean/Forest/Crimson/Dusk); persisted to `localStorage`, applied via `data-theme` on `<html>`
-- `src/pages/InventoryPage.vue` — Pet cards with form badge, quantity, lazy value fetch
-- `src/pages/CheckValuesPage.vue` — Two-sided value comparison (YOU vs THEM); supports AMVGG and Elvebredd sources; shows demand ★ per slot; YOU picker has "My Pets" (sorted by value) + "Other" tabs; THEM picker has "Other" tab only (search)
-- `src/pages/TradeBuilderPage.vue` — Offered pets + form selector + demand-adjusted fairness score (reflects the selected suggestion under the active value source) + suggestions with adjustable match tolerance (±5/10/20%, default 20, persisted); My Pets picker sorted by cached value. Consultative only (no trade posting)
-- `src/layouts/MainLayout.vue` — Sidebar nav (My Pets, Check Values, Trade Builder) + theme swatch picker + collapse
+- `src/composables/useTheme.ts` — parked: the 6 colour themes were retired with the Premium re-skin (one dark identity); kept for a future light pair
+- `src/pages/InventoryPage.vue` — portfolio hero (collection total, source toggle, CTAs) + dense tile grid; tapping a tile opens a bottom detail sheet (both values, demand, form editing via `FormChips`, remove with undo). All actions live in the sheet — no hover reveals
+- `src/pages/CheckValuesPage.vue` — the **Trade** page (route stays `/check-values`): "You give / They give" panels + the Fair Scale verdict card (sticky, beam tips toward the heavier side, WIN/FAIR/LOSE within ±5%)
+- `src/layouts/MainLayout.vue` — app shell: sticky blurred top bar (brand, desktop nav pills, help) + bottom tab bar on <768px (My Pets, Trade). No drawer
+- `src/stores/drafts.ts` — persisted Trade-page sides + source (Pinia + localStorage, `hydrate()` on mount)
 - `src-ssr/middlewares/api.ts` — All API handlers, AMVGG/Elvebredd cache warming
 - `scripts/fetch-values.mjs` — Pre-fetch script: fetches AMVGG (Node fetch) + Elvebredd (curl) and saves to `src/data/*.json`
 - `scripts/snapshot-values.mjs` — Writes a compact daily snapshot (`{date, amv:{name:fr}, elve:{name:fr}}`) to `src/data/history/YYYY-MM-DD.json`; idempotent per UTC day, refuses to write if both sources are empty. Raw material for Phase 5 value trends. Not loaded by the server yet.
@@ -106,7 +107,7 @@ never by convenience — a fill and a label cannot share a hex:
 - A `normal` pet and a non-pet item get **no** form colour. Tinting everything is
   tinting nothing.
 - `color-mix()` is unavailable: the browser targets are chrome87 / safari13.1.
-- **AA is a hard floor: 4.5:1 for every text, in all six themes.** `--text-3` was
+- **AA is a hard floor: 4.5:1 for every text.** `--text-3` was
   lifted for exactly this; it now sits close to `--text-2` on purpose, and the
   hierarchy is carried by size/weight/case. `.slot-meta` is an *opaque* plate so
   its contrast can't depend on the sprite behind it.
@@ -135,7 +136,7 @@ All of this lives in `src/css/app.scss`. Follow it when adding UI:
 
 ### Theming
 
-CSS custom properties on `:root` in `src/css/app.scss`. Themes override the same variables via `[data-theme="ocean"]` etc. on `<html>`. Only colors are theme-specific.
+CSS custom properties on `:root` in `src/css/app.scss` — one dark identity (neutral black + gold), no theme switching. The old `data-theme` variants were retired with the Premium re-skin (2026-07-11); `useTheme.ts` stays parked for a future light pair.
 
 ### Deployment
 
@@ -161,4 +162,6 @@ Manual (local) update, if ever needed:
 - **Phase 1.5 (done):** Elvebredd cross-check in Check Values; color themes
 - **Phase 1.8 (done):** SSR migration to Fly.io; static value cache; Elve values in trade cards; non-pet item categories (Pet Wear, Eggs, Strollers, Food, Vehicles, Toys, Gifts, Stickers, Houses)
 - **Phase 2 (done, 2026-07-10):** public-ready cleanup — advanced mode removed, `PetPicker`/`FormChips`/`SourceToggle` unified, skeletons, undo, responsive pass, hover/touch fixes, 44px touch targets, the three page states, basic a11y, WCAG AA contrast. See `docs/PLAN.md`
-- **Phase 2.5 (in progress):** visual identity. Done: per-form colour on cards, Fredoka display face, AA. Left: logo/mascot, final name, trader-voice microcopy, emoji→Material icons. Run the `/frontend-design` skill first
+- **Phase 2.5 (done, 2026-07-12):** visual identity — per-form colour on cards, Fredoka display face, AA, Premium re-skin (dark + gold), "The Fair Scale" logo, "AM Trader" name, trader-voice microcopy, Material icons
+- **Phase 2.7 (done, 2026-07-12):** mobile-first redesign — bottom tab bar shell (drawer removed), portfolio-style My Pets with tile grid + detail sheet, Trade page with the Fair Scale verdict card. **Trade Builder removed** (`/trade-builder` redirects to `/check-values`); its value never justified its surface and the Trade page owns the fairness verdict now
+- **Next: Phase 3 (growth):** share links + OG images, public quick WFL, per-pet SSR pages. Fix the blank-page 404 first — see `docs/PLAN.md`

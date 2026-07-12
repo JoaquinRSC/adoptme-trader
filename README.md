@@ -10,13 +10,13 @@ A trade manager for **Roblox Adopt Me** that helps players value pets and judge 
 
 ## Screenshots
 
-**My Pets** — inventory with per-form values, demand ratings, and a running total.
+**My Pets** — portfolio-style inventory: collection total up top, dense tile grid, tap a pet for details.
 
 ![My Pets](docs/screenshots/my-pets.png)
 
-**Check Values** — two-sided comparison with the value gap and a fairness verdict.
+**Trade** — "you give / they give" with the Fair Scale: the beam tips toward the heavier side and calls WIN / FAIR / LOSE.
 
-![Check Values](docs/screenshots/check-values.png)
+![Trade](docs/screenshots/check-values.png)
 
 ---
 
@@ -24,10 +24,10 @@ A trade manager for **Roblox Adopt Me** that helps players value pets and judge 
 
 Trading in Adopt Me is all about *value* and *demand*, and the numbers live across a few community sites that don't agree with each other. This app pulls them into one place:
 
-- **My Pets** — Build your inventory (pets + non-pet items like Pet Wear, Eggs, Vehicles…). Each card shows its value for the selected form and a demand rating. Total inventory value, sortable by worth.
-- **Check Values** — Two-sided comparison (YOU vs THEM). Pick pets on each side and see the value gap, per slot, switching between AMVGG and Elvebredd.
-- **Trade Builder** — Assemble an offer and get a demand-adjusted fairness score, plus pet suggestions within a ±20% tolerance to balance the trade.
-- **5 color themes**, persisted locally.
+- **My Pets** — Build your inventory (pets + non-pet items like Pet Wear, Eggs, Vehicles…) and see the collection's total worth at a glance. Each tile shows the pet's value for its form and a demand rating; tapping one opens a detail sheet with both sources, demand, and form editing.
+- **Trade** — "You give / They give". Pick pets on each side and the Fair Scale weighs the trade live: the beam tips toward the heavier side and calls **WIN / FAIR / LOSE** with the exact percentage, switching between AMVGG and Elvebredd.
+
+The app is mobile-first (bottom tab navigation, installable as a PWA) and works the same on desktop.
 
 Pets come in **forms** (Fly / Ride / Neon / Mega and combinations), and each form has its own value — the app derives all of them from the base values using the same multiplier formula as the AMVGG calculator.
 
@@ -64,8 +64,8 @@ fetch('/api/...')      →      ratelimit → api → render
 
 ```
 src/
-  pages/        My Pets, Check Values, Trade Builder
-  stores/       Pinia: inventory (localStorage-backed) + values cache
+  pages/        My Pets, Trade (check values)
+  stores/       Pinia: inventory (localStorage-backed) + values cache + trade drafts
   composables/  form picker, theming
   data/         committed value caches (amv / elve / items) + history/ snapshots
 src-ssr/

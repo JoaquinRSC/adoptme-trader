@@ -8,7 +8,35 @@ sin comprometerse.
 
 ## Estado (última actualización: 2026-07-12)
 
-**Fase 1 ✅ · Fase 1.5 ✅ · Fase 1.8 ✅ · Fase 2 ✅ · Fase 2.5 ✅.**
+**Fase 1 ✅ · Fase 1.5 ✅ · Fase 1.8 ✅ · Fase 2 ✅ · Fase 2.5 ✅ · Fase 2.7 (rediseño mobile-first) ✅.**
+
+**Fase 2.7 — rediseño mobile-first (2026-07-12, v0.6.0).** La PWA en el teléfono
+estaba incómoda (cards gigantes de una columna, drawer de escritorio, veredicto
+fuera de pantalla) y era frágil: un registro corrupto en localStorage mataba el
+render de toda la página en un falso "No pets in here yet". Se rehizo el shell y
+las dos pantallas con patrones de apps reales:
+- **Shell**: murió el drawer/hamburger → header sticky con blur (marca + nav pills
+  en desktop + ayuda) y **bottom tab bar** (My Pets / Trade) con safe-area.
+- **My Pets**: patrón portfolio (hero con total dorado en gradiente + count +
+  fuente) y **grilla de tiles densos** estilo inventario de juego (3 por fila en
+  390px). Tap en tile → **bottom sheet de detalle** (AMV + Elve + demand, editar
+  forma con FormChips, Remove con undo). Se acabaron los hover-reveals.
+- **Trade** (ex Check Values, la ruta se mantiene): "You give / They give" +
+  **la Fair Scale como veredicto**: card sticky siempre visible donde el fiel se
+  inclina hacia el lado más pesado y canta WIN/FAIR/LOSE (±5%) con el %. El logo
+  haciendo el trabajo de la app — el elemento firma del rediseño.
+- **Trade Builder eliminado** (decisión de producto de esta pasada): su mitad
+  consultiva quedó subsumida por el veredicto del Trade; `/trade-builder`
+  redirige a `/check-values`. El código vive en el historial de git. `drafts.ts`
+  perdió su slice y limpia los keys viejos de localStorage al hidratar.
+- **Fixes de fondo**: `formatValue()` único (≤2 decimales — se acabaron los
+  `1.2365`); `demandStars/demandClass` centralizados en `src/utils/format.ts`;
+  el store de inventario **corrige formas desconocidas a `normal` al cargar** y
+  `getFormBadges` degrada a "sin badges" en vez de crashear la grilla.
+- Verificado con Playwright a 390px y 1366px: flujo completo de trade (picker →
+  slots → veredicto LOSE −55.8% con beam inclinado), sheet de detalle, undo de
+  borrado, filtro de categorías, redirect viejo, guía. Lint + build SSR limpios.
+- Los screenshots del README se regeneraron con la UI nueva.
 
 Cerrado en la Fase 2: modo avanzado eliminado, errores amables, borradores
 persistidos, fix del router SSR, tooltips + "How it works", contraste y
