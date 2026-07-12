@@ -117,14 +117,30 @@
         </q-input>
 
         <div class="results-panel">
-          <RecentChips
-            v-if="!search?.trim() && category === 'pet' && recent.list.length"
-            :names="recent.list"
-            @select="addByName"
-          />
-          <div class="results-state" v-else-if="!search?.trim()">
-            Start typing to find {{ category === 'pet' ? 'a pet' : 'an item' }}
-          </div>
+          <!-- No query yet: browse the whole category, priciest first. -->
+          <template v-if="!search?.trim()">
+            <RecentChips
+              v-if="category === 'pet' && recent.list.length"
+              :names="recent.list"
+              @select="addByName"
+            />
+            <div class="browse-head">
+              {{ category === 'pet' ? 'All pets' : CATEGORY_LABELS[category] }} · highest value first
+            </div>
+            <div class="results-state" v-if="browseLoading">
+              <q-spinner size="14px" color="primary" /><span>Loading…</span>
+            </div>
+            <div
+              v-for="entry in browseList"
+              :key="entry.name"
+              class="result-item"
+              @mousedown.prevent="addByName(entry.name)"
+            >
+              <PetImage :name="entry.name" :fallback="category === 'pet' ? undefined : matInventory2" class="result-img" />
+              <span class="result-name">{{ entry.name }}</span>
+              <span class="result-val">{{ formatValue(entry.value) }}</span>
+            </div>
+          </template>
           <div class="results-state" v-else-if="searchLoading">
             <q-spinner size="14px" color="primary" /><span>Searching…</span>
           </div>
@@ -163,13 +179,14 @@
 <script setup lang="ts">
 import { ref, computed, watch, nextTick } from 'vue'
 import { useQuasar, type QInput } from 'quasar'
-import { matSearch, matClose } from '@quasar/extras/material-icons'
+import { matSearch, matClose, matInventory2 } from '@quasar/extras/material-icons'
 import { formatValue } from 'src/utils/format'
 import FormChips from 'src/components/FormChips.vue'
 import RecentChips from 'src/components/RecentChips.vue'
 import PetImage from 'src/components/PetImage.vue'
 import { useValuesStore } from 'src/stores/values'
 import { useRecentStore } from 'src/stores/recent'
+import { useCatalogStore } from 'src/stores/catalog'
 import { notifyAdded } from 'src/utils/notify'
 import {
   FORM_LABELS, CATEGORY_LABELS, ITEM_CATEGORY_OPTIONS, isPet, formFill,
@@ -198,9 +215,10 @@ const emit = defineEmits<{
   add: [PickerSelection]
 }>()
 
-const $q     = useQuasar()
-const values = useValuesStore()
-const recent = useRecentStore()
+const $q      = useQuasar()
+const values  = useValuesStore()
+const recent  = useRecentStore()
+const catalog = useCatalogStore()
 
 // Below Quasar's `sm` breakpoint the dialog becomes a full-screen sheet. One
 // boolean drives both the `maximized` prop and the sheet styles.
@@ -278,7 +296,21 @@ function addActiveResult () {
 function selectCategory (cat: ItemCategory) {
   category.value = cat
   search.value   = ''
+  void loadBrowse()
   focusSearch()
+}
+
+// ── Browse (no query yet) ─────────────────────────────────────────────────────
+// The full catalogue for the active category, priciest first, so you can find
+// something without knowing its name.
+const browseList = computed(() =>
+  category.value === 'pet' ? catalog.pets : (catalog.items[category.value] ?? [])
+)
+const browseLoading = computed(() =>
+  category.value === 'pet' ? catalog.petsLoading : (catalog.itemsLoading[category.value] ?? false)
+)
+function loadBrowse () {
+  return category.value === 'pet' ? catalog.loadPets() : catalog.loadItems(category.value)
 }
 
 // ── Adding ────────────────────────────────────────────────────────────────────
@@ -302,14 +334,14 @@ function focusSearch () {
 }
 
 async function onShow () {
-  if (tab.value === 'other') focusSearch()
+  if (tab.value === 'other') { focusSearch(); void loadBrowse() }
   // Warms the value cache so the mine tab can sort by value on first paint.
   if (props.mine?.length) {
     await values.getBatch(props.mine.map(p => ({ name: p.name, form: p.form })))
   }
 }
 
-watch(tab, (t) => { if (t === 'other') focusSearch() })
+watch(tab, (t) => { if (t === 'other') { focusSearch(); void loadBrowse() } })
 
 function reset () {
   tab.value         = props.mine ? 'mine' : 'other'
@@ -525,7 +557,32 @@ function reset () {
   object-fit: contain;
   font-size: 14px;
 }
-.result-name { font-size: 13px; font-weight: 600; color: var(--text-1); }
+.result-name {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-1);
+  flex: 1;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.result-val {
+  flex-shrink: 0;
+  font-size: 12px;
+  font-weight: 800;
+  color: var(--gold);
+}
+
+.browse-head {
+  font-size: 10px;
+  font-weight: 800;
+  color: var(--text-3);
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  padding: 10px 8px 4px;
+}
 
 .form-pill {
   font-size: 10px;

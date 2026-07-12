@@ -201,14 +201,30 @@
             <div v-if="searching && !searchResults.length" class="results-state">
               <q-spinner size="14px" color="primary" /><span>Searching…</span>
             </div>
-            <RecentChips
-              v-else-if="!searchQuery.trim() && recentStore.list.length"
-              :names="recentStore.list"
-              @select="selectPet"
-            />
-            <div v-else-if="!searchQuery.trim()" class="results-state">
-              Start typing to find a pet
-            </div>
+            <!-- No query yet: browse the whole catalogue, priciest first, so you
+                 can find a pet without knowing its name. -->
+            <template v-else-if="!searchQuery.trim()">
+              <RecentChips
+                v-if="recentStore.list.length"
+                :names="recentStore.list"
+                @select="selectPet"
+              />
+              <div class="browse-head">All pets · highest value first</div>
+              <div v-if="catalog.petsLoading" class="results-state">
+                <q-spinner size="14px" color="primary" /><span>Loading…</span>
+              </div>
+              <div
+                v-for="entry in catalog.pets"
+                :key="entry.name"
+                class="result-item"
+                @mousedown.prevent="selectPet(entry.name)"
+              >
+                <PetImage :name="entry.name" class="result-img" />
+                <span class="result-name">{{ entry.name }}</span>
+                <q-icon v-if="newPetName === entry.name" :name="matCheck" size="15px" style="color:var(--primary)" />
+                <span class="result-val">{{ formatValue(entry.value) }}</span>
+              </div>
+            </template>
             <div v-else-if="!searchResults.length" class="results-state">
               No results for "{{ searchQuery }}"
             </div>
@@ -289,9 +305,24 @@
             <div v-else-if="itemSearching && !itemSearchResults.length" class="results-state">
               <q-spinner size="14px" color="primary" /><span>Searching…</span>
             </div>
-            <div v-else-if="!itemSearchQuery.trim()" class="results-state">
-              Start typing to find {{ CATEGORY_LABELS[newItemCategory] }}
-            </div>
+            <!-- No query yet: browse the category, priciest first. -->
+            <template v-else-if="!itemSearchQuery.trim()">
+              <div class="browse-head">{{ CATEGORY_LABELS[newItemCategory] }} · highest value first</div>
+              <div v-if="catalog.itemsLoading[newItemCategory]" class="results-state">
+                <q-spinner size="14px" color="primary" /><span>Loading…</span>
+              </div>
+              <div
+                v-for="entry in catalog.items[newItemCategory] ?? []"
+                :key="entry.name"
+                class="result-item"
+                @mousedown.prevent="selectItem(entry.name)"
+              >
+                <PetImage :name="entry.name" :fallback="matInventory2" class="result-img" />
+                <span class="result-name">{{ entry.name }}</span>
+                <q-icon v-if="newItemName === entry.name" :name="matCheck" size="15px" style="color:var(--primary)" />
+                <span class="result-val">{{ formatValue(entry.value) }}</span>
+              </div>
+            </template>
             <div v-else-if="!itemSearchResults.length" class="results-state">
               No results for "{{ itemSearchQuery }}"
             </div>
@@ -336,6 +367,7 @@ import QtyStepper from 'src/components/QtyStepper.vue'
 import { matAdd, matDeleteOutline, matSearch, matCheck, matClose, matArrowDownward, matArrowUpward, matSwapVert, matPets, matInventory2 } from '@quasar/extras/material-icons'
 import { useInventoryStore } from 'src/stores/inventory'
 import { useValuesStore, type DemandLevel } from 'src/stores/values'
+import { useCatalogStore } from 'src/stores/catalog'
 import { ADOPT_ME_PETS } from 'src/data/pets'
 import { notifyAdded, notifyLoadError, notifyRemoved } from 'src/utils/notify'
 import { formatValue, demandStars, demandClass } from 'src/utils/format'
@@ -352,6 +384,7 @@ const $q = useQuasar()
 const inventory = useInventoryStore()
 const values = useValuesStore()
 const recentStore = useRecentStore()
+const catalog = useCatalogStore()
 
 // Each badge letter is just one of the single-attribute forms, so its colour comes
 // from the one form palette. It used to be a private set (R pink, N green) that
@@ -449,6 +482,7 @@ function openAdd () {
   searchResults.value = []
   showAdd.value       = true
   void ensureAmvggList()
+  void catalog.loadPets()
 }
 
 // Adding closes the dialog: on a phone the common case is one pet, and the
@@ -619,6 +653,7 @@ function pickItemCategory (cat: ItemCategory) {
   newItemName.value       = ''
   itemSearchQuery.value   = ''
   itemSearchResults.value = []
+  void catalog.loadItems(cat)
   void nextTick(() => itemSearchInputRef.value?.focus())
 }
 
@@ -1334,6 +1369,22 @@ function removeWithUndo (id: string) {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+.result-val {
+  flex-shrink: 0;
+  font-size: 12px;
+  font-weight: 800;
+  color: var(--gold);
+}
+
+.browse-head {
+  font-size: 10px;
+  font-weight: 800;
+  color: var(--text-3);
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  padding: 10px 10px 4px;
 }
 
 /* Confirm bar: preview + quantity + form + one full-width CTA. */

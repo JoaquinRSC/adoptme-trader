@@ -13,7 +13,7 @@ npm run snapshot-values # Write today's compact value snapshot to src/data/histo
 flyctl deploy          # Deploy to Fly.io (app: amtrader, region: gru)
 ```
 
-No test suite exists. After code changes, run `npm run lint` and `npm run build` to verify, then deploy via `flyctl deploy`. CI (`.github/workflows/ci.yml`) runs lint + build on every code push and PR (data-only and doc-only commits are skipped). Lint uses `vue/flat/essential` (correctness rules, not formatting) since the codebase predates linting.
+No test suite exists. After code changes, run `npm run lint` and `npm run build` to verify, then deploy via `flyctl deploy`. To smoke-test the built server locally, run `node dist/ssr/index.js` **from the repo root** — the value caches resolve relative to the cwd, so running from inside `dist/ssr` silently serves empty item searches. CI (`.github/workflows/ci.yml`) runs lint + build on every code push and PR (data-only and doc-only commits are skipped). Lint uses `vue/flat/essential` (correctness rules, not formatting) since the codebase predates linting.
 
 ## Architecture
 
