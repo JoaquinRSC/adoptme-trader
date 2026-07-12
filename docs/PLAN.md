@@ -57,6 +57,40 @@ las dos pantallas con patrones de apps reales:
   slot al agregar, roll del veredicto al cambiar — todo detrás de
   `prefers-reduced-motion: no-preference`.
 
+**Segunda tanda de feedback en iPhone real (2026-07-12, ya deployada):**
+- **Chrome iOS**: la status bar en PWA con estilo `default` es una franja blanca
+  opaca sin importar el tema → `black-translucent` + el topbar pinta esa zona con
+  `padding-top: env(safe-area-inset-top)`. **Ojo, matiz sobre la lección de
+  Cuidauto**: black-translucent SÍ funciona acá porque el shell tiene safe-area y
+  el tema es auto (el TEXTO de la barra sigue al sistema; nunca desacuerdan). El
+  tab bar come 12px del inset de abajo (quedaba asimétrico en iPhone 15). El
+  header pasó de `sticky` a **`fixed`** (el rubber-band lo despegaba) con
+  `.q-page-container` compensando; se eliminó el hairline superior.
+- **Chrome sólido**: header y tab bar opacos (`--bg-2`), una pieza continua con
+  la página; se retiró el blur/translucidez.
+- **Contraste tema claro**: token `--on-primary` (tinta sobre relleno `--primary`,
+  que en claro es oscuro → texto blanco; el AMV/Elve activo salía negro sobre
+  negro). Los chips F/R/D/N/M inactivos dejaron los lavados `rgba(255,255,255)`
+  (invisibles en claro) por tokens de tema.
+- **Diálogos de agregar modernizados**: Add Pet/Add Item una sola columna
+  search-first (sheet full-screen en mobile, ✕ en el header); barra de
+  confirmación con revelado progresivo (aparece al elegir); categoría en chips
+  (murió el QSelect, la página bajó de 69KB a 26KB); **cantidad con stepper −/+**
+  (`QtyStepper.vue`). **DECISIÓN: agregar CIERRA el diálogo** con toast (el caso
+  común en celu es un pet; quedaba abierto y limpiándose en silencio). El picker
+  del Trade mantiene el "queda abierto" (armar oferta es multi-add) con "Done"
+  como barra dorada al pulgar; se arregló su tab activa (usaba `--surface-1`, un
+  token inexistente → se veía plana).
+- **Browse por valor**: toda superficie de agregar (Add Pet, Add Item, picker
+  Other) lista el catálogo entero de la categoría **ordenado por valor desc**
+  cuando la búsqueda está vacía → buscar sin saber el nombre. Store lazy
+  `stores/catalog.ts` (`/api/pets/all` + `/api/items/all`), sprites lazy.
+- **Barras de scroll ocultas** en toda la app (el scroll funciona; solo la barra
+  es invisible).
+- Gotcha documentado en CLAUDE.md: el server buildeado debe correrse **desde la
+  raíz del repo** (los caches se resuelven contra el cwd; desde `dist/ssr`
+  sirve búsquedas de ítems vacías).
+
 Cerrado en la Fase 2: modo avanzado eliminado, errores amables, borradores
 persistidos, fix del router SSR, tooltips + "How it works", contraste y
 `max-width`, **componentes unificados** (`PetPicker`, `FormChips`,
@@ -599,17 +633,71 @@ es acotado: los badges ya son composicionales y `FORM_*` está centralizado.
 - [ ] Botón de feedback (link a Discord propio o form tipo Tally): el roadmap
       post-lanzamiento lo escriben los usuarios.
 
-### Fase 4 — Login + sync
-- [ ] Supabase (o similar): auth + Postgres, free tier. NO hacer auth artesanal.
-- [ ] Proveedores: Google (universal) + Discord (la comunidad vive ahí).
-- [ ] **Login with Roblox** (OAuth2 oficial, segunda iteración): da identidad
-      verificada — username real, ID y avatar — para el perfil del trader y los
-      share links. ⚠️ NO da acceso al inventario de pets: los pets viven en los
-      DataStores privados de Uplift Games, no en Roblox. Ninguna API pública
-      los expone (ver "Carga de inventario" abajo).
-- [ ] **Login opcional**: la app funciona 100% como invitado con localStorage.
-      Al loguearse, merge del inventario local a la cuenta.
-- [ ] Sync de inventario entre dispositivos.
+### Fase 4 — Login + sync (cimiento para la sección de trading)
+
+**Contexto (conversación 2026-07-12).** Joaquín quiere agregar login —incluido
+"iniciar sesión con Roblox"— apuntando a una **futura sección de trading**. Login
+es el cimiento correcto para eso, pero antes de escribir código hay que fijar dos
+cosas (abajo) y asumir una realidad dura sobre Roblox.
+
+**La realidad de "login con Roblox" (leer antes de prometer nada).** El OAuth
+oficial ("Sign in with Roblox") da **identidad**: username real, user ID y avatar,
+verificados — oro para un sistema de trading (perfil real, anti-suplantación,
+reputación atada a una cuenta difícil de falsear). Lo que **NO** da: acceso al
+inventario de pets del usuario. Los pets viven en los DataStores privados de
+Uplift Games; los scopes de Roblox son solo de identidad (`openid`, `profile`).
+→ **Loguearse con Roblox NO auto-importa los pets**; se siguen cargando a mano
+(por eso el browse-por-valor de la Fase 2.7 sigue siendo la vía). Además:
+requiere registrar la app en el Creator Dashboard + redirect HTTPS, y **no es un
+proveedor nativo de Supabase** (Google/Discord sí; Roblox se integra a mano) →
+por eso es la **segunda iteración**, no parte del primer login.
+
+**Arquitectura (decidida).** No hacer auth artesanal → **Supabase Auth** (ya se
+maneja de Cuidauto): Google + Discord out-of-the-box, Postgres + RLS para el
+inventario sincronizado, free tier. El trabajo real no es "poner un botón":
+- [ ] Sesión que funcione con **SSR** (cookies, no solo localStorage) sin romper
+      la hidratación. Es lo más delicado del SSR en Fly.
+- [ ] **Modo invitado se mantiene**: la app sigue 100% usable sin cuenta; al
+      loguearse, **merge** del inventario local (localStorage) a la cuenta.
+- [ ] Sync de inventario entre dispositivos con **RLS** (cada usuario ve solo lo
+      suyo — mismo patrón que Cuidauto).
+- [ ] **Fase 4a — Google + Discord** (proveedores nativos, el grueso del trabajo:
+      sesión SSR + merge + sync).
+- [ ] **Fase 4b — Login con Roblox**: flujo OAuth en el server de Fly → crear la
+      sesión de Supabase a mano. Ya con el auth andando.
+
+**Dos frenos que un dev senior levanta antes de arrancar:**
+1. **La audiencia son chicos (<13 mayormente) → COPPA (US) + GDPR-K.** Guardar
+   cuentas y PII de menores, y peor, un espacio donde menores se conectan entre
+   sí a tradear, es superficie de moderación y seguridad real (scams, contacto).
+   No mata la idea; hay que pensarla con cuidado desde el día uno, no después.
+2. **"Sección de trading" son dos productos MUY distintos — hay que elegir:**
+   - **(a) Registro / vitrina**: guardar trades hechos, armar ofertas y
+     compartirlas por link. Bajo riesgo, encaja con lo que ya hay.
+   - **(b) Marketplace P2P**: usuarios listan pets y se matchean dentro de la
+     app. Otra bestia — moderación, anti-scam, y ⚠️ el plan ya descartó "Browse
+     Market" a propósito por no espejar el marketplace de AMVGG/Elvebredd (ver
+     Fase 2 / diagnóstico). Un marketplace propio revive ese debate estratégico.
+   El modelo de datos del login depende de cuál sea.
+
+**Recomendación de secuencia (mi voto, decisión de Joaquín).** Tensión real: el
+plan dice *tráfico antes que retención* (Fase 3 antes que 4) — un login sin
+usuarios es infra sin nadie. Orden sugerido:
+1. **Primero, gratis y sin login**: share links de trades (Fase 3, ya son el
+   esqueleto visual de un "trade" y traen gente) + **export/import JSON** del
+   inventario (backup contra "perdí mis pets", cero infra).
+2. **Fase 4a** (Google + Discord, sesión SSR, invitado + merge + sync).
+3. **Fase 4b** (Roblox).
+4. **Sección de trading** sobre ese cimiento, con el alcance (a/b) ya definido.
+
+**Decisiones abiertas (pendientes de Joaquín, definen el modelo de datos):**
+- [ ] ¿La sección de trading es **(a)** registro/vitrina o **(b)** marketplace P2P?
+- [ ] ¿Login ahora, o **share links primero** (traen gente) y después login?
+- [ ] ¿Google+Discord primero y Roblox como paso 2, o Roblox innegociable en el MVP?
+
+Próximo paso cuando se retome: con esas 3 respuestas, escribir el diseño técnico
+fino (esquema de tablas, flujo de sesión SSR, merge de invitado, integración
+Roblox) acá mismo antes de tocar código.
 
 **Carga de inventario sin fricción** (el dolor real: cargar pets de a uno):
 - [ ] **Carga masiva** (barato, resuelve el 80%): picker de Add Pet con
