@@ -143,7 +143,7 @@
           <!-- `!searchDone` too, or a search with no matches showed this idle text
                stacked on top of the "No pets found" one below. -->
           <div class="empty-panel" v-if="!suggestions.length && !searching && !searchDone && !searchError">
-            Configure your offer and click "Find matches"
+            Add pets to your offer, then hit "Find matches".
           </div>
 
           <div class="suggestions-grid" v-if="suggestions.length">
@@ -179,7 +179,7 @@
           </div>
 
           <div class="empty-panel" v-if="searchDone && !suggestions.length && !searchError">
-            No pets found within ±{{ tolerancePct }}% of your offer value
+            Nothing lines up within ±{{ tolerancePct }}% — widen the range or change your offer.
           </div>
         </div>
       </div>

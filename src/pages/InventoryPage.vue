@@ -56,9 +56,9 @@
 
     <!-- Empty state -->
     <div class="empty-state" v-if="!inventory.pets.length">
-      <div class="empty-paw">🐾</div>
-      <div class="empty-title">No pets yet</div>
-      <div class="empty-sub">Add your first pet to start building trades</div>
+      <div class="empty-paw"><q-icon :name="matPets" /></div>
+      <div class="empty-title">No pets in here yet</div>
+      <div class="empty-sub">Add what you've got — we'll pull values and help you trade up.</div>
       <button class="btn-primary" @click="openAdd">Add Pet</button>
     </div>
 
@@ -76,7 +76,7 @@
         <div class="pet-thumb">
           <PetImage
             :name="pet.name"
-            :fallback="isPet(pet.category) ? '🐾' : '📦'"
+            :fallback="isPet(pet.category) ? matPets : matInventory2"
             class="thumb-img"
           />
           <div
@@ -283,7 +283,7 @@
                 @mousedown.prevent="selectItem(name)"
                 @mouseover="itemDropIndex = i"
               >
-                <PetImage :name="name" fallback="📦" class="result-img" />
+                <PetImage :name="name" :fallback="matInventory2" class="result-img" />
                 <span class="result-name">{{ name }}</span>
                 <q-icon v-if="newItemName === name" :name="matCheck" size="13px" style="color:var(--primary);margin-left:auto" />
               </div>
@@ -292,7 +292,7 @@
           <div class="add-right">
             <div class="pet-preview-card">
               <div v-if="newItemName" class="preview-filled">
-                <PetImage :name="newItemName" fallback="📦" class="preview-img" />
+                <PetImage :name="newItemName" :fallback="matInventory2" class="preview-img" />
                 <div class="preview-info">
                   <div class="preview-name">{{ newItemName }}</div>
                   <div class="preview-form-badge" style="color:var(--primary);border-color:var(--primary)">
@@ -330,7 +330,7 @@ import { ref, reactive, computed, onMounted, nextTick, watch } from 'vue'
 import FormChips from 'src/components/FormChips.vue'
 import PetImage from 'src/components/PetImage.vue'
 import SkeletonBar from 'src/components/SkeletonBar.vue'
-import { matAdd, matDeleteOutline, matSearch, matCheck, matArrowDownward, matArrowUpward, matSwapVert } from '@quasar/extras/material-icons'
+import { matAdd, matDeleteOutline, matSearch, matCheck, matArrowDownward, matArrowUpward, matSwapVert, matPets, matInventory2 } from '@quasar/extras/material-icons'
 import { useInventoryStore } from 'src/stores/inventory'
 import { useValuesStore, type DemandLevel } from 'src/stores/values'
 import { ADOPT_ME_PETS } from 'src/data/pets'

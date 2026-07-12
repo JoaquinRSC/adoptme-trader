@@ -6,11 +6,14 @@
     loading="lazy"
     @error="onError"
   />
-  <span v-else class="pet-image-fallback" role="img" :aria-label="name">{{ fallback }}</span>
+  <span v-else class="pet-image-fallback" role="img" :aria-label="name">
+    <q-icon :name="fallback" aria-hidden="true" />
+  </span>
 </template>
 
 <script setup lang="ts">
 import { ref, watch } from 'vue'
+import { matPets } from '@quasar/extras/material-icons'
 import { spriteUrl, resolveSprite } from 'src/utils/petImage'
 
 // Every pet/item thumbnail in the app.
@@ -25,9 +28,9 @@ import { spriteUrl, resolveSprite } from 'src/utils/petImage'
 // renders, so callers style this exactly like the `<img>` it replaces.
 const props = withDefaults(defineProps<{
   name: string
-  /** Shown when no sprite exists. Non-pet categories pass a box. */
+  /** Material icon shown when no sprite exists. Non-pet categories pass a box. */
   fallback?: string
-}>(), { fallback: '🐾' })
+}>(), { fallback: matPets })
 
 const src    = ref('')
 const failed = ref(false)
