@@ -196,8 +196,6 @@ const formLegend = [
   top: 0;
   z-index: 100;
   background: var(--chrome-bg);
-  -webkit-backdrop-filter: blur(14px);
-  backdrop-filter: blur(14px);
   border-bottom: 1px solid var(--border);
   padding-top: env(safe-area-inset-top);
 }
@@ -295,8 +293,6 @@ const formLegend = [
   z-index: 100;
   display: flex;
   background: var(--tabbar-bg);
-  -webkit-backdrop-filter: blur(16px);
-  backdrop-filter: blur(16px);
   border-top: 1px solid var(--border);
   /* Keep clear of the home indicator, but eat 12px of the inset: the full
      ~34px left the icon cluster hugging the bar's top edge with a void below

@@ -70,9 +70,12 @@ body {
   --demand-medium: #f0b429;
   --demand-low:    #f87171;
 
-  // Translucent app chrome (top bar / tab bar) and the verdict card's plate.
-  --chrome-bg:  rgba(11, 11, 12, 0.72);
-  --tabbar-bg:  rgba(15, 15, 17, 0.82);
+  // App chrome (top bar / tab bar): SOLID, matching the page's gradient
+  // endpoints, so the status-bar zone, the header and the page read as one
+  // continuous piece — no translucency seams. The verdict card keeps a
+  // translucent plate: it floats OVER content, a different role.
+  --chrome-bg:  #121214;
+  --tabbar-bg:  #121214;
   --verdict-bg: rgba(21, 21, 23, 0.92);
 
   // A scrim chip drawn OVER artwork (category badge on a tile) + its ink.
@@ -128,8 +131,8 @@ body {
   --demand-medium: #8a6400;
   --demand-low:    #bc4630;
 
-  --chrome-bg:  rgba(247, 245, 240, 0.78);
-  --tabbar-bg:  rgba(247, 245, 240, 0.88);
+  --chrome-bg:  #f7f5f0;
+  --tabbar-bg:  #f7f5f0;
   --verdict-bg: rgba(255, 255, 255, 0.93);
 
   --scrim:     rgba(255, 255, 255, 0.72);
