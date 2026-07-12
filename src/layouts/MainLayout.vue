@@ -39,6 +39,9 @@
           </router-link>
         </nav>
 
+        <button class="help-btn" :aria-label="themeLabel" :title="themeLabel" @click="theme.cycle()">
+          <q-icon :name="themeIcon" size="19px" />
+        </button>
         <button class="help-btn" aria-label="How it works" @click="showGuide = true">
           <q-icon :name="matHelpOutline" size="19px" />
         </button>
@@ -47,9 +50,11 @@
 
     <q-page-container>
       <router-view v-slot="{ Component }">
-        <keep-alive :include="['InventoryPage']">
-          <component :is="Component" />
-        </keep-alive>
+        <transition name="page" mode="out-in">
+          <keep-alive :include="['InventoryPage']">
+            <component :is="Component" />
+          </keep-alive>
+        </transition>
       </router-view>
     </q-page-container>
 
@@ -134,17 +139,30 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted } from 'vue'
-import { matPets, matBalance, matHelpOutline } from '@quasar/extras/material-icons'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { matPets, matBalance, matHelpOutline, matBrightnessAuto, matLightMode, matDarkMode } from '@quasar/extras/material-icons'
 import { version } from '../../package.json'
 import { useInventoryStore } from 'src/stores/inventory'
+import { useTheme } from 'src/composables/useTheme'
 import { formFill } from 'src/types'
 
 const inventory = useInventoryStore()
 
+// Theme mode toggle: auto (follows the system) → light → dark.
+const theme = useTheme()
+const themeIcon = computed(() =>
+  theme.mode.value === 'light' ? matLightMode
+  : theme.mode.value === 'dark' ? matDarkMode
+  : matBrightnessAuto,
+)
+const themeLabel = computed(() =>
+  theme.mode.value === 'auto' ? 'Theme: auto (follows your system)' : `Theme: ${theme.mode.value}`,
+)
+
 let pingInterval: ReturnType<typeof setInterval> | null = null
 onMounted(() => {
   inventory.hydrate()
+  theme.init()
   pingInterval = setInterval(() => { void fetch('/api/ping') }, 60_000)
 })
 onUnmounted(() => {
@@ -177,7 +195,7 @@ const formLegend = [
   position: sticky;
   top: 0;
   z-index: 100;
-  background: rgba(11, 11, 12, 0.72);
+  background: var(--chrome-bg);
   -webkit-backdrop-filter: blur(14px);
   backdrop-filter: blur(14px);
   border-bottom: 1px solid var(--border);
@@ -276,7 +294,7 @@ const formLegend = [
   right: 0;
   z-index: 100;
   display: flex;
-  background: rgba(15, 15, 17, 0.82);
+  background: var(--tabbar-bg);
   -webkit-backdrop-filter: blur(16px);
   backdrop-filter: blur(16px);
   border-top: 1px solid var(--border);

@@ -84,10 +84,12 @@
           <circle cx="70" cy="13" r="3.2" fill="currentColor" />
         </svg>
 
-        <div class="verdict-main">
-          <span class="verdict-word">{{ verdict.word }}</span>
-          <span class="verdict-note">{{ verdict.note }}</span>
-        </div>
+        <transition name="verdict" mode="out-in">
+          <div class="verdict-main" :key="verdict.word">
+            <span class="verdict-word">{{ verdict.word }}</span>
+            <span class="verdict-note">{{ verdict.note }}</span>
+          </div>
+        </transition>
 
         <span class="verdict-delta" v-if="diffPct !== null">
           {{ diffPct >= 0 ? '+' : '' }}{{ diffPct.toFixed(1) }}%
@@ -425,12 +427,11 @@ function addToThem (sel: PickerSelection) {
   padding: 12px 18px;
   border-radius: 18px;
   border: 1px solid var(--border-hi);
-  background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.02)),
-    rgba(21, 21, 23, 0.92);
+  background: var(--verdict-bg);
   -webkit-backdrop-filter: blur(14px);
   backdrop-filter: blur(14px);
-  box-shadow: inset 0 1px 0 var(--lift), 0 14px 40px -12px rgba(0, 0, 0, 0.8);
+  box-shadow: inset 0 1px 0 var(--lift), 0 14px 40px -12px rgba(0, 0, 0, 0.55);
+  transition: border-color 0.3s;
 }
 
 .scale {
@@ -495,6 +496,23 @@ function addToThem (sel: PickerSelection) {
 .verdict--win  { border-color: rgba(76, 217, 162, 0.35); }
 .verdict--lose { border-color: rgba(242, 145, 126, 0.35); }
 .verdict--fair { border-color: rgba(231, 195, 104, 0.35); }
+
+/* ── Motion ── */
+@media (prefers-reduced-motion: no-preference) {
+  @keyframes rise-in {
+    from { opacity: 0; transform: translateY(10px) scale(0.98); }
+    to   { opacity: 1; transform: none; }
+  }
+  .side-panel   { animation: rise-in 0.28s ease-out backwards; }
+  .side-panel:nth-child(2) { animation-delay: 0.06s; }
+  .verdict-card { animation: rise-in 0.3s ease-out 0.12s backwards; }
+
+  /* The words swap with a small vertical roll when the call changes. */
+  .verdict-enter-active { transition: opacity 0.18s ease-out, transform 0.18s ease-out; }
+  .verdict-leave-active { transition: opacity 0.1s ease-in, transform 0.1s ease-in; }
+  .verdict-enter-from   { opacity: 0; transform: translateY(7px); }
+  .verdict-leave-to     { opacity: 0; transform: translateY(-7px); }
+}
 
 /* ── Desktop ── */
 @media (min-width: 768px) {

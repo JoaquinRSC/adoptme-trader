@@ -38,6 +38,25 @@ las dos pantallas con patrones de apps reales:
   borrado, filtro de categorías, redirect viejo, guía. Lint + build SSR limpios.
 - Los screenshots del README se regeneraron con la UI nueva.
 
+**Follow-up del feedback en iPhone real (2026-07-12, misma fecha):**
+- **Blanco arriba y en el overscroll**: el `html` no tenía fondo (iOS lo muestra
+  en el rubber-band) → ahora pinta `--bg`; y la status bar de iOS sigue el tema
+  del SISTEMA (no controlable in-app, lección aprendida en otro proyecto), así
+  que el tema de la app ahora es **auto por defecto** — nunca desacuerdan.
+  `theme-color` por esquema en `index.html`.
+- **Decimales de AMV**: eran datos reales (Owl 1.2365), no ruido — `formatValue`
+  ya no redondea a 2: solo limpia float noise en el 6º decimal.
+- **Tema claro**: papel cálido + dorado oscurecido (AA re-medido en el browser:
+  todo ≥5:1; `--gold` claro = #7e6010, 5.13:1 sobre el crema). Un solo origen
+  (mixin `light-tokens`): `prefers-color-scheme` en modo auto + `data-theme`
+  para override manual (botón en el header: auto → light → dark, persistido).
+  Los labels de forma pasaron de texto teñido a chips fill+ink (`formFill`) —
+  el par de relleno aguanta AA en ambos temas. La placa de los slots sigue
+  oscura y opaca en ambos, a propósito.
+- **Animaciones**: transición de página, entrada escalonada de tiles, pop del
+  slot al agregar, roll del veredicto al cambiar — todo detrás de
+  `prefers-reduced-motion: no-preference`.
+
 Cerrado en la Fase 2: modo avanzado eliminado, errores amables, borradores
 persistidos, fix del router SSR, tooltips + "How it works", contraste y
 `max-width`, **componentes unificados** (`PetPicker`, `FormChips`,

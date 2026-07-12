@@ -1,12 +1,14 @@
 import type { DemandLevel } from 'src/stores/values'
 
-// One formatter for every value the UI prints. Community values carry float
-// noise (0.879999…) and AMVGG totals used to render with four decimals — cap
-// at 2 and strip trailing zeros so "3.50" reads "3.5" and "7.00" reads "7".
+// One formatter for every value the UI prints. AMVGG decimals are REAL data
+// (1.2365 and 1.55 are different pets) so they must survive intact — rounding
+// to 2 was reported as a bug. Only float noise is stripped: rounding at the
+// 6th decimal turns 0.8799999999 into 0.88 without touching any value the
+// sources actually publish.
 export function formatValue (v: number | null | undefined): string {
   if (v === null || v === undefined) return '—'
-  const rounded = Math.round(v * 100) / 100
-  return rounded.toLocaleString('en-US', { maximumFractionDigits: 2 })
+  const clean = Math.round(v * 1e6) / 1e6
+  return clean.toLocaleString('en-US', { maximumFractionDigits: 6 })
 }
 
 // Demand renders as 0–3 stars everywhere; these two lived copy-pasted in every

@@ -71,7 +71,7 @@ All `/api/*` endpoints are public — the app has no authentication. They all se
 - `src/components/PetImage.vue` — every pet/item thumbnail. Tries the direct AMVGG sprite URL, falls back to `/api/pet/image` (which scrapes + caches), then to a Material icon that keeps the element's box. Takes `name` + optional `fallback` icon; sizing comes from the class the caller passes. Never write a raw `<img src="https://amvgg.com/items/...">` again
 - `src/utils/format.ts` — `formatValue` (every value the UI prints: ≤2 decimals, no float noise) + `demandStars`/`demandClass`. Never print a raw value
 - `src/composables/useFormPicker.ts` — 5-button F/R/D/N/M toggle that derives `PetForm` from booleans; wrapped by `FormChips.vue`
-- `src/composables/useTheme.ts` — parked: the 6 colour themes were retired with the Premium re-skin (one dark identity); kept for a future light pair
+- `src/composables/useTheme.ts` — theme MODE (auto/light/dark), not palettes: auto follows the system, overrides stamp `data-theme` on `<html>`. See "Theming"
 - `src/pages/InventoryPage.vue` — portfolio hero (collection total, source toggle, CTAs) + dense tile grid; tapping a tile opens a bottom detail sheet (both values, demand, form editing via `FormChips`, remove with undo). All actions live in the sheet — no hover reveals
 - `src/pages/CheckValuesPage.vue` — the **Trade** page (route stays `/check-values`): "You give / They give" panels + the Fair Scale verdict card (sticky, beam tips toward the heavier side, WIN/FAIR/LOSE within ±5%)
 - `src/layouts/MainLayout.vue` — app shell: sticky blurred top bar (brand, desktop nav pills, help) + bottom tab bar on <768px (My Pets, Trade). No drawer
@@ -136,7 +136,11 @@ All of this lives in `src/css/app.scss`. Follow it when adding UI:
 
 ### Theming
 
-CSS custom properties on `:root` in `src/css/app.scss` — one dark identity (neutral black + gold), no theme switching. The old `data-theme` variants were retired with the Premium re-skin (2026-07-11); `useTheme.ts` stays parked for a future light pair.
+CSS custom properties on `:root` in `src/css/app.scss`. Dark (neutral black + gold) is the `:root` default; the light pair overrides the same tokens via the `light-tokens` SCSS mixin, applied two ways with one source of truth: `prefers-color-scheme: light` when no override is set (mode **auto**, the default) and `:root[data-theme='light'|'dark']` for a manual override (`useTheme.ts`, cycled from the header button, persisted as `theme-mode`).
+
+**Auto is the default on purpose**: the iOS standalone status bar follows the SYSTEM theme and cannot be driven in-app, so only auto guarantees the app and the status bar never disagree. `html` gets a solid `background-color` too — iOS rubber-band overscroll reveals it (it used to be white).
+
+When adding colours: never hardcode a hex in a component if it must differ per theme — add a token pair (see `--demand-*`, `--chrome-bg`, `--scrim`, `--total-from/to`, `--shimmer`). AA (4.5:1) is the floor **in both themes**; the light golds are darker than the brand gold for exactly this (`--gold` light = `#7e6010`, measured 5.13:1 on the cream bg). Form colours stay one set: fills+ink (`formFill`) work on both themes; tinted-text (`FORM_TEXT_HEX`) only on dark surfaces (the slot `.slot-meta` plate stays opaque dark in both themes for this reason).
 
 ### Deployment
 

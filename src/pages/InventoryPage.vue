@@ -122,7 +122,9 @@
           </div>
           <div class="sheet-id">
             <div class="sheet-name">{{ detailPet.name }}</div>
-            <div class="sheet-kind" :style="isFormed(detailPet) ? { color: FORM_TEXT_HEX[detailPet.form] } : {}">
+            <!-- A filled chip (form fill + its ink), not tinted text: the fill
+                 pair holds contrast on both themes, tinted text only on dark. -->
+            <div class="sheet-kind" :style="isFormed(detailPet) ? formFill(detailPet.form) : {}">
               {{ isPet(detailPet.category) ? FORM_LABELS[detailPet.form] : CATEGORY_LABELS[detailPet.category!] }}
             </div>
           </div>
@@ -231,10 +233,9 @@
                 <PetImage :name="newPetName" class="preview-img" />
                 <div class="preview-info">
                   <div class="preview-name">{{ newPetName }}</div>
-                  <div
-                    class="preview-form-badge"
-                    :style="{ color: FORM_TEXT_HEX[newPetForm], borderColor: FORM_TEXT_HEX[newPetForm] }"
-                  >{{ FORM_LABELS[newPetForm] }}</div>
+                  <div class="preview-form-badge" :style="formFill(newPetForm)">
+                    {{ FORM_LABELS[newPetForm] }}
+                  </div>
                 </div>
               </div>
               <div v-else class="preview-empty">Pick a pet from the list</div>
@@ -332,7 +333,7 @@
                 <PetImage :name="newItemName" :fallback="matInventory2" class="preview-img" />
                 <div class="preview-info">
                   <div class="preview-name">{{ newItemName }}</div>
-                  <div class="preview-form-badge" style="color:var(--primary);border-color:var(--primary)">
+                  <div class="preview-form-badge preview-form-badge--outline" style="color:var(--primary);border-color:var(--primary)">
                     {{ newItemCategory ? CATEGORY_LABELS[newItemCategory] : '' }}
                   </div>
                 </div>
@@ -377,7 +378,7 @@ import { useRecentStore } from 'src/stores/recent'
 import RecentChips from 'src/components/RecentChips.vue'
 import SourceToggle from 'src/components/SourceToggle.vue'
 import {
-  FORM_LABELS, FORM_TEXT_HEX, FORM_GRADIENT, FORM_RGB, formFill, isPet,
+  FORM_LABELS, FORM_GRADIENT, FORM_RGB, formFill, isPet,
   CATEGORY_LABELS, ITEM_CATEGORY_OPTIONS,
   type PetForm, type InventoryPet, type ItemCategory, type ValueSource,
 } from 'src/types'
@@ -840,7 +841,7 @@ function removeWithUndo (id: string) {
   font-size: 40px;
   font-weight: 600;
   line-height: 1.15;
-  background: linear-gradient(180deg, #ffe9b3, #e7c368);
+  background: linear-gradient(180deg, var(--total-from), var(--total-to));
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
@@ -1093,9 +1094,9 @@ function removeWithUndo (id: string) {
   padding: 3px 7px;
   border-radius: 20px;
   border: 1px solid var(--border-hi);
-  background: rgba(0, 0, 0, 0.45);
+  background: var(--scrim);
   backdrop-filter: blur(4px);
-  color: var(--text-2);
+  color: var(--scrim-ink);
   text-transform: uppercase;
 }
 
@@ -1131,9 +1132,9 @@ function removeWithUndo (id: string) {
   line-height: 1;
   flex-shrink: 0;
 }
-.stars--high   { color: #34d399; }
-.stars--medium { color: #f0b429; }
-.stars--low    { color: #f87171; }
+.stars--high   { color: var(--demand-high); }
+.stars--medium { color: var(--demand-medium); }
+.stars--low    { color: var(--demand-low); }
 
 /* ── Detail sheet ── */
 .sheet {
@@ -1200,12 +1201,16 @@ function removeWithUndo (id: string) {
 }
 
 .sheet-kind {
-  font-size: 11px;
+  display: inline-block;
+  font-size: 10.5px;
   font-weight: 800;
   text-transform: uppercase;
   letter-spacing: 0.6px;
+  padding: 3px 9px;
+  border-radius: 99px;
+  background: var(--surface-3);
   color: var(--text-2);
-  margin-top: 3px;
+  margin-top: 5px;
 }
 
 .sheet-stats {
@@ -1399,17 +1404,18 @@ function removeWithUndo (id: string) {
   text-overflow: ellipsis;
 }
 
+/* Filled with the form's colour pair (or primary for items — the border+text
+   variant survives only there, where --primary adapts per theme). */
 .preview-form-badge {
   font-size: 10px;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.06em;
-  border: 1px solid;
-  border-radius: 4px;
-  padding: 1px 5px;
+  border-radius: 5px;
+  padding: 2px 7px;
   align-self: flex-start;
-  opacity: 0.85;
 }
+.preview-form-badge--outline { border: 1px solid; }
 
 .preview-empty {
   font-size: 12px;
@@ -1458,6 +1464,27 @@ function removeWithUndo (id: string) {
   }
   .results-panel { flex: none !important; height: 200px !important; }
   .add-right { width: 100% !important; }
+}
+
+/* ── Motion ──
+   Entrance only — the grid settling into place as the page opens. `backwards`
+   keeps tiles invisible through their stagger delay; re-sorting moves existing
+   elements, so nothing replays on every sort. All behind reduced-motion. */
+@media (prefers-reduced-motion: no-preference) {
+  @keyframes rise-in {
+    from { opacity: 0; transform: translateY(10px) scale(0.98); }
+    to   { opacity: 1; transform: none; }
+  }
+  .folio, .empty-state { animation: rise-in 0.28s ease-out; }
+  .tile { animation: rise-in 0.3s ease-out backwards; }
+  .tile:nth-child(2)  { animation-delay: 0.035s; }
+  .tile:nth-child(3)  { animation-delay: 0.07s; }
+  .tile:nth-child(4)  { animation-delay: 0.105s; }
+  .tile:nth-child(5)  { animation-delay: 0.14s; }
+  .tile:nth-child(6)  { animation-delay: 0.175s; }
+  .tile:nth-child(7)  { animation-delay: 0.21s; }
+  .tile:nth-child(8)  { animation-delay: 0.245s; }
+  .tile:nth-child(n+9) { animation-delay: 0.28s; }
 }
 
 /* Wide screens: the hero doesn't need to be a full-width slab */

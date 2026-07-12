@@ -1,56 +1,56 @@
 import { ref } from 'vue'
 
-export type ThemeId = 'purple' | 'ocean' | 'forest' | 'crimson' | 'dusk' | 'rose'
+// Theme mode, not theme: 'auto' follows the system (prefers-color-scheme does
+// the work in CSS, no attribute set), and 'light'/'dark' force it by stamping
+// `data-theme` on <html>. Auto is the default on purpose — the iOS standalone
+// status bar follows the SYSTEM theme and can't be driven by an in-app toggle
+// (hard-learned elsewhere), so only auto guarantees they never disagree.
+export type ThemeMode = 'auto' | 'light' | 'dark'
 
-export interface ThemeDef {
-  id: ThemeId
-  label: string
-  accent: string
-}
+export const THEME_MODES: ThemeMode[] = ['auto', 'light', 'dark']
 
-export const THEMES: ThemeDef[] = [
-  { id: 'purple',  label: 'Midnight', accent: '#7c6cf8' },
-  { id: 'ocean',   label: 'Ocean',    accent: '#38bdf8' },
-  { id: 'forest',  label: 'Forest',   accent: '#4ade80' },
-  { id: 'crimson', label: 'Crimson',  accent: '#f87171' },
-  { id: 'dusk',    label: 'Dusk',     accent: '#f0b429' },
-  { id: 'rose',    label: 'Rose',     accent: '#f472b6' },
-]
-
-const STORAGE_KEY = 'app-theme'
+const STORAGE_KEY = 'theme-mode'
 const hasDom = typeof document !== 'undefined' // false during SSR
 
-function stored(): ThemeId {
-  return (hasDom ? (localStorage.getItem(STORAGE_KEY) as ThemeId | null) : null) ?? 'purple'
+function stored (): ThemeMode {
+  if (!hasDom) return 'auto'
+  const raw = localStorage.getItem(STORAGE_KEY)
+  return raw === 'light' || raw === 'dark' ? raw : 'auto'
 }
 
-function applyToDom(id: ThemeId) {
-  if (hasDom) document.documentElement.dataset.theme = id === 'purple' ? '' : id
+function applyToDom (mode: ThemeMode) {
+  if (!hasDom) return
+  if (mode === 'auto') delete document.documentElement.dataset.theme
+  else document.documentElement.dataset.theme = mode
 }
 
-// Reactive value bound to the swatch picker. It stays at the SSR default
-// ('purple') through hydration and is only synced to the stored theme in init()
-// (called after mount). Reading localStorage at module load instead would make
-// the client render a different active swatch than the server, and Vue's
-// production hydration does NOT reconcile that class mismatch — leaving the wrong
-// swatch highlighted until the next interaction.
-const current = ref<ThemeId>('purple')
+// Reactive value bound to the toggle. It stays at the SSR default ('auto')
+// through hydration and is only synced to the stored mode in init() (called
+// after mount). Reading localStorage at module load instead would make the
+// client render a different toggle state than the server, and Vue's production
+// hydration does NOT reconcile that mismatch.
+const mode = ref<ThemeMode>('auto')
 
-function apply(id: ThemeId) {
-  current.value = id
-  applyToDom(id)
-  if (hasDom) localStorage.setItem(STORAGE_KEY, id)
+function apply (m: ThemeMode) {
+  mode.value = m
+  applyToDom(m)
+  if (hasDom) localStorage.setItem(STORAGE_KEY, m)
 }
 
-// Apply the stored theme's COLORS immediately (no flash of the default palette).
-// This only touches <html data-theme>, never the reactive ref, so it's safe.
+function cycle () {
+  const next = THEME_MODES[(THEME_MODES.indexOf(mode.value) + 1) % THEME_MODES.length]!
+  apply(next)
+}
+
+// Apply the stored override immediately (no flash of the wrong theme). This
+// only touches <html data-theme>, never the reactive ref, so it's safe.
 applyToDom(stored())
 
 // Sync the reactive ref after hydration — a real reactive update Vue will patch.
-function init() {
-  current.value = stored()
+function init () {
+  mode.value = stored()
 }
 
-export function useTheme() {
-  return { current, themes: THEMES, apply, init }
+export function useTheme () {
+  return { mode, apply, cycle, init }
 }

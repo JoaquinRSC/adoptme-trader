@@ -24,9 +24,10 @@ body {
   --font-ui:      'Nunito', 'Segoe UI', system-ui, sans-serif;
   --font-display: 'Fredoka', 'Nunito', 'Segoe UI', system-ui, sans-serif;
 
-  // Premium re-skin (2026-07-10): one dark theme replaces the six. Neutral black
-  // ground, gold as the brand accent, a top-light that separates flat from lifted.
-  // Depth and finish over the existing structure — no navy, no indigo.
+  // Premium re-skin (2026-07-10): neutral black ground, gold as the brand
+  // accent, a top-light that separates flat from lifted. Depth and finish over
+  // the existing structure — no navy, no indigo. Dark is the default; the
+  // light pair below overrides the same tokens.
   --bg:           #0b0b0c;   // base; the body paints a gradient + gold glow over it
   --bg-2:         #121214;
   --surface:      #151517;
@@ -63,10 +64,92 @@ body {
   --text-1:       #f1f0ec;
   --text-2:       #9c9ba3;
   --text-3:       #8d8c95;
+
+  // Demand stars (glyph colour needs its own light-safe pair, so: tokens).
+  --demand-high:   #34d399;
+  --demand-medium: #f0b429;
+  --demand-low:    #f87171;
+
+  // Translucent app chrome (top bar / tab bar) and the verdict card's plate.
+  --chrome-bg:  rgba(11, 11, 12, 0.72);
+  --tabbar-bg:  rgba(15, 15, 17, 0.82);
+  --verdict-bg: rgba(21, 21, 23, 0.92);
+
+  // A scrim chip drawn OVER artwork (category badge on a tile) + its ink.
+  --scrim:     rgba(0, 0, 0, 0.45);
+  --scrim-ink: var(--text-2);
+
+  // The hero total's gradient ink and the skeleton shimmer.
+  --total-from: #ffe9b3;
+  --total-to:   #e7c368;
+  --shimmer:    rgba(255, 255, 255, 0.09);
+
+  // The body's ambient gold glow (lighter theme = quieter glow).
+  --bg-glow: rgba(231, 195, 104, 0.10);
 }
 
-// The six colour themes were retired with the Premium re-skin (2026-07-10): one
-// dark identity, gold accent. `useTheme.ts` stays parked for a future light pair.
+// ── Light theme ───────────────────────────────────────────────────────────────
+// The brand inverted, not a generic white skin: warm paper ground so the gold
+// still owns the page, and every gold/status hue re-derived to hold AA (4.5:1)
+// on light surfaces. Applied two ways with one source of truth:
+//   · mode "auto"  → follows the system via prefers-color-scheme
+//   · manual override → `data-theme="light|dark"` on <html> (see useTheme.ts)
+// The iOS standalone status bar follows the SYSTEM theme and nothing else, so
+// "auto" is the default mode — app and status bar can never disagree there.
+@mixin light-tokens {
+  --bg:           #f2efe8;
+  --bg-2:         #f7f5f0;
+  --surface:      #ffffff;
+  --surface-2:    #f4f1ea;
+  --surface-3:    #e8e4d9;
+  --border:       rgba(48, 38, 16, 0.10);
+  --border-hi:    rgba(48, 38, 16, 0.17);
+  --hairline:     rgba(48, 38, 16, 0.14);
+  --lift:         rgba(255, 255, 255, 0.85);
+  --elev-fill:    linear-gradient(180deg, #ffffff, #fcfaf5);
+  --elev-shadow:  inset 0 1px 0 var(--lift), 0 10px 26px -18px rgba(74, 58, 18, 0.45);
+
+  // #7e6010 and not a step lighter: the gold also paints text directly on the
+  // cream --bg (active tab label), where #8a6a14 measured 4.40:1 — under AA.
+  --primary:      #7e6010;
+  --primary-glow: rgba(176, 138, 32, 0.28);
+  --primary-dim:  rgba(176, 138, 32, 0.13);
+  --gold:         #7e6010;
+  --gold-dim:     rgba(176, 138, 32, 0.14);
+
+  --positive:     #0e7a51;
+  --negative:     #bc4630;
+
+  --text-1:       #241f13;
+  --text-2:       #575138;
+  --text-3:       #6d6650;
+
+  --demand-high:   #0e7a51;
+  --demand-medium: #8a6400;
+  --demand-low:    #bc4630;
+
+  --chrome-bg:  rgba(247, 245, 240, 0.78);
+  --tabbar-bg:  rgba(247, 245, 240, 0.88);
+  --verdict-bg: rgba(255, 255, 255, 0.93);
+
+  --scrim:     rgba(255, 255, 255, 0.72);
+  --scrim-ink: #4a4330;
+
+  --total-from: #a37c1b;
+  --total-to:   #705408;
+  --shimmer:    rgba(255, 255, 255, 0.55);
+
+  --bg-glow: rgba(231, 195, 104, 0.16);
+}
+
+// Auto mode: no data-theme attribute → the system decides.
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme='dark']) { @include light-tokens; }
+}
+// Manual override, either direction, wins over the media query (the dark side
+// needs no block: dark IS the :root default, and [data-theme='dark'] is
+// excluded from the light media block above).
+:root[data-theme='light'] { @include light-tokens; }
 
 // ── Base ──────────────────────────────────────────────────────────────────────
 // The `!important` is load-bearing: Quasar ships its own `font-family` on body and
@@ -94,10 +177,17 @@ body {
 // Nunito's ten digits already advance uniformly, and Fredoka ships no `tnum`
 // feature, so the declaration would be inert. Re-check on a font swap.
 
+// The html element also gets a solid background: iOS rubber-band overscroll
+// reveals whatever sits BEYOND the body's painted gradient, and with nothing
+// set that's white — the bug reported as "white when you scroll too far".
+html {
+  background-color: var(--bg) !important;
+}
+
 .q-app,
 body {
   background:
-    radial-gradient(115% 85% at 88% -8%, rgba(231, 195, 104, 0.10), transparent 55%),
+    radial-gradient(115% 85% at 88% -8%, var(--bg-glow), transparent 55%),
     linear-gradient(163deg, var(--bg-2), var(--bg)) !important;
   background-attachment: fixed !important;
   color: var(--text-1) !important;
@@ -367,9 +457,9 @@ body::before {
   line-height: 1;
   flex-shrink: 0;
 }
-.demand--high   { color: #34d399; }
-.demand--medium { color: #f0b429; }
-.demand--low    { color: #f87171; }
+.demand--high   { color: var(--demand-high); }
+.demand--medium { color: var(--demand-medium); }
+.demand--low    { color: var(--demand-low); }
 
 .slot-val {
   font-size: 10px;
@@ -485,4 +575,23 @@ body::before {
 @media (max-width: 599px) {
   // Wider tap targets for the small form/source toggles
   .source-toggle .source-btn { padding: 7px 12px !important; }
+}
+
+// ── Motion ────────────────────────────────────────────────────────────────────
+// Page-to-page transition (bound in MainLayout's <transition name="page">).
+// Global, not scoped: the classes land on each page component's root element.
+// Everything here is decoration, so it all sits behind no-preference.
+@media (prefers-reduced-motion: no-preference) {
+  .page-enter-active { transition: opacity 0.18s ease-out, transform 0.18s ease-out; }
+  .page-leave-active { transition: opacity 0.12s ease-in; }
+  .page-enter-from   { opacity: 0; transform: translateY(10px); }
+  .page-leave-to     { opacity: 0; }
+
+  // The slot a pet just landed in pops into place (Trade page).
+  @keyframes slot-in {
+    from { opacity: 0; transform: scale(0.85); }
+    60%  { transform: scale(1.04); }
+    to   { opacity: 1; transform: scale(1); }
+  }
+  .pet-slot--filled { animation: slot-in 0.28s cubic-bezier(0.34, 1.4, 0.64, 1) both; }
 }

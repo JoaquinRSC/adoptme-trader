@@ -20,7 +20,7 @@ withDefaults(defineProps<{ width?: string }>(), { width: '3em' })
   background-image: linear-gradient(
     90deg,
     transparent 0%,
-    rgba(255, 255, 255, 0.09) 50%,
+    var(--shimmer) 50%,
     transparent 100%
   );
   background-size: 200% 100%;
