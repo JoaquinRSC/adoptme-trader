@@ -35,7 +35,6 @@ body {
   --surface-3:    #26262b;
   --border:       rgba(255, 255, 255, 0.08);
   --border-hi:    rgba(255, 255, 255, 0.14);
-  --hairline:     rgba(255, 255, 255, 0.22);  // the screen's top edge of light
   --lift:         rgba(255, 255, 255, 0.06);   // inset top light on a raised panel
   // A raised panel, in one place: a faint top-lit wash over the surface, plus an
   // inset highlight and a soft drop. Every elevated container points here.
@@ -107,7 +106,6 @@ body {
   --surface-3:    #e8e4d9;
   --border:       rgba(48, 38, 16, 0.10);
   --border-hi:    rgba(48, 38, 16, 0.17);
-  --hairline:     rgba(48, 38, 16, 0.14);
   --lift:         rgba(255, 255, 255, 0.85);
   --elev-fill:    linear-gradient(180deg, #ffffff, #fcfaf5);
   --elev-shadow:  inset 0 1px 0 var(--lift), 0 10px 26px -18px rgba(74, 58, 18, 0.45);
@@ -196,17 +194,8 @@ body {
   color: var(--text-1) !important;
 }
 
-// The top edge of light — the single trick that reads as "premium" over "flat".
-// A fixed 1px hairline across the whole screen top, above everything.
-body::before {
-  content: '';
-  position: fixed;
-  inset: 0 0 auto 0;
-  height: 1px;
-  background: linear-gradient(90deg, transparent, var(--hairline) 25%, var(--hairline) 75%, transparent);
-  z-index: 9999;
-  pointer-events: none;
-}
+// (The old top-of-screen light hairline is gone: with the fixed header owning
+// the top edge it read as a stray line, and was reported as such.)
 
 // ── Scrollbar ─────────────────────────────────────────────────────────────────
 ::-webkit-scrollbar             { width: 5px; height: 5px; }
@@ -217,6 +206,9 @@ body::before {
 // ── Quasar patches ────────────────────────────────────────────────────────────
 .q-page-container {
   background: transparent !important;  // let the body's gradient + glow show through
+  // Clear the FIXED topbar (52px + notch inset). Quasar would manage this for a
+  // q-header, but the shell deliberately doesn't use one (see MainLayout).
+  padding-top: calc(52px + env(safe-area-inset-top)) !important;
 }
 
 .q-drawer {

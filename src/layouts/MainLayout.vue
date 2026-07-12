@@ -191,9 +191,15 @@ const formLegend = [
 }
 
 /* ── Top bar ── */
+/* Fixed, not sticky: a sticky bar lives inside the scrolling document, so the
+   iOS rubber-band drags it down and it visibly detaches from the top edge.
+   Fixed pins it to the viewport (same as the tab bar); the page container
+   compensates with padding — see .q-page-container in app.scss. */
 .topbar {
-  position: sticky;
+  position: fixed;
   top: 0;
+  left: 0;
+  right: 0;
   z-index: 100;
   background: var(--chrome-bg);
   border-bottom: 1px solid var(--border);
