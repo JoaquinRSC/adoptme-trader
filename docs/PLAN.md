@@ -6,9 +6,9 @@ cerrar cada fase entera antes de empezar la siguiente — una app chica, fresca 
 pulida le gana a una app grande a medio hacer. El backlog existe para anotar
 sin comprometerse.
 
-## Estado (última actualización: 2026-07-10)
+## Estado (última actualización: 2026-07-12)
 
-**Fase 1 ✅ · Fase 1.5 ✅ · Fase 1.8 ✅ · Fase 2 ✅ · Fase 2.5 🚧 (en curso).**
+**Fase 1 ✅ · Fase 1.5 ✅ · Fase 1.8 ✅ · Fase 2 ✅ · Fase 2.5 ✅.**
 
 Cerrado en la Fase 2: modo avanzado eliminado, errores amables, borradores
 persistidos, fix del router SSR, tooltips + "How it works", contraste y
@@ -29,8 +29,9 @@ es opaco, y `/trade-builder` y `/check-values` SSRean su propio contenido.
 
 El re-skin "Premium", el **logo "The Fair Scale"** (la balanza dorada, en el sidebar
 y en todos los íconos + OG) y el **nombre "AM Trader"** (unificado en todos lados) se
-cerraron y **deployaron el 2026-07-11**. Queda en la 2.5, **en orden de impacto**:
-microcopy con voz de trader (es-AR/en) y emojis → Material. La mascota "Nest" (huevo)
+cerraron y **deployaron el 2026-07-11**. La **Fase 2.5 se cerró el 2026-07-12** con los
+dos ítems que faltaban: microcopy con voz de trader (en inglés; el par es-AR/en va con
+el i18n de la Fase 3) y emojis-ícono → Material. La mascota "Nest" (huevo)
 quedó disponible como personaje secundario para las share cards de la Fase 3.
 
 ### Deuda técnica conocida (2026-07-10)
@@ -435,11 +436,23 @@ La ejecución ya está; falta punto de vista. Pocas decisiones, mucho efecto:
       "How it works"). Ahora es "AM Trader" en todos lados. La key de localStorage
       quedó en `adoptme_inventory` a propósito: renombrarla borraría el inventario
       de los usuarios ([[feedback_localstorage_migration]]).
-- [ ] Microcopy con voz de trader (es-AR/en), no texto funcional de IA:
-      "Nadie está buscando tu Frost Dragon todavía — probá en un rato".
-      Ya se corrigió el `<meta description>` + OG tags, que seguían vendiendo
-      "a live market scanner" — feature borrada el 2026-07-08.
-- [ ] Reemplazar emojis-como-íconos (🐾, 🦌, ⊘) por íconos Material (ya está el set).
+- [x] **Microcopy con voz de trader (hecho 2026-07-12).** Los empty states de más
+      peso pasaron de texto funcional a voz. My Pets: "No pets in here yet" +
+      "Add what you've got — we'll pull values and help you trade up." Trade Builder:
+      "Add pets to your offer, then hit \"Find matches\"." y, el ejemplo insignia,
+      "No pets found within ±X%" → "Nothing lines up within ±X% — widen the range or
+      change your offer." (da la salida, no sólo el estado). El copy micro-funcional
+      —search idle, "No results for X", hints de preview— se dejó terse a propósito:
+      sobre-vocearlo es ruido. Sigue en **inglés**; el par es-AR/en llega con el i18n
+      de la Fase 3. (El `<meta description>` + OG ya se habían limpiado antes.)
+- [x] **Emojis-como-íconos → Material (hecho 2026-07-12).** Los únicos emoji-ícono que
+      quedaban eran 🐾 y 📦 (el 🦌/⊘ del inventario del plan ya no existía). `PetImage.vue`
+      rinde el fallback con `<q-icon>` — default `matPets`, ítems `matInventory2` — así el
+      glyph es monocromo y controlable en vez de un emoji full-color que cambia por
+      plataforma; el empty state de My Pets usa el mismo `matPets`. Las ★/☆ de demand y
+      el ✕ tipográfico de cierre se dejaron (no son emoji-ícono). Verificado en el browser
+      (paw del empty state nítido y centrado, mismo mecanismo q-icon que los fallbacks);
+      lint + build SSR limpios.
 - [x] **Re-skin "Premium" (hecho 2026-07-11)** — terminación tipo
       Linear/Raycast sobre el sistema existente, SIN tocar templates de Vue.
       Maqueta aprobada: artifact "AM Trader — dirección premium" (v4) →
@@ -641,21 +654,25 @@ ads → Fly pago con margen.
 
 ## Primer paso concreto al retomar
 
-La Fase 2 está cerrada y la **Fase 2.5** está casi lista: color por forma, tipografía
+La **Fase 2.5 se cerró el 2026-07-12**: color por forma, tipografía
 display y AA (2026-07-10), y el **re-skin "Premium" + logo "The Fair Scale" + nombre
-"AM Trader"** (2026-07-11, deployado). Detalle en los ítems de la Fase 2.5 arriba.
+"AM Trader"** (2026-07-11), y los dos últimos ítems —microcopy y emojis-ícono → Material— el
+2026-07-12. Detalle en los ítems de la Fase 2.5 arriba.
 
 **Antes de escribir una línea de UI: correr la skill `/frontend-design`.**
 
-Quedan dos ítems, en orden de impacto:
+El próximo bloque es la **Fase 3 — motor de crecimiento** (tráfico antes que
+retención). Los candidatos, en orden de impacto:
 
-1. **Microcopy con voz de trader** (es-AR/en). El copy funcional ya está limpio;
-   falta que tenga voz. Ej.: "Nadie está buscando tu Frost Dragon todavía — probá
-   en un rato" en vez de "No pets found". La mascota "Nest" (huevo, dirección B del
-   artifact de logos) puede darle cara a los empty states y a las share cards.
-2. **Emojis-como-íconos → Material** (quedan 🦌 en el empty state, 📦 en los
-   fallbacks de `PetImage`, ⊘). El 🐾 ya salió con el logo nuevo. El set ya está
-   instalado.
+1. **Links de trade compartibles** + imagen OG: armar un trade → link público
+   "¿es fair?" para pegar en Discord. El `og-image.png` y el favicon/PWA ya son la
+   marca nueva (la balanza), así que los previews arrancan con identidad propia.
+2. **Quick WFL pública** (Win/Fair/Lose sin inventario): el punto de entrada natural
+   de los share links.
+3. **Páginas SSR por pet** (`/pet/frost-dragon`) para SEO orgánico. ⚠️ Antes hay que
+   resolver la deuda técnica de la **página de error** (hoy una ruta desconocida rinde
+   una pantalla en blanco, no un 404) — las URLs por pet se van a tipear mal. La mascota
+   "Nest" (huevo) sigue disponible para darle cara a los empty states y a las share cards.
 
 Al tocar color, el piso ya está medido y no se negocia: AA (4.5:1) para todo texto
 (ahora sobre **un solo tema oscuro**, no seis), y `.slot-meta` es una placa opaca
