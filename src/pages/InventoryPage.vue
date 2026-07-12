@@ -980,7 +980,7 @@ function removeWithUndo (id: string) {
 @media (hover: hover) {
   .cat-chip:hover { border-color: var(--primary); color: var(--text-1); }
 }
-.cat-chip--active { background: var(--primary); border-color: var(--primary); color: var(--cta-ink); }
+.cat-chip--active { background: var(--primary); border-color: var(--primary); color: var(--on-primary); }
 
 /* ── Empty state ── */
 .empty-state {

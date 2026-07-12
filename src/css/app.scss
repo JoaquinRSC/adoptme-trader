@@ -44,6 +44,11 @@ body {
   // Gold is the brand accent now. --primary points at it so every focus ring,
   // active pip and field border inherits the one accent.
   --primary:      #e7c368;
+  // The ink for text sitting ON a --primary fill (active toggle chips). NOT the
+  // same as --cta-ink: the CTA gradient stays bright gold in both themes, but
+  // --primary flips dark in the light theme — pairing it with dark ink there
+  // rendered dark-on-dark (reported: "AMV/Elve en negro").
+  --on-primary:   #201503;
   --primary-glow: rgba(231, 195, 104, 0.22);
   --primary-dim:  rgba(231, 195, 104, 0.10);
   --gold:         #e7c368;
@@ -113,6 +118,7 @@ body {
   // #7e6010 and not a step lighter: the gold also paints text directly on the
   // cream --bg (active tab label), where #8a6a14 measured 4.40:1 — under AA.
   --primary:      #7e6010;
+  --on-primary:   #ffffff;  // white on the dark gold: 5.9:1
   --primary-glow: rgba(176, 138, 32, 0.28);
   --primary-dim:  rgba(176, 138, 32, 0.13);
   --gold:         #7e6010;

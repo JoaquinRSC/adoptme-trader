@@ -83,6 +83,9 @@ watch(() => props.modelValue, (v) => { if (v !== form.value) reset(v) })
   gap: 6px;
 }
 
+/* Idle chips paint with theme tokens, not hardcoded white washes: the old
+   rgba(255,255,255,…) trio was invisible on the light theme's pale surfaces
+   (reported: F/R/N/M "disappeared" in the Add Pet dialog). */
 .form-chip {
   min-width: 40px;
   min-height: 36px;
@@ -90,9 +93,9 @@ watch(() => props.modelValue, (v) => { if (v !== form.value) reset(v) })
   font-size: 13px;
   font-weight: 700;
   border-radius: 99px;
-  border: 1.5px solid rgba(255, 255, 255, 0.12);
-  background: rgba(255, 255, 255, 0.06);
-  color: rgba(255, 255, 255, 0.45);
+  border: 1.5px solid var(--border-hi);
+  background: var(--surface-3);
+  color: var(--text-2);
   cursor: pointer;
   transition: all 0.15s;
   text-align: center;
@@ -102,9 +105,8 @@ watch(() => props.modelValue, (v) => { if (v !== form.value) reset(v) })
 
 @media (hover: hover) {
   .form-chip:hover {
-    border-color: rgba(255, 255, 255, 0.3);
-    color: rgba(255, 255, 255, 0.85);
-    background: rgba(255, 255, 255, 0.1);
+    border-color: var(--text-3);
+    color: var(--text-1);
   }
 }
 

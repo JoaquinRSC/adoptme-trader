@@ -52,6 +52,6 @@ const SOURCES: Array<{ value: ValueSource; label: string; title: string; ariaLab
 
 .source-btn--active {
   background: var(--primary);
-  color: var(--cta-ink);
+  color: var(--on-primary);
 }
 </style>
