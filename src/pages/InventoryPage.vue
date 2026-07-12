@@ -1,36 +1,24 @@
 <template>
   <q-page class="inv-page">
 
-    <!-- Page header -->
-    <div class="page-head">
-      <div>
-        <div class="page-title">My Pets</div>
-        <div class="page-sub" v-if="inventory.pets.length">
-          {{ inventory.pets.length }} {{ inventory.pets.length === 1 ? 'pet' : 'pets' }} in inventory
+    <!-- Portfolio hero: the collection's worth, always first. -->
+    <section class="folio" v-if="inventory.pets.length">
+      <div class="folio-top">
+        <div class="folio-worth">
+          <div class="folio-lbl">Collection value</div>
+          <div class="folio-total">
+            <SkeletonBar v-if="anyLoading" width="3.2em" />
+            <template v-else>{{ formatValue(totalValue) }}</template>
+          </div>
+          <div class="folio-sub">
+            {{ inventory.pets.length }} {{ inventory.pets.length === 1 ? 'pet' : 'pets' }}
+            · {{ valueSource === 'amvgg' ? 'AMV' : 'Elve' }} values
+          </div>
         </div>
-      </div>
-      <div class="head-right">
-        <div class="total-stat" v-if="inventory.pets.length">
-          <span class="total-lbl">Total</span>
-          <span class="total-val">
-            <SkeletonBar v-if="anyLoading" width="4em" />
-            <template v-else>{{ totalValue.toFixed(3) }}</template>
-          </span>
-        </div>
-        <button
-          v-if="inventory.pets.length"
-          class="sort-btn"
-          :class="{ 'sort-btn--active': sortOrder !== 'default' }"
-          :title="sortOrder === 'default' ? 'Sort by value' : sortOrder === 'desc' ? 'Sorted: high → low' : 'Sorted: low → high'"
-          @click="cycleSortOrder"
-        >
-          <q-icon
-            :name="sortOrder === 'desc' ? matArrowDownward : sortOrder === 'asc' ? matArrowUpward : matSwapVert"
-            size="15px"
-          />
-          <span>{{ sortOrder === 'desc' ? 'High → Low' : sortOrder === 'asc' ? 'Low → High' : 'Sort' }}</span>
-        </button>
         <SourceToggle v-model="valueSource" />
+      </div>
+
+      <div class="folio-actions">
         <button class="btn-primary" @click="openAdd">
           <q-icon :name="matAdd" size="16px" />
           Add Pet
@@ -39,20 +27,30 @@
           <q-icon :name="matAdd" size="16px" />
           Add Item
         </button>
+        <button
+          class="sort-btn"
+          :class="{ 'sort-btn--active': sortOrder !== 'default' }"
+          :title="sortOrder === 'default' ? 'Sort by value' : sortOrder === 'desc' ? 'Sorted: high to low' : 'Sorted: low to high'"
+          @click="cycleSortOrder"
+        >
+          <q-icon
+            :name="sortOrder === 'desc' ? matArrowDownward : sortOrder === 'asc' ? matArrowUpward : matSwapVert"
+            size="16px"
+          />
+        </button>
       </div>
-    </div>
 
-    <!-- Category filter -->
-    <div class="cat-filter" v-if="availableCategories.length > 1" role="group" aria-label="Filter by category">
-      <button
-        v-for="cat in availableCategories"
-        :key="cat"
-        class="cat-chip"
-        :class="{ 'cat-chip--active': categoryFilter === cat }"
-        :aria-pressed="categoryFilter === cat"
-        @click="categoryFilter = cat"
-      >{{ cat === 'all' ? 'All' : CATEGORY_LABELS[cat as ItemCategory] }}</button>
-    </div>
+      <div class="cat-filter" v-if="availableCategories.length > 1" role="group" aria-label="Filter by category">
+        <button
+          v-for="cat in availableCategories"
+          :key="cat"
+          class="cat-chip"
+          :class="{ 'cat-chip--active': categoryFilter === cat }"
+          :aria-pressed="categoryFilter === cat"
+          @click="categoryFilter = cat"
+        >{{ cat === 'all' ? 'All' : CATEGORY_LABELS[cat as ItemCategory] }}</button>
+      </div>
+    </section>
 
     <!-- Empty state -->
     <div class="empty-state" v-if="!inventory.pets.length">
@@ -62,27 +60,25 @@
       <button class="btn-primary" @click="openAdd">Add Pet</button>
     </div>
 
-    <!-- Pet grid -->
-    <div class="pet-grid" v-else>
-      <div
-        class="pet-card"
+    <!-- Tile grid: dense, game-inventory style. Tap a tile for detail/actions. -->
+    <div class="tile-grid" v-else>
+      <button
+        type="button"
+        class="tile"
         v-for="pet in filteredSortedPets"
         :key="pet.id"
-        :class="{ 'pet-card--formed': isFormed(pet) }"
+        :class="{ 'tile--formed': isFormed(pet) }"
         :style="formVars(pet)"
+        :aria-label="`${pet.name} — details`"
+        @click="openDetail(pet)"
       >
-
-        <!-- Thumbnail -->
-        <div class="pet-thumb">
+        <div class="tile-art">
           <PetImage
             :name="pet.name"
             :fallback="isPet(pet.category) ? matPets : matInventory2"
-            class="thumb-img"
+            class="tile-img"
           />
-          <div
-            v-if="isPet(pet.category)"
-            class="form-badges"
-          >
+          <div v-if="isPet(pet.category)" class="form-badges">
             <span
               v-for="badge in getFormBadges(pet.form)"
               :key="badge.letter"
@@ -91,43 +87,84 @@
               :style="badge.style"
             >{{ badge.letter }}</span>
           </div>
-          <span
-            v-else
-            class="thumb-badge thumb-badge--category"
-          >{{ CATEGORY_LABELS[pet.category] }}</span>
+          <span v-else class="tile-cat-badge">{{ CATEGORY_LABELS[pet.category!] }}</span>
         </div>
-
-        <!-- Card body -->
-        <div class="pet-body">
-          <div class="pet-name" :title="pet.name">{{ pet.name }}</div>
-
-          <!-- Value + demand stars -->
-          <div class="value-row">
-            <span class="value-lbl">{{ valueSource === 'amvgg' ? 'AMVGG' : 'Elve' }}</span>
-            <SkeletonBar v-if="loadingValue[pet.id]" width="3.2em" />
+        <div class="tile-name" :title="pet.name">{{ pet.name }}</div>
+        <div class="tile-meta">
+          <span class="tile-value">
+            <SkeletonBar v-if="loadingValue[pet.id]" width="2.2em" />
             <template v-else-if="activeValue(pet) !== null && activeValue(pet) !== undefined">
-              <span class="value-num">{{ displayValue(pet) }}</span>
+              {{ formatValue(activeValue(pet)) }}
             </template>
-            <span v-else-if="!isPet(pet.category)" class="value-na">—</span>
-            <button v-else class="value-fetch" @click="fetchActive(pet)">Fetch</button>
-          </div>
-          <div class="demand-row" v-if="petDemand[pet.id]">
-            <span class="demand-stars" :class="demandStarClass(petDemand[pet.id])">
-              {{ demandStars(petDemand[pet.id]) }}
-            </span>
-            <span class="demand-label">{{ petDemand[pet.id] }}</span>
-          </div>
+            <span v-else class="tile-nv">—</span>
+          </span>
+          <span
+            v-if="petDemand[pet.id]"
+            class="tile-stars"
+            :class="`stars--${demandClass(petDemand[pet.id])}`"
+          >{{ demandStars(petDemand[pet.id]) }}</span>
         </div>
-
-        <!-- Hover actions -->
-        <div class="pet-actions">
-          <button class="action-btn action-del" :aria-label="`Remove ${pet.name}`" @click="removeWithUndo(pet.id)">
-            <q-icon :name="matDeleteOutline" size="15px" />
-          </button>
-        </div>
-
-      </div>
+      </button>
     </div>
+
+    <!-- Pet detail sheet: everything you can do to a pet, one tap away. -->
+    <q-dialog v-model="showDetail" position="bottom">
+      <div class="sheet" v-if="detailPet">
+        <div class="sheet-grip" aria-hidden="true"></div>
+
+        <div class="sheet-head">
+          <div class="sheet-art" :class="{ 'sheet-art--formed': isFormed(detailPet) }" :style="formVars(detailPet)">
+            <PetImage
+              :name="detailPet.name"
+              :fallback="isPet(detailPet.category) ? matPets : matInventory2"
+              class="sheet-img"
+            />
+          </div>
+          <div class="sheet-id">
+            <div class="sheet-name">{{ detailPet.name }}</div>
+            <div class="sheet-kind" :style="isFormed(detailPet) ? { color: FORM_TEXT_HEX[detailPet.form] } : {}">
+              {{ isPet(detailPet.category) ? FORM_LABELS[detailPet.form] : CATEGORY_LABELS[detailPet.category!] }}
+            </div>
+          </div>
+        </div>
+
+        <div class="sheet-stats">
+          <div class="sheet-stat">
+            <span class="stat-lbl">AMV</span>
+            <span class="stat-val">
+              <SkeletonBar v-if="loadingValue[detailPet.id]" width="2.2em" />
+              <template v-else>{{ formatValue(petValue[detailPet.id]) }}</template>
+            </span>
+          </div>
+          <div class="sheet-stat">
+            <span class="stat-lbl">Elve</span>
+            <span class="stat-val">{{ formatValue(petElveValue[detailPet.id]) }}</span>
+          </div>
+          <div class="sheet-stat">
+            <span class="stat-lbl">Demand</span>
+            <span
+              v-if="petDemand[detailPet.id]"
+              class="stat-val tile-stars"
+              :class="`stars--${demandClass(petDemand[detailPet.id])}`"
+            >{{ demandStars(petDemand[detailPet.id]) }}</span>
+            <span v-else class="stat-val stat-val--dim">—</span>
+          </div>
+        </div>
+
+        <div class="sheet-form" v-if="isPet(detailPet.category)">
+          <div class="form-section-label">Form</div>
+          <FormChips :model-value="detailPet.form" @update:model-value="changeDetailForm" />
+        </div>
+
+        <div class="sheet-actions">
+          <button class="btn-danger" @click="removeDetail">
+            <q-icon :name="matDeleteOutline" size="16px" />
+            Remove
+          </button>
+          <button class="btn-primary" v-close-popup>Done</button>
+        </div>
+      </div>
+    </q-dialog>
 
     <!-- Add pet dialog -->
     <q-dialog v-model="showAdd" persistent @hide="resetSearch">
@@ -200,7 +237,7 @@
                   >{{ FORM_LABELS[newPetForm] }}</div>
                 </div>
               </div>
-              <div v-else class="preview-empty">← Select a pet from the list</div>
+              <div v-else class="preview-empty">Pick a pet from the list</div>
             </div>
 
             <!-- Form chips -->
@@ -300,7 +337,7 @@
                   </div>
                 </div>
               </div>
-              <div v-else class="preview-empty">← Select an item from the list</div>
+              <div v-else class="preview-empty">Pick an item from the list</div>
             </div>
             <q-input
               v-model.number="newItemQty"
@@ -335,6 +372,7 @@ import { useInventoryStore } from 'src/stores/inventory'
 import { useValuesStore, type DemandLevel } from 'src/stores/values'
 import { ADOPT_ME_PETS } from 'src/data/pets'
 import { notifyLoadError, notifyRemoved } from 'src/utils/notify'
+import { formatValue, demandStars, demandClass } from 'src/utils/format'
 import { useRecentStore } from 'src/stores/recent'
 import RecentChips from 'src/components/RecentChips.vue'
 import SourceToggle from 'src/components/SourceToggle.vue'
@@ -350,7 +388,7 @@ const recentStore = useRecentStore()
 
 // Each badge letter is just one of the single-attribute forms, so its colour comes
 // from the one form palette. It used to be a private set (R pink, N green) that
-// flatly contradicted the sidebar legend, which reads FORM_COLOR_HEX (R green, N
+// flatly contradicted the guide legend, which reads FORM_COLOR_HEX (R green, N
 // violet) — the explainer taught colours the cards never painted.
 const LETTER_FORM: Record<string, PetForm> = {
   M: 'm',
@@ -374,8 +412,10 @@ const FORM_LETTERS: Record<PetForm, string[]> = {
   mfr:    ['M', 'F', 'R'],
 }
 
+// `?? []`: the store coerces unknown forms on load, but one corrupt record must
+// degrade to "no badges", never crash the whole grid's render.
 function getFormBadges(form: PetForm) {
-  return FORM_LETTERS[form].map(l => ({
+  return (FORM_LETTERS[form] ?? []).map(l => ({
     letter: l,
     style: formFill(LETTER_FORM[l]),
     square: l === 'M',
@@ -395,6 +435,36 @@ function formVars (pet: InventoryPet) {
     '--form-rgb':  FORM_RGB[pet.form],
     '--form-grad': FORM_GRADIENT[pet.form],
   }
+}
+
+// ── Detail sheet ──────────────────────────────────────────────────────────────
+// The tile grid is display-only; every action (change form, remove, read both
+// sources) lives here, one tap away. Touch-first: no hover reveals anywhere.
+const showDetail = ref(false)
+const detailPet  = ref<InventoryPet | null>(null)
+
+function openDetail (pet: InventoryPet) {
+  detailPet.value = pet
+  showDetail.value = true
+  // The sheet shows both sources side by side; Elve loads lazily elsewhere, so
+  // top it up here if this pet never fetched it.
+  if (petElveValue[pet.id] === undefined) void fetchElveValue(pet)
+}
+
+function changeDetailForm (form: PetForm) {
+  const pet = detailPet.value
+  if (!pet) return
+  inventory.updateForm(pet.id, form)
+  // A new form is a new value; refresh both sources.
+  void fetchValue(pet)
+  void fetchElveValue(pet)
+}
+
+function removeDetail () {
+  const pet = detailPet.value
+  if (!pet) return
+  showDetail.value = false
+  removeWithUndo(pet.id)
 }
 
 // ── Add dialog ────────────────────────────────────────────────────────────────
@@ -668,19 +738,6 @@ function activeValue (pet: InventoryPet): number | null | undefined {
   return valueSource.value === 'elvebredd' ? petElveValue[pet.id] : petValue[pet.id]
 }
 
-// Elvebredd values carry float-precision noise (e.g. 0.879999…); round them like
-// the rest of the app does. AMVGG values are already clean, so show them as-is.
-function displayValue (pet: InventoryPet): string {
-  const v = activeValue(pet)
-  if (v === null || v === undefined) return ''
-  return valueSource.value === 'elvebredd' ? v.toFixed(2) : String(v)
-}
-
-function fetchActive (pet: InventoryPet) {
-  if (valueSource.value === 'elvebredd') void fetchElveValue(pet)
-  else void fetchValue(pet)
-}
-
 // Elve values are fetched lazily, the first time the user switches to them.
 watch(valueSource, src => {
   if (src !== 'elvebredd') return
@@ -688,17 +745,6 @@ watch(valueSource, src => {
     if (petElveValue[pet.id] === undefined) void fetchElveValue(pet)
   }
 })
-
-function demandStars (d: DemandLevel): string {
-  const n = d === 'High' ? 3 : d === 'Medium' ? 2 : d === 'Low' ? 1 : d === 'Very Low' ? 1 : 0
-  return '★'.repeat(n) + '☆'.repeat(3 - n)
-}
-
-function demandStarClass (d: DemandLevel): string {
-  if (d === 'High') return 'stars--high'
-  if (d === 'Medium') return 'stars--medium'
-  return 'stars--low'
-}
 
 async function fetchValue (pet: InventoryPet) {
   loadingValue[pet.id] = true
@@ -764,44 +810,77 @@ function removeWithUndo (id: string) {
 
 <style scoped>
 .inv-page {
-  padding: 28px 28px 28px;
+  padding: 16px 16px 28px;
   min-height: 100vh;
 }
 
-/* Page header */
-.page-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 24px;
+/* ── Portfolio hero ── */
+.folio {
+  background: var(--elev-fill);
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  box-shadow: var(--elev-shadow);
+  padding: 18px 18px 16px;
+  margin-bottom: 16px;
 }
 
-.head-right {
+.folio-top {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
+  justify-content: space-between;
   gap: 12px;
 }
 
-.total-stat {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  line-height: 1.2;
+.folio-lbl {
+  font-size: 10px;
+  font-weight: 800;
+  color: var(--text-3);
+  text-transform: uppercase;
+  letter-spacing: 1.2px;
 }
-.total-lbl { font-size: 10px; font-weight: 700; color: var(--text-3); text-transform: uppercase; letter-spacing: 0.8px; }
-.total-val { font-size: 18px; font-weight: 800; color: var(--gold); }
+
+/* The heaviest number on the screen — gold gradient ink, display face. */
+.folio-total {
+  --font-ui: var(--font-display);
+  font-size: 40px;
+  font-weight: 600;
+  line-height: 1.15;
+  background: linear-gradient(180deg, #ffe9b3, #e7c368);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+/* SkeletonBar inherits `color: transparent` from the clip trick; undo it. */
+.folio-total :deep(.skeleton) { color: var(--text-1); }
+
+.folio-sub {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text-3);
+  margin-top: 2px;
+}
+
+.folio-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 16px;
+}
+.folio-actions .btn-primary,
+.folio-actions .btn-secondary {
+  flex: 1;
+  justify-content: center;
+}
 
 .sort-btn {
   display: inline-flex;
   align-items: center;
-  gap: 5px;
-  padding: 6px 12px;
+  justify-content: center;
+  width: 42px;
+  flex-shrink: 0;
   border: 1px solid var(--border-hi);
-  border-radius: 8px;
+  border-radius: 10px;
   background: transparent;
   color: var(--text-2);
-  font-size: 12px;
-  font-weight: 700;
   cursor: pointer;
   transition: background 0.15s, color 0.15s, border-color 0.15s;
 }
@@ -810,28 +889,12 @@ function removeWithUndo (id: string) {
 }
 .sort-btn--active { border-color: var(--primary); color: var(--primary); }
 
-/* The AMV/Elve toggle lives in SourceToggle.vue. */
-
-.page-title {
-  font-size: 26px;
-  font-weight: 800;
-  color: var(--text-1);
-  letter-spacing: -0.5px;
-}
-
-.page-sub {
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--text-3);
-  margin-top: 3px;
-}
-
-/* Buttons */
+/* ── Buttons ── */
 .btn-primary {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  padding: 8px 16px;
+  padding: 10px 16px;
   border: none;
   border-radius: 10px;
   background: var(--cta-bg);
@@ -850,7 +913,7 @@ function removeWithUndo (id: string) {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  padding: 8px 16px;
+  padding: 10px 16px;
   border: 1px solid var(--border-hi);
   border-radius: 10px;
   background: transparent;
@@ -863,65 +926,6 @@ function removeWithUndo (id: string) {
 @media (hover: hover) {
   .btn-secondary:hover { background: var(--surface-3); border-color: var(--primary); }
 }
-
-/* Mobile: let the header actions wrap instead of cramming into one row */
-@media (max-width: 599px) {
-  .head-right {
-    flex-wrap: wrap;
-    gap: 8px;
-    width: 100%;
-  }
-  .total-stat { margin-right: auto; }
-  .head-right .btn-primary,
-  .head-right .btn-secondary {
-    flex: 1 1 calc(50% - 4px);
-    justify-content: center;
-    padding: 11px 12px;
-  }
-
-  /* Add Pet / Add Item dialog: stack search and config vertically so neither
-     column gets crushed (the side-by-side layout overflows a phone width).
-     !important because the base `.add-*` rules are declared later in this file
-     (equal specificity → source order wins), so they'd otherwise override these. */
-  .add-card { width: 96vw !important; max-width: 96vw !important; }
-  .add-body {
-    flex-direction: column;
-    height: auto !important;
-    max-height: 78vh;
-    overflow-y: auto;
-  }
-  .add-left {
-    width: 100% !important;
-    border-right: none;
-    border-bottom: 1px solid var(--border);
-  }
-  .results-panel { flex: none !important; height: 200px !important; }
-  .add-right { width: 100% !important; }
-}
-
-/* Category filter */
-.cat-filter {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  margin-bottom: 18px;
-}
-
-.cat-chip {
-  padding: 5px 14px;
-  border: 1px solid var(--border);
-  border-radius: 99px;
-  background: transparent;
-  color: var(--text-2);
-  font-size: 12px;
-  font-weight: 700;
-  cursor: pointer;
-  transition: all 0.15s;
-}
-@media (hover: hover) {
-  .cat-chip:hover { border-color: var(--primary); color: var(--text-1); }
-}
-.cat-chip--active { background: var(--primary); border-color: var(--primary); color: var(--cta-ink); }
 
 .btn-ghost {
   display: inline-flex;
@@ -940,7 +944,49 @@ function removeWithUndo (id: string) {
   .btn-ghost:hover { background: var(--surface-3); color: var(--text-1); }
 }
 
-/* Empty state */
+.btn-danger {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 16px;
+  border: 1px solid rgba(242, 145, 126, 0.4);
+  border-radius: 10px;
+  background: rgba(242, 145, 126, 0.08);
+  color: var(--negative);
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+@media (hover: hover) {
+  .btn-danger:hover { background: rgba(242, 145, 126, 0.16); }
+}
+
+/* ── Category filter ── */
+.cat-filter {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 12px;
+}
+
+.cat-chip {
+  padding: 5px 14px;
+  border: 1px solid var(--border);
+  border-radius: 99px;
+  background: transparent;
+  color: var(--text-2);
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+@media (hover: hover) {
+  .cat-chip:hover { border-color: var(--primary); color: var(--text-1); }
+}
+.cat-chip--active { background: var(--primary); border-color: var(--primary); color: var(--cta-ink); }
+
+/* ── Empty state ── */
 .empty-state {
   display: flex;
   flex-direction: column;
@@ -952,42 +998,52 @@ function removeWithUndo (id: string) {
 }
 .empty-paw   { font-size: 52px; line-height: 1; margin-bottom: 6px; }
 .empty-title { font-size: 18px; font-weight: 800; color: var(--text-1); }
-.empty-sub   { font-size: 13px; color: var(--text-2); margin-bottom: 8px; }
+.empty-sub   { font-size: 13px; color: var(--text-2); margin-bottom: 8px; max-width: 300px; }
 
-/* Pet grid */
-.pet-grid {
+/* ── Tile grid ──
+   Game-inventory density: ~3 tiles per row on a phone, fluid beyond. The tile is
+   a <button> (focus, Enter, Space for free); every action lives in the sheet. */
+.tile-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-  gap: 18px;
+  grid-template-columns: repeat(auto-fill, minmax(104px, 1fr));
+  gap: 10px;
 }
 
-/* Pet card */
-.pet-card {
-  position: relative;
-  background: var(--elev-fill);
+.tile {
+  padding: 0;
   border: 1px solid var(--border);
   border-radius: 14px;
-  overflow: hidden;
+  background: var(--elev-fill);
   box-shadow: inset 0 1px 0 var(--lift), 0 6px 18px -12px rgba(0, 0, 0, 0.6);
-  transition: border-color 0.2s, transform 0.15s, box-shadow 0.2s;
+  cursor: pointer;
+  text-align: left;
+  font: inherit;
+  color: inherit;
+  overflow: hidden;
+  transition: border-color 0.15s, transform 0.12s;
 }
+.tile:active { transform: scale(0.97); }
 @media (hover: hover) {
-  .pet-card:hover {
-    border-color: var(--border-hi);
-    transform: translateY(-2px);
-    box-shadow: inset 0 1px 0 var(--lift), 0 12px 28px rgba(0, 0, 0, 0.45);
-  }
-  .pet-card:hover .pet-actions { opacity: 1; }
+  .tile:hover { border-color: var(--border-hi); transform: translateY(-2px); }
 }
 
-/* The form as the card's own colour: a tinted edge, and the form's gradient washed
-   in behind the sprite. Only those two surfaces — the name and the value keep the
-   plain background, where their contrast is a known quantity.
-   `--form-rgb` / `--form-grad` are set inline by `formVars()`; an unformed card
-   never gets them and never matches these rules. */
-.pet-card--formed { border-color: rgba(var(--form-rgb), 0.38); }
+/* The form as the tile's own colour: a tinted edge and the form's gradient washed
+   in behind the sprite. `--form-rgb` / `--form-grad` come inline from formVars();
+   an unformed tile never gets them and never matches these rules. */
+.tile--formed { border-color: rgba(var(--form-rgb), 0.38); }
+@media (hover: hover) {
+  .tile--formed:hover { border-color: rgba(var(--form-rgb), 0.75); }
+}
 
-.pet-card--formed .pet-thumb::before {
+.tile-art {
+  position: relative;
+  aspect-ratio: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+.tile--formed .tile-art::before {
   content: '';
   position: absolute;
   inset: 0;
@@ -995,198 +1051,215 @@ function removeWithUndo (id: string) {
   opacity: 0.14;
 }
 
-/* Same specificity as `.pet-card:hover` above, so this has to follow it to win. */
-@media (hover: hover) {
-  .pet-card--formed:hover { border-color: rgba(var(--form-rgb), 0.75); }
-}
-
-/* Thumbnail */
-.pet-thumb {
-  position: relative;
-  height: 130px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  overflow: hidden;
-}
-.thumb-img {
-  width: 96px;
-  height: 96px;
+.tile-img {
+  width: 78%;
+  height: 78%;
   object-fit: contain;
-  font-size: 48px;
+  font-size: 34px;
   position: relative;
   z-index: 1;
-  filter: drop-shadow(0 4px 12px rgba(0,0,0,0.5));
-}
-.thumb-badge--category {
-  position: absolute;
-  bottom: 8px;
-  left: 8px;
-  z-index: 3;
-  font-size: 9px;
-  font-weight: 800;
-  letter-spacing: 0.5px;
-  padding: 3px 8px;
-  border-radius: 20px;
-  border: 1px solid var(--border-hi);
-  background: rgba(0, 0, 0, 0.45);
-  backdrop-filter: blur(4px);
-  color: var(--text-2);
+  filter: drop-shadow(0 4px 12px rgba(0, 0, 0, 0.5));
 }
 
 .form-badges {
   position: absolute;
-  bottom: 8px;
-  left: 8px;
+  top: 6px;
+  left: 6px;
   z-index: 3;
   display: flex;
   gap: 3px;
 }
 
 .form-letter-badge {
-  height: 18px;
-  min-width: 18px;
-  padding: 0 5px;
+  height: 17px;
+  min-width: 17px;
+  padding: 0 4px;
   border-radius: 99px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  font-size: 10px;
+  font-size: 9.5px;
   font-weight: 900;
   line-height: 1;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255,255,255,0.2);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.2);
 }
-
 .form-letter-badge--square {
   border-radius: 4px;
-  padding: 0 4px;
 }
 
-/* Card body */
-.pet-body {
-  padding: 12px 14px 14px;
+.tile-cat-badge {
+  position: absolute;
+  top: 6px;
+  left: 6px;
+  z-index: 3;
+  font-size: 8.5px;
+  font-weight: 800;
+  letter-spacing: 0.5px;
+  padding: 3px 7px;
+  border-radius: 20px;
+  border: 1px solid var(--border-hi);
+  background: rgba(0, 0, 0, 0.45);
+  backdrop-filter: blur(4px);
+  color: var(--text-2);
+  text-transform: uppercase;
 }
-.pet-name {
-  font-size: 15px;
+
+.tile-name {
+  font-size: 11.5px;
   font-weight: 800;
   color: var(--text-1);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  margin-bottom: 9px;
+  padding: 7px 9px 0;
 }
 
-/* Value */
-.value-row {
+.tile-meta {
   display: flex;
   align-items: center;
-  gap: 6px;
+  justify-content: space-between;
+  gap: 4px;
+  padding: 2px 9px 8px;
 }
-.value-lbl {
-  font-size: 11px;
-  font-weight: 700;
-  color: var(--text-3);
-  letter-spacing: 0.8px;
-  text-transform: uppercase;
-}
-.value-num {
-  font-size: 15px;
+
+.tile-value {
+  font-size: 12px;
   font-weight: 800;
   color: var(--gold);
+  min-width: 0;
 }
-.value-na {
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--text-dim);
-  opacity: 0.5;
-}
-.value-fetch {
-  font-size: 11px;
-  font-weight: 700;
-  color: var(--primary);
-  background: var(--primary-dim);
-  border: none;
-  border-radius: 6px;
-  padding: 2px 8px;
-  cursor: pointer;
-  transition: background 0.12s;
-}
-@media (hover: hover) {
-  .value-fetch:hover { background: rgba(231, 195, 104, 0.2); }
-}
+.tile-nv { color: var(--text-3); opacity: 0.6; }
 
-/* Demand stars */
-.demand-row {
-  display: flex;
-  align-items: center;
-  gap: 5px;
-  margin-top: 5px;
-}
-.demand-stars {
-  font-size: 13px;
-  letter-spacing: 1px;
-  line-height: 1;
-}
-.demand-label {
-  font-size: 11px;
-  font-weight: 700;
+.tile-stars {
+  font-size: 9.5px;
   letter-spacing: 0.5px;
-  text-transform: uppercase;
-  opacity: 0.75;
+  line-height: 1;
+  flex-shrink: 0;
 }
 .stars--high   { color: #34d399; }
 .stars--medium { color: #f0b429; }
 .stars--low    { color: #f87171; }
 
-/* Hover actions */
-/* Revealed by hovering the card. Without a hover to reveal it the delete button
-   would be an invisible-but-tappable target, so on touch it is always shown. */
-.pet-actions {
-  position: absolute;
-  top: 7px;
-  right: 7px;
+/* ── Detail sheet ── */
+.sheet {
+  width: 100%;
+  max-width: 520px;
+  background: var(--surface-2);
+  border: 1px solid var(--border-hi);
+  border-bottom: none;
+  border-radius: 20px 20px 0 0;
+  padding: 8px 18px calc(18px + env(safe-area-inset-bottom));
+}
+
+.sheet-grip {
+  width: 38px;
+  height: 4px;
+  border-radius: 99px;
+  background: var(--surface-3);
+  margin: 4px auto 14px;
+}
+
+.sheet-head {
   display: flex;
   align-items: center;
-  gap: 4px;
-  opacity: 0;
-  transition: opacity 0.15s;
-  z-index: 10;
+  gap: 14px;
 }
-@media (hover: none) {
-  .pet-actions { opacity: 1; }
 
-  /* The card clips its overflow, which would shear off the delete button's
-     enlarged touch area (see `touch-hit` in app.scss). Pull the container out to
-     the card's corner and re-create the inset as padding, so the hit area grows
-     into the card instead of into the clipped region. 9px is what a 26px button
-     needs on each side to reach 44px; the button lands 2px off its old spot. */
-  .pet-actions {
-    top: 0;
-    right: 0;
-    padding: 9px;
-  }
-}
-.action-btn {
-  width: 26px;
-  height: 26px;
-  border: none;
-  border-radius: 7px;
-  background: rgba(12, 14, 26, 0.75);
-  backdrop-filter: blur(6px);
-  color: var(--text-2);
-  cursor: pointer;
+.sheet-art {
+  position: relative;
+  width: 72px;
+  height: 72px;
+  flex-shrink: 0;
+  border-radius: 16px;
+  border: 1px solid var(--border);
+  background: var(--surface);
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: background 0.12s, color 0.12s;
+  overflow: hidden;
 }
-@media (hover: hover) {
-  .action-btn:hover { background: var(--surface-3); color: var(--text-1); }
-  .action-del:hover { color: var(--negative); }
+.sheet-art--formed { border-color: rgba(var(--form-rgb), 0.45); }
+.sheet-art--formed::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: var(--form-grad);
+  opacity: 0.16;
 }
 
-/* Dialog */
-/* ── Add Pet dialog ─────────────────────────────────────────────────────────── */
+.sheet-img {
+  width: 80%;
+  height: 80%;
+  object-fit: contain;
+  font-size: 30px;
+  position: relative;
+  z-index: 1;
+}
+
+.sheet-name {
+  --font-ui: var(--font-display);
+  font-size: 19px;
+  font-weight: 600;
+  color: var(--text-1);
+  line-height: 1.2;
+}
+
+.sheet-kind {
+  font-size: 11px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  color: var(--text-2);
+  margin-top: 3px;
+}
+
+.sheet-stats {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  margin-top: 16px;
+}
+
+.sheet-stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  padding: 10px 6px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--elev-fill);
+  box-shadow: inset 0 1px 0 var(--lift);
+}
+
+.stat-lbl {
+  font-size: 9.5px;
+  font-weight: 800;
+  color: var(--text-3);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.stat-val {
+  font-size: 15px;
+  font-weight: 800;
+  color: var(--gold);
+}
+.stat-val.tile-stars { font-size: 13px; }
+.stat-val--dim { color: var(--text-3); opacity: 0.6; }
+
+.sheet-form {
+  margin-top: 16px;
+}
+
+.sheet-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 18px;
+}
+.sheet-actions .btn-primary { flex: 1; justify-content: center; }
+
+/* ── Add dialogs ── */
 .add-card {
   width: 620px;
   max-width: 94vw;
@@ -1312,7 +1385,7 @@ function removeWithUndo (id: string) {
   flex-shrink: 0;
   object-fit: contain;
   font-size: 22px;
-  filter: drop-shadow(0 2px 8px rgba(0,0,0,0.4));
+  filter: drop-shadow(0 2px 8px rgba(0, 0, 0, 0.4));
 }
 
 .preview-info {
@@ -1368,5 +1441,45 @@ function removeWithUndo (id: string) {
   justify-content: flex-end;
   margin-top: auto;
   padding-top: 4px;
+}
+
+/* ── Mobile ── */
+@media (max-width: 599px) {
+  /* Add Pet / Add Item dialog: stack search and config vertically so neither
+     column gets crushed (the side-by-side layout overflows a phone width).
+     !important because the base `.add-*` rules are declared later in this file
+     (equal specificity → source order wins), so they'd otherwise override these. */
+  .add-card { width: 96vw !important; max-width: 96vw !important; }
+  .add-body {
+    flex-direction: column;
+    height: auto !important;
+    max-height: 78vh;
+    overflow-y: auto;
+  }
+  .add-left {
+    width: 100% !important;
+    border-right: none;
+    border-bottom: 1px solid var(--border);
+  }
+  .results-panel { flex: none !important; height: 200px !important; }
+  .add-right { width: 100% !important; }
+}
+
+/* Wide screens: the hero doesn't need to be a full-width slab */
+@media (min-width: 768px) {
+  .inv-page { padding: 24px 28px 40px; }
+  .folio {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 20px;
+    flex-wrap: wrap;
+  }
+  .folio-top { flex: 1; }
+  .folio-actions { margin-top: 0; }
+  .folio-actions .btn-primary,
+  .folio-actions .btn-secondary { flex: none; }
+  .cat-filter { width: 100%; }
+  .tile-grid { grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 14px; }
 }
 </style>

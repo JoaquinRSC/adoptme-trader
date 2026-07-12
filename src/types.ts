@@ -159,10 +159,3 @@ export const FORM_RGB = Object.fromEntries(
     [1, 3, 5].map(i => parseInt(hex.slice(i, i + 2), 16)).join(', '),
   ]),
 ) as Record<PetForm, string>
-
-export interface PetSuggestion {
-  name: string
-  form: PetForm
-  amvggValue: number
-  delta: number // % difference from target
-}

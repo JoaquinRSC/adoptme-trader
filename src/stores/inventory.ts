@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia'
 import { ref, watch } from 'vue'
-import type { InventoryPet, PetForm, ItemCategory } from 'src/types'
+import { FORM_LABELS, type InventoryPet, type PetForm, type ItemCategory } from 'src/types'
 import { uid } from 'quasar'
 
 const STORAGE_KEY = 'adoptme_inventory'
@@ -12,9 +12,14 @@ function loadFromStorage (): InventoryPet[] {
     }>
     const result: InventoryPet[] = []
     for (const p of raw) {
+      if (!p || typeof p.name !== 'string' || !p.name) continue
+      // Coerce an unknown form instead of trusting it: FORM_LETTERS-style lookups
+      // render per card, so one corrupt record used to crash the whole page into
+      // a false "No pets in here yet".
+      const form: PetForm = typeof p.form === 'string' && p.form in FORM_LABELS ? p.form : 'normal'
       const count = Math.max(1, p.quantity ?? 1)
       for (let i = 0; i < count; i++) {
-        result.push({ id: i === 0 ? p.id : uid(), name: p.name, form: p.form, category: p.category })
+        result.push({ id: i === 0 && p.id ? p.id : uid(), name: p.name, form, category: p.category })
       }
     }
     return result

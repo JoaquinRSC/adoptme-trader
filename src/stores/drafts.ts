@@ -1,20 +1,12 @@
 import { defineStore } from 'pinia'
 import { ref, watch } from 'vue'
-import type { InventoryPet, PetForm, ItemCategory, ValueSource } from 'src/types'
+import type { PetForm, ItemCategory, ValueSource } from 'src/types'
 import type { DemandLevel } from 'src/stores/values'
 
-// Draft state for the Trade Builder offer and the Check Values sides. Kept here
-// (Pinia + localStorage) instead of in the page components so it survives both
-// navigation (component unmount) and a full reload — losing a hand-built offer
-// by clicking the sidebar was one of the worst UX papercuts.
-
-export interface OfferedItem {
-  pet:        InventoryPet
-  amvggValue: number | null
-  elveValue:  number | null
-  demand:     DemandLevel
-  loading:    boolean
-}
+// Draft state for the Trade (check values) sides. Kept here (Pinia +
+// localStorage) instead of in the page component so it survives both
+// navigation (component unmount) and a full reload — losing a hand-built
+// trade by switching tabs was one of the worst UX papercuts.
 
 export interface SideEntry {
   id:       string
@@ -26,8 +18,6 @@ export interface SideEntry {
   loading:  boolean
 }
 
-
-const KEY_TRADE_OFFER  = 'draft_trade_offer'
 const KEY_CHECK_YOU    = 'draft_check_you'
 const KEY_CHECK_THEM   = 'draft_check_them'
 const KEY_CHECK_SOURCE = 'draft_check_source'
@@ -51,32 +41,31 @@ export const useDraftsStore = defineStore('drafts', () => {
   // Start empty so the SSR render and the client's first (hydration) render
   // match; localStorage is only read after mount via hydrate() (same pattern as
   // the inventory store).
-  const tradeOffer      = ref<OfferedItem[]>([])
-  const checkYou        = ref<SideEntry[]>([])
-  const checkThem       = ref<SideEntry[]>([])
-  const checkSource     = ref<ValueSource>('amvgg')
+  const checkYou    = ref<SideEntry[]>([])
+  const checkThem   = ref<SideEntry[]>([])
+  const checkSource = ref<ValueSource>('amvgg')
   let   hydrated = false
 
   function hydrate () {
     if (hydrated || typeof localStorage === 'undefined') return
     hydrated = true
-    tradeOffer.value  = settle(load<OfferedItem[]>(KEY_TRADE_OFFER, []))
     checkYou.value    = settle(load<SideEntry[]>(KEY_CHECK_YOU, []))
     checkThem.value   = settle(load<SideEntry[]>(KEY_CHECK_THEM, []))
     checkSource.value = load<ValueSource>(KEY_CHECK_SOURCE, 'amvgg')
+    // Trade Builder was removed in the 2026-07 redesign; drop its stale drafts.
+    localStorage.removeItem('draft_trade_offer')
+    localStorage.removeItem('match_tolerance_pct')
   }
 
   function persist (key: string, val: unknown) {
     if (typeof localStorage !== 'undefined') localStorage.setItem(key, JSON.stringify(val))
   }
 
-  watch(tradeOffer,  v => persist(KEY_TRADE_OFFER, v),  { deep: true })
   watch(checkYou,    v => persist(KEY_CHECK_YOU, v),    { deep: true })
   watch(checkThem,   v => persist(KEY_CHECK_THEM, v),   { deep: true })
   watch(checkSource, v => persist(KEY_CHECK_SOURCE, v))
 
-  function clearTrade () { tradeOffer.value = [] }
   function clearCheck () { checkYou.value = []; checkThem.value = [] }
 
-  return { tradeOffer, checkYou, checkThem, checkSource, hydrate, clearTrade, clearCheck }
+  return { checkYou, checkThem, checkSource, hydrate, clearCheck }
 })

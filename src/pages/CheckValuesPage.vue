@@ -1,10 +1,10 @@
 <template>
   <q-page class="cv-page">
 
-    <div class="page-head">
+    <div class="cv-head">
       <div>
-        <div class="page-title">Check Values</div>
-        <div class="page-sub">Compare trade value between two sides</div>
+        <div class="page-title">Trade</div>
+        <div class="page-sub">Weigh it before you send it</div>
       </div>
 
       <div class="head-right">
@@ -25,116 +25,114 @@
       <button class="btn-retry" @click="refreshValues">Retry</button>
     </div>
 
-    <!-- Main layout -->
-    <div class="cv-layout">
-
-      <!-- YOU panel -->
-      <div class="cv-panel">
-        <div class="panel-header">
-          <span class="panel-label">YOU</span>
-          <span class="panel-count" v-if="yourSide.length">{{ yourSide.length }}</span>
-        </div>
-
-        <div class="panel-body">
-          <div class="pet-slots-grid">
-            <!-- A real <button>, like the add slot beside it: focus, Enter and
-                 Space come free instead of being hand-wired onto a <div>. -->
-            <button
-              type="button"
-              class="pet-slot pet-slot--filled"
-              v-for="entry in yourSide"
-              :key="entry.id"
-              :aria-label="`Remove ${entry.name}`"
-              title="Click to remove"
-              @click="removePet('your', entry.id)"
-            >
-              <PetImage :name="entry.name" class="slot-img" />
-              <span class="slot-meta">
-                <span class="slot-form" :style="{ color: isPet(entry.category) ? FORM_TEXT_HEX[entry.form] : 'var(--text-2)' }">
-                  {{ isPet(entry.category) ? FORM_LABELS[entry.form] : CATEGORY_LABELS[entry.category!] }}
-                </span>
-                <span v-if="entry.demand" class="slot-demand" :class="`demand--${demandClass(entry.demand)}`" :title="entry.demand">{{ demandStars(entry.demand) }}</span>
-                <span class="slot-val">
-                  <SkeletonBar v-if="entry.loading" width="1.6em" />
-                  <template v-else>{{ entry.value != null ? (valueSource === 'elvebredd' ? entry.value.toFixed(2) : entry.value) : '—' }}</template>
-                </span>
+    <div class="cv-sides">
+      <!-- YOU -->
+      <section class="side-panel">
+        <header class="side-head">
+          <span class="side-tag side-tag--you">You give</span>
+          <span class="side-total" v-if="yourSide.length">{{ formatValue(yourTotal) }}</span>
+        </header>
+        <div class="pet-slots-grid">
+          <!-- A real <button>, like the add slot beside it: focus, Enter and
+               Space come free instead of being hand-wired onto a <div>. -->
+          <button
+            type="button"
+            class="pet-slot pet-slot--filled"
+            v-for="entry in yourSide"
+            :key="entry.id"
+            :aria-label="`Remove ${entry.name}`"
+            title="Tap to remove"
+            @click="removePet('your', entry.id)"
+          >
+            <PetImage :name="entry.name" class="slot-img" />
+            <span class="slot-meta">
+              <span class="slot-form" :style="{ color: isPet(entry.category) ? FORM_TEXT_HEX[entry.form] : 'var(--text-2)' }">
+                {{ isPet(entry.category) ? FORM_LABELS[entry.form] : CATEGORY_LABELS[entry.category!] }}
               </span>
-            </button>
-            <button type="button" class="pet-slot pet-slot--add" aria-label="Add a pet to your side" @click="showYourPicker = true">
-              <span class="slot-plus-circle">+</span>
-            </button>
-          </div>
-        </div>
-
-        <div class="panel-total" v-if="yourSide.length">
-          <span class="total-label">Total</span>
-          <span class="total-value">{{ valueSource === 'elvebredd' ? yourTotal.toFixed(2) : yourTotal.toFixed(4) }}</span>
-        </div>
-      </div>
-
-      <!-- Center diff -->
-      <div class="cv-center">
-        <div class="diff-wrap" v-if="yourSide.length || themSide.length">
-          <div class="diff-value" :class="diffClass">
-            {{ diffLabel }}
-          </div>
-          <div class="diff-sub" v-if="diffPct !== null">
-            {{ diffPct >= 0 ? '+' : '' }}{{ diffPct.toFixed(1) }}%
-          </div>
-        </div>
-        <div class="diff-placeholder" v-else>
-          <q-icon :name="matBalance" size="32px" style="opacity:.25" />
-        </div>
-      </div>
-
-      <!-- THEM panel -->
-      <div class="cv-panel">
-        <div class="panel-header">
-          <span class="panel-label">THEM</span>
-          <span class="panel-count" v-if="themSide.length">{{ themSide.length }}</span>
-        </div>
-
-        <div class="panel-body">
-          <div class="pet-slots-grid">
-            <button
-              type="button"
-              class="pet-slot pet-slot--filled"
-              v-for="entry in themSide"
-              :key="entry.id"
-              :aria-label="`Remove ${entry.name}`"
-              title="Click to remove"
-              @click="removePet('them', entry.id)"
-            >
-              <PetImage :name="entry.name" class="slot-img" />
-              <span class="slot-meta">
-                <span class="slot-form" :style="{ color: isPet(entry.category) ? FORM_TEXT_HEX[entry.form] : 'var(--text-2)' }">
-                  {{ isPet(entry.category) ? FORM_LABELS[entry.form] : CATEGORY_LABELS[entry.category!] }}
-                </span>
-                <span v-if="entry.demand" class="slot-demand" :class="`demand--${demandClass(entry.demand)}`" :title="entry.demand">{{ demandStars(entry.demand) }}</span>
-                <span class="slot-val">
-                  <SkeletonBar v-if="entry.loading" width="1.6em" />
-                  <template v-else>{{ entry.value != null ? (valueSource === 'elvebredd' ? entry.value.toFixed(2) : entry.value) : '—' }}</template>
-                </span>
+              <span v-if="entry.demand" class="slot-demand" :class="`demand--${demandClass(entry.demand)}`" :title="entry.demand ?? undefined">{{ demandStars(entry.demand) }}</span>
+              <span class="slot-val">
+                <SkeletonBar v-if="entry.loading" width="1.6em" />
+                <template v-else>{{ formatValue(entry.value) }}</template>
               </span>
-            </button>
-            <button type="button" class="pet-slot pet-slot--add" aria-label="Add a pet to their side" @click="showThemPicker = true">
-              <span class="slot-plus-circle">+</span>
-            </button>
-          </div>
+            </span>
+          </button>
+          <button type="button" class="pet-slot pet-slot--add" aria-label="Add a pet to your side" @click="showYourPicker = true">
+            <span class="slot-plus-circle">+</span>
+          </button>
+        </div>
+      </section>
+
+      <!-- THEM -->
+      <section class="side-panel">
+        <header class="side-head">
+          <span class="side-tag side-tag--them">They give</span>
+          <span class="side-total" v-if="themSide.length">{{ formatValue(themTotal) }}</span>
+        </header>
+        <div class="pet-slots-grid">
+          <button
+            type="button"
+            class="pet-slot pet-slot--filled"
+            v-for="entry in themSide"
+            :key="entry.id"
+            :aria-label="`Remove ${entry.name}`"
+            title="Tap to remove"
+            @click="removePet('them', entry.id)"
+          >
+            <PetImage :name="entry.name" class="slot-img" />
+            <span class="slot-meta">
+              <span class="slot-form" :style="{ color: isPet(entry.category) ? FORM_TEXT_HEX[entry.form] : 'var(--text-2)' }">
+                {{ isPet(entry.category) ? FORM_LABELS[entry.form] : CATEGORY_LABELS[entry.category!] }}
+              </span>
+              <span v-if="entry.demand" class="slot-demand" :class="`demand--${demandClass(entry.demand)}`" :title="entry.demand ?? undefined">{{ demandStars(entry.demand) }}</span>
+              <span class="slot-val">
+                <SkeletonBar v-if="entry.loading" width="1.6em" />
+                <template v-else>{{ formatValue(entry.value) }}</template>
+              </span>
+            </span>
+          </button>
+          <button type="button" class="pet-slot pet-slot--add" aria-label="Add a pet to their side" @click="showThemPicker = true">
+            <span class="slot-plus-circle">+</span>
+          </button>
+        </div>
+      </section>
+    </div>
+
+    <!-- The Fair Scale: the verdict, always in view. The beam physically tips
+         toward the heavier side — the brand mark doing the app's actual job. -->
+    <div class="verdict-dock">
+      <div class="verdict-card" :class="`verdict--${verdict.kind}`">
+        <svg class="scale" viewBox="0 0 140 58" aria-hidden="true">
+          <g fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+            <!-- post + base (static) -->
+            <line x1="70" y1="16" x2="70" y2="48" />
+            <line x1="54" y1="51" x2="86" y2="51" />
+            <!-- beam + pans (tilt as one) -->
+            <g class="beam" :style="{ transform: `rotate(${beamAngle}deg)` }">
+              <line x1="26" y1="16" x2="114" y2="16" />
+              <line x1="26" y1="16" x2="26" y2="22" />
+              <line x1="114" y1="16" x2="114" y2="22" />
+              <path d="M15 22 Q26 34 37 22" />
+              <path d="M103 22 Q114 34 125 22" />
+            </g>
+          </g>
+          <circle cx="70" cy="13" r="3.2" fill="currentColor" />
+        </svg>
+
+        <div class="verdict-main">
+          <span class="verdict-word">{{ verdict.word }}</span>
+          <span class="verdict-note">{{ verdict.note }}</span>
         </div>
 
-        <div class="panel-total" v-if="themSide.length">
-          <span class="total-label">Total</span>
-          <span class="total-value">{{ valueSource === 'elvebredd' ? themTotal.toFixed(2) : themTotal.toFixed(4) }}</span>
-        </div>
+        <span class="verdict-delta" v-if="diffPct !== null">
+          {{ diffPct >= 0 ? '+' : '' }}{{ diffPct.toFixed(1) }}%
+        </span>
       </div>
-
     </div>
 
     <!-- YOUR side picker (tabs: My Pets / Other) -->
     <PetPicker
       v-model="showYourPicker"
-      title="Add pet — YOU"
+      title="Add pet — you give"
       :mine="inventory.pets"
       @add="addToYour"
     />
@@ -142,7 +140,7 @@
     <!-- THEM side picker (search only — we don't own their pets) -->
     <PetPicker
       v-model="showThemPicker"
-      title="Add pet — THEM"
+      title="Add pet — they give"
       @add="addToThem"
     />
 
@@ -152,7 +150,7 @@
 <script setup lang="ts">
 import { ref, computed, watch, onMounted } from 'vue'
 import { storeToRefs } from 'pinia'
-import { matBalance, matErrorOutline } from '@quasar/extras/material-icons'
+import { matErrorOutline } from '@quasar/extras/material-icons'
 import { uid } from 'quasar'
 import { FORM_LABELS, FORM_TEXT_HEX, CATEGORY_LABELS, isPet, type PetForm, type ItemCategory, type PickerSelection } from 'src/types'
 import { useValuesStore, type DemandLevel } from 'src/stores/values'
@@ -163,23 +161,13 @@ import SourceToggle from 'src/components/SourceToggle.vue'
 import PetImage from 'src/components/PetImage.vue'
 import SkeletonBar from 'src/components/SkeletonBar.vue'
 import { notifyLoadError } from 'src/utils/notify'
+import { formatValue, demandStars, demandClass } from 'src/utils/format'
 import { useRecentStore } from 'src/stores/recent'
 
 const valuesStore = useValuesStore()
 const inventory   = useInventoryStore()
 const draftsStore = useDraftsStore()
 const recentStore = useRecentStore()
-
-function demandClass(d: DemandLevel) {
-  if (d === 'High') return 'high'
-  if (d === 'Medium') return 'medium'
-  return 'low'
-}
-
-function demandStars(d: DemandLevel): string {
-  const n = d === 'High' ? 3 : d === 'Medium' ? 2 : d === 'Low' ? 1 : 0
-  return '★'.repeat(n) + '☆'.repeat(3 - n)
-}
 
 // ── State ────────────────────────────────────────────────────────────────────
 
@@ -189,8 +177,7 @@ const loadError = ref(false)
 watch(valueSource, refreshValues)
 onMounted(() => { draftsStore.hydrate(); recentStore.hydrate() })
 
-// ── Computed ─────────────────────────────────────────────────────────────────
-
+// ── Totals + verdict ─────────────────────────────────────────────────────────
 
 const yourTotal = computed(() =>
   yourSide.value.reduce((sum, e) => sum + (e.value ?? 0), 0)
@@ -207,17 +194,26 @@ const diffPct = computed(() => {
   return ((themTotal.value - yourTotal.value) / base) * 100
 })
 
-const diffClass = computed(() => {
-  if (diffPct.value === null) return ''
-  if (Math.abs(diffPct.value) < 5) return 'diff--even'
-  return diffPct.value > 0 ? 'diff--win' : 'diff--loss'
+// The beam sinks toward the heavier side (their side is drawn on the right, so a
+// positive diff — you receiving more — tips it right). Clamped: past ±10° it stops
+// reading as a scale and starts reading as broken.
+const beamAngle = computed(() => {
+  if (diffPct.value === null) return 0
+  return Math.max(-10, Math.min(10, diffPct.value * 0.6))
 })
 
-const diffLabel = computed(() => {
-  const d = themTotal.value - yourTotal.value
-  if (d === 0) return 'Even'
-  const dec = valueSource.value === 'elvebredd' ? 2 : 4
-  return d > 0 ? `+${d.toFixed(dec)}` : d.toFixed(dec)
+// FAIR inside ±5%, mirroring the old diff thresholds. The words are the trader's,
+// not the system's.
+const verdict = computed(() => {
+  if (diffPct.value === null) {
+    return { kind: 'idle', word: 'Weigh a trade', note: 'Add pets to both sides' }
+  }
+  if (Math.abs(diffPct.value) < 5) {
+    return { kind: 'fair', word: 'FAIR', note: 'Even enough to shake on' }
+  }
+  return diffPct.value > 0
+    ? { kind: 'win',  word: 'WIN',  note: 'You come out ahead' }
+    : { kind: 'lose', word: 'LOSE', note: "You'd be overpaying" }
 })
 
 // ── Pet management ────────────────────────────────────────────────────────────
@@ -336,21 +332,22 @@ function addToThem (sel: PickerSelection) {
 </script>
 
 <style scoped>
-/* ── Page ── */
 .cv-page {
-  padding: 28px;
+  padding: 16px 16px 28px;
   min-height: 100vh;
 }
 
-.page-head {
+.cv-head {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 28px;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 16px;
 }
 
 .page-title {
-  font-size: 26px;
+  font-size: 24px;
   font-weight: 800;
   color: var(--text-1);
   letter-spacing: -0.4px;
@@ -369,132 +366,159 @@ function addToThem (sel: PickerSelection) {
 }
 
 .clear-draft-btn {
-  background: none;
-  border: none;
-  color: var(--text-3);
-  font-size: 11px;
+  padding: 6px 14px;
+  border: 1px solid var(--border-hi);
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text-2);
+  font-size: 12px;
   font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
   cursor: pointer;
-  padding: 2px 4px;
-  transition: color 0.15s;
+  transition: background 0.15s, color 0.15s;
 }
 @media (hover: hover) {
-  .clear-draft-btn:hover { color: var(--negative); }
+  .clear-draft-btn:hover { background: var(--surface-3); color: var(--text-1); }
 }
 
-/* The AMV/Elve toggle lives in SourceToggle.vue. */
-
-/* ── Layout ── */
-.cv-layout {
+/* ── Sides ── */
+.cv-sides {
   display: grid;
-  grid-template-columns: 1fr 120px 1fr;
-  gap: 16px;
-  align-items: start;
+  grid-template-columns: 1fr;
+  gap: 12px;
 }
 
-/* ── Panel ── */
-.cv-panel {
+.side-panel {
   background: var(--elev-fill);
   border: 1px solid var(--border);
   border-radius: 16px;
-  overflow: hidden;
-  display: flex;
-  flex-direction: column;
   box-shadow: var(--elev-shadow);
-}
-
-.panel-header {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 14px 18px;
-  border-bottom: 1px solid var(--border);
-}
-
-.panel-label {
-  font-size: 15px;
-  font-weight: 800;
-  color: var(--text-1);
-  letter-spacing: 1.5px;
-}
-
-.panel-count {
-  font-size: 11px;
-  font-weight: 700;
-  background: var(--primary-dim);
-  color: var(--primary);
-  border-radius: 20px;
-  padding: 1px 8px;
-}
-
-.panel-body {
   padding: 12px;
-  flex: 1;
-  min-height: 200px;
 }
 
-/* The pet slot grid is global — see "Pet slot grid" in src/css/app.scss. */
-
-/* ── Panel total ── */
-.panel-total {
+.side-head {
   display: flex;
-  justify-content: space-between;
   align-items: center;
-  padding: 10px 18px;
-  border-top: 1px solid var(--border);
-  background: var(--surface-2);
+  justify-content: space-between;
+  margin-bottom: 10px;
+  padding: 0 2px;
 }
 
-.total-label {
+.side-tag {
   font-size: 11px;
-  font-weight: 700;
-  color: var(--text-3);
-  letter-spacing: 0.8px;
+  font-weight: 800;
   text-transform: uppercase;
+  letter-spacing: 1.2px;
 }
+.side-tag--you  { color: var(--text-2); }
+.side-tag--them { color: var(--text-2); }
 
-.total-value {
-  font-size: 18px;
+.side-total {
+  font-size: 15px;
   font-weight: 800;
   color: var(--gold);
 }
 
-/* ── Center diff ── */
-.cv-center {
+/* ── Verdict (the Fair Scale) ── */
+/* Sticks just above the tab bar while the sides scroll: the answer is never off
+   screen. The dock reserves no height of its own beyond the card. */
+.verdict-dock {
+  position: sticky;
+  bottom: calc(66px + env(safe-area-inset-bottom));
+  margin-top: 14px;
+  z-index: 50;
+}
+@media (min-width: 768px) {
+  .verdict-dock { bottom: 16px; }
+}
+
+.verdict-card {
   display: flex;
   align-items: center;
-  justify-content: center;
-  padding-top: 60px;
+  gap: 14px;
+  max-width: 520px;
+  margin-inline: auto;
+  padding: 12px 18px;
+  border-radius: 18px;
+  border: 1px solid var(--border-hi);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.02)),
+    rgba(21, 21, 23, 0.92);
+  -webkit-backdrop-filter: blur(14px);
+  backdrop-filter: blur(14px);
+  box-shadow: inset 0 1px 0 var(--lift), 0 14px 40px -12px rgba(0, 0, 0, 0.8);
 }
 
-.diff-wrap {
-  text-align: center;
+.scale {
+  width: 74px;
+  height: 31px;
+  flex-shrink: 0;
+  color: var(--text-2);
+  transition: color 0.25s;
 }
 
-.diff-value {
-  font-size: 26px;
-  font-weight: 800;
-  letter-spacing: -0.5px;
+.beam {
+  transform-origin: 70px 16px;
+  transition: transform 0.55s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+@media (prefers-reduced-motion: reduce) {
+  .beam { transition: none; }
 }
 
-.diff--even  { color: var(--text-2); }
-.diff--win   { color: #4ade80; }
-.diff--loss  { color: #f87171; }
+.verdict-main {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+  flex: 1;
+}
 
-.diff-sub {
-  font-size: 14px;
+.verdict-word {
+  --font-ui: var(--font-display);
+  font-size: 19px;
+  font-weight: 600;
+  letter-spacing: 0.6px;
+  line-height: 1.15;
+  color: var(--text-1);
+}
+
+.verdict-note {
+  font-size: 11px;
   font-weight: 600;
   color: var(--text-3);
-  margin-top: 4px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
-.diff-placeholder {
-  display: flex;
-  align-items: center;
-  justify-content: center;
+.verdict-delta {
+  font-size: 15px;
+  font-weight: 800;
+  flex-shrink: 0;
+  color: var(--text-2);
 }
 
-/* This page stacks at ≤1000px — see "Narrow" in src/css/app.scss. */
+/* Verdict colours: financial green/red are reserved for exactly this. */
+.verdict--win  .scale,
+.verdict--win  .verdict-word,
+.verdict--win  .verdict-delta { color: var(--positive); }
+.verdict--lose .scale,
+.verdict--lose .verdict-word,
+.verdict--lose .verdict-delta { color: var(--negative); }
+.verdict--fair .scale,
+.verdict--fair .verdict-word,
+.verdict--fair .verdict-delta { color: var(--gold); }
+.verdict--win  { border-color: rgba(76, 217, 162, 0.35); }
+.verdict--lose { border-color: rgba(242, 145, 126, 0.35); }
+.verdict--fair { border-color: rgba(231, 195, 104, 0.35); }
+
+/* ── Desktop ── */
+@media (min-width: 768px) {
+  .cv-page { padding: 24px 28px 40px; }
+  .cv-sides {
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    align-items: start;
+  }
+  .verdict-dock { margin-top: 20px; }
+}
 </style>

@@ -86,9 +86,7 @@ body {
 .page-title,
 .dialog-title,
 .guide-title,
-.empty-title,
-.logo-name,
-.fairness-score {
+.empty-title {
   --font-ui: var(--font-display);
 }
 
@@ -274,15 +272,22 @@ body::before {
 // leaves controls marooned at the margins on 1440px+ displays. The pages are the
 // q-page roots, so capping + auto margins centers header and body together.
 .inv-page,
-.cv-page,
-.trade-page {
+.cv-page {
   max-width: 1180px;
   margin-inline: auto;
 }
 
+// Below the desktop breakpoint the bottom tab bar (MainLayout) overlays the
+// page, so every page keeps its tail content clear of it.
+@media (max-width: 767px) {
+  .inv-page,
+  .cv-page {
+    padding-bottom: calc(88px + env(safe-area-inset-bottom)) !important;
+  }
+}
+
 // ── Pet slot grid ─────────────────────────────────────────────────────────────
-// Shared by Check Values and Trade Builder. Lives here rather than in both pages'
-// scoped styles so the two can't drift apart again.
+// The Trade page's slot grid (and PetPicker mirrors its 96px floor).
 //
 // Columns are fluid instead of a fixed `repeat(4, 1fr)`, which used to squeeze the
 // slot down to ~48px in a narrow panel and push the value outside it. 96px is the
@@ -454,21 +459,18 @@ body::before {
     opacity: 1;
   }
 
-  // Every control a finger has to hit. Measured at 390px before this: the delete
-  // button was 26px, the "Clear" draft link 21px tall, the toggles 32px. WCAG 2.2
-  // AA (2.5.8) only asks for 24px, but a destructive button deserves the 44px of
-  // WCAG 2.5.5 / Apple's HIG, and it costs nothing to give it to the rest.
-  .action-btn,
+  // Every control a finger has to hit. Measured at 390px: WCAG 2.2 AA (2.5.8)
+  // only asks for 24px, but a destructive button deserves the 44px of WCAG
+  // 2.5.5 / Apple's HIG, and it costs nothing to give it to the rest.
   .clear-draft-btn,
   .source-btn,
   .sort-btn,
-  .btn-search,
   .btn-primary,
   .btn-secondary,
   .btn-ghost,
+  .btn-danger,
   .btn-retry,
   .form-chip,
-  .mobile-menu-btn,
   .recent-chip,
   .cat-chip,
   .cat-picker-btn,
@@ -477,56 +479,10 @@ body::before {
   }
 }
 
-// ── Narrow (≤1000px) ──────────────────────────────────────────────────────────
-// Both two-sided pages stack their panels here: side by side, each panel is under
-// half the viewport, which is narrower than two slots. Kept next to the slot grid
-// (and not in each page) so the two can't drift apart — Trade Builder used to
-// stack at 820px and Check Values at 599px, which is how the overflow above went
-// unnoticed. !important wins over the pages' scoped rules, same as the block below.
-@media (max-width: 1000px) {
-  .cv-page,
-  .trade-page {
-    padding: 16px !important;
-  }
-
-  // Page headers wrap instead of overflowing
-  .page-head {
-    flex-wrap: wrap !important;
-    gap: 12px !important;
-    margin-bottom: 18px !important;
-  }
-
-  // YOU → middle → THEM, in DOM order
-  .cv-layout,
-  .trade-layout {
-    grid-template-columns: 1fr !important;
-    gap: 14px !important;
-  }
-
-  // The middle column no longer lines up with the panel headers, so drop the
-  // padding that aligned it. Check Values' idle balance icon would just be a
-  // dead row between the stacked panels.
-  .cv-center { padding-top: 0 !important; }
-  .diff-placeholder { display: none !important; }
-
-  // Trade Builder's swap arrow points down to read as offer → suggestions.
-  .trade-controls { padding-top: 4px !important; }
-  .swap-icon-wrap { transform: rotate(90deg); }
-}
-
 // ── Mobile (≤599px) ───────────────────────────────────────────────────────────
-// Global overrides so the SSR pages reflow on phones. Uses !important to win over
-// the components' scoped rules (same class names, scoped attribute specificity).
+// The 2026-07 redesign is mobile-first, so the pages' own scoped styles carry the
+// phone layout; only cross-component tweaks live here.
 @media (max-width: 599px) {
-  // Tighter page gutters
-  .inv-page,
-  .cv-page,
-  .trade-page {
-    padding: 14px !important;
-  }
-
-  .page-title { font-size: 21px !important; }
-
   // Wider tap targets for the small form/source toggles
   .source-toggle .source-btn { padding: 7px 12px !important; }
 }
