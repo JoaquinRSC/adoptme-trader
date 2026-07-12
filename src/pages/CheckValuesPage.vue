@@ -25,12 +25,12 @@
       <button class="btn-retry" @click="refreshValues">Retry</button>
     </div>
 
+    <!-- The two sides render from one template — they may never drift apart. -->
     <div class="cv-sides">
-      <!-- YOU -->
-      <section class="side-panel">
+      <section class="side-panel" v-for="side in sides" :key="side.key">
         <header class="side-head">
-          <span class="side-tag side-tag--you">You give</span>
-          <span class="side-total" v-if="yourSide.length">{{ formatValue(yourTotal) }}</span>
+          <span class="side-tag">{{ side.label }}</span>
+          <span class="side-total" v-if="side.entries.length">{{ formatValue(side.total) }}</span>
         </header>
         <div class="pet-slots-grid">
           <!-- A real <button>, like the add slot beside it: focus, Enter and
@@ -38,11 +38,11 @@
           <button
             type="button"
             class="pet-slot pet-slot--filled"
-            v-for="entry in yourSide"
+            v-for="entry in side.entries"
             :key="entry.id"
             :aria-label="`Remove ${entry.name}`"
             title="Tap to remove"
-            @click="removePet('your', entry.id)"
+            @click="removePet(side.key, entry.id)"
           >
             <PetImage :name="entry.name" class="slot-img" />
             <span class="slot-meta">
@@ -56,41 +56,7 @@
               </span>
             </span>
           </button>
-          <button type="button" class="pet-slot pet-slot--add" aria-label="Add a pet to your side" @click="showYourPicker = true">
-            <span class="slot-plus-circle">+</span>
-          </button>
-        </div>
-      </section>
-
-      <!-- THEM -->
-      <section class="side-panel">
-        <header class="side-head">
-          <span class="side-tag side-tag--them">They give</span>
-          <span class="side-total" v-if="themSide.length">{{ formatValue(themTotal) }}</span>
-        </header>
-        <div class="pet-slots-grid">
-          <button
-            type="button"
-            class="pet-slot pet-slot--filled"
-            v-for="entry in themSide"
-            :key="entry.id"
-            :aria-label="`Remove ${entry.name}`"
-            title="Tap to remove"
-            @click="removePet('them', entry.id)"
-          >
-            <PetImage :name="entry.name" class="slot-img" />
-            <span class="slot-meta">
-              <span class="slot-form" :style="{ color: isPet(entry.category) ? FORM_TEXT_HEX[entry.form] : 'var(--text-2)' }">
-                {{ isPet(entry.category) ? FORM_LABELS[entry.form] : CATEGORY_LABELS[entry.category!] }}
-              </span>
-              <span v-if="entry.demand" class="slot-demand" :class="`demand--${demandClass(entry.demand)}`" :title="entry.demand ?? undefined">{{ demandStars(entry.demand) }}</span>
-              <span class="slot-val">
-                <SkeletonBar v-if="entry.loading" width="1.6em" />
-                <template v-else>{{ formatValue(entry.value) }}</template>
-              </span>
-            </span>
-          </button>
-          <button type="button" class="pet-slot pet-slot--add" aria-label="Add a pet to their side" @click="showThemPicker = true">
+          <button type="button" class="pet-slot pet-slot--add" :aria-label="side.addLabel" @click="side.openPicker()">
             <span class="slot-plus-circle">+</span>
           </button>
         </div>
@@ -193,6 +159,26 @@ const diffPct = computed(() => {
   if (!base) return null
   return ((themTotal.value - yourTotal.value) / base) * 100
 })
+
+// The template renders both sides from this one description.
+const sides = computed(() => [
+  {
+    key: 'your' as const,
+    label: 'You give',
+    addLabel: 'Add a pet to your side',
+    entries: yourSide.value,
+    total: yourTotal.value,
+    openPicker: () => { showYourPicker.value = true },
+  },
+  {
+    key: 'them' as const,
+    label: 'They give',
+    addLabel: 'Add a pet to their side',
+    entries: themSide.value,
+    total: themTotal.value,
+    openPicker: () => { showThemPicker.value = true },
+  },
+])
 
 // The beam sinks toward the heavier side (their side is drawn on the right, so a
 // positive diff — you receiving more — tips it right). Clamped: past ±10° it stops
@@ -408,9 +394,8 @@ function addToThem (sel: PickerSelection) {
   font-weight: 800;
   text-transform: uppercase;
   letter-spacing: 1.2px;
+  color: var(--text-2);
 }
-.side-tag--you  { color: var(--text-2); }
-.side-tag--them { color: var(--text-2); }
 
 .side-total {
   font-size: 15px;

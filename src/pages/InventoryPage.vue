@@ -502,7 +502,6 @@ function confirmAdd () {
 const searchInputRef  = ref()
 const searchQuery     = ref('')
 const searchResults   = ref<string[]>([])
-const showDropdown    = ref(false)
 const searching       = ref(false)
 const dropIndex       = ref(-1)
 
@@ -553,13 +552,11 @@ function onSearchInput (val: string | number | null) {
   if (!q) {
     newPetName.value    = ''
     searchResults.value = []
-    showDropdown.value  = false
     return
   }
 
   // Instant local results
   searchResults.value = localSearch(q)
-  showDropdown.value  = true
   dropIndex.value     = -1
 
   // If AMVGG list not yet loaded, also query main process (debounced)
@@ -586,7 +583,6 @@ function onSearchInput (val: string | number | null) {
 function selectPet (name: string) {
   newPetName.value    = name
   searchQuery.value   = name
-  showDropdown.value  = false
   dropIndex.value     = -1
 }
 
@@ -601,7 +597,6 @@ function pickFirstResult () {
 function resetSearch () {
   searchQuery.value   = ''
   searchResults.value = []
-  showDropdown.value  = false
 }
 
 // Thumbnails resolve themselves — see `PetImage`.
