@@ -100,7 +100,7 @@
 import { ref, computed, watch, onMounted } from 'vue'
 import { storeToRefs } from 'pinia'
 import { matErrorOutline, matShare } from '@quasar/extras/material-icons'
-import { uid, useQuasar } from 'quasar'
+import { uid } from 'quasar'
 import { FORM_LABELS, FORM_TEXT_HEX, CATEGORY_LABELS, isPet, type PetForm, type ItemCategory, type PickerSelection } from 'src/types'
 import { useValuesStore, type DemandLevel } from 'src/stores/values'
 import { useInventoryStore } from 'src/stores/inventory'
@@ -113,8 +113,7 @@ import VerdictCard from 'src/components/VerdictCard.vue'
 import { notifyLoadError } from 'src/utils/notify'
 import { formatValue, demandStars, demandClass } from 'src/utils/format'
 import { useRecentStore } from 'src/stores/recent'
-import { encodeTrade } from 'src/utils/share'
-import { SITE_ORIGIN } from 'src/config'
+import { useTradeShare } from 'src/composables/useTradeShare'
 
 const valuesStore = useValuesStore()
 const inventory   = useInventoryStore()
@@ -262,24 +261,11 @@ function clearCheck() {
 
 // ── Share ─────────────────────────────────────────────────────────────────────
 
-const $q = useQuasar()
-const shareCopied = ref(false)
-
-async function shareTrade () {
-  const code = encodeTrade({
-    your: yourSide.value.map(e => ({ name: e.name, form: e.form, category: e.category })),
-    them: themSide.value.map(e => ({ name: e.name, form: e.form, category: e.category })),
-    source: valueSource.value,
-  })
-  const url = `${SITE_ORIGIN}/wfl?d=${code}`
-  try {
-    await navigator.clipboard.writeText(url)
-    shareCopied.value = true
-    setTimeout(() => { shareCopied.value = false }, 2200)
-  } catch {
-    $q.notify({ message: url, timeout: 0, actions: [{ label: 'Close', color: 'white' }] })
-  }
-}
+const { copied: shareCopied, share: shareTrade } = useTradeShare(() => ({
+  your: yourSide.value.map(e => ({ name: e.name, form: e.form, category: e.category ?? 'pet' })),
+  them: themSide.value.map(e => ({ name: e.name, form: e.form, category: e.category ?? 'pet' })),
+  source: valueSource.value,
+}))
 
 // ── Pickers ───────────────────────────────────────────────────────────────────
 

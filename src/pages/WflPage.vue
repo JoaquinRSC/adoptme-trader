@@ -82,7 +82,7 @@
 <script setup lang="ts">
 import { ref, computed, watch, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { useQuasar, uid, useMeta } from 'quasar'
+import { uid, useMeta } from 'quasar'
 import { matErrorOutline, matShare } from '@quasar/extras/material-icons'
 import { FORM_LABELS, FORM_TEXT_HEX, CATEGORY_LABELS, isPet, type PetForm, type ItemCategory, type PickerSelection, type ValueSource } from 'src/types'
 import { useValuesStore, type DemandLevel } from 'src/stores/values'
@@ -93,7 +93,8 @@ import SkeletonBar from 'src/components/SkeletonBar.vue'
 import VerdictCard from 'src/components/VerdictCard.vue'
 import { notifyLoadError } from 'src/utils/notify'
 import { formatValue, demandStars, demandClass } from 'src/utils/format'
-import { encodeTrade, decodeTrade, type ShareEntry } from 'src/utils/share'
+import { decodeTrade, type ShareEntry } from 'src/utils/share'
+import { useTradeShare } from 'src/composables/useTradeShare'
 import { SITE_ORIGIN } from 'src/config'
 
 interface WflEntry {
@@ -109,13 +110,11 @@ interface WflEntry {
 const valuesStore = useValuesStore()
 const route  = useRoute()
 const router = useRouter()
-const $q     = useQuasar()
 
 const yourSide = ref<WflEntry[]>([])
 const themSide = ref<WflEntry[]>([])
 const source   = ref<ValueSource>('amvgg')
 const loadError = ref(false)
-const copied    = ref(false)
 
 const showYourPicker = ref(false)
 const showThemPicker = ref(false)
@@ -214,22 +213,16 @@ async function refreshAll () {
 }
 watch(source, refreshAll)
 
+const { copied, share } = useTradeShare(() => ({
+  your: yourSide.value.map(e => ({ name: e.name, form: e.form, category: e.category })),
+  them: themSide.value.map(e => ({ name: e.name, form: e.form, category: e.category })),
+  source: source.value,
+}))
+
 async function shareTrade () {
-  const code = encodeTrade({
-    your: yourSide.value.map(e => ({ name: e.name, form: e.form, category: e.category })),
-    them: themSide.value.map(e => ({ name: e.name, form: e.form, category: e.category })),
-    source: source.value,
-  })
-  const url = `${SITE_ORIGIN}/wfl?d=${code}`
+  const { code } = await share()
   // Reflect the trade in the address bar so a refresh keeps it.
   void router.replace({ name: 'wfl', query: { d: code } })
-  try {
-    await navigator.clipboard.writeText(url)
-    copied.value = true
-    setTimeout(() => { copied.value = false }, 2200)
-  } catch {
-    $q.notify({ message: url, timeout: 0, actions: [{ label: 'Close', color: 'white' }] })
-  }
 }
 
 // A shared link (?d=) rebuilds the trade and re-prices it.
