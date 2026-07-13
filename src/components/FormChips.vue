@@ -1,13 +1,13 @@
 <template>
   <!-- The visible labels are single letters, so each chip carries the full form
        name as its accessible name and reports its state with aria-pressed. -->
-  <div class="form-grid" role="group" aria-label="Pet form">
+  <div class="form-grid" role="group" :aria-label="$t('a11y.petForm')">
     <button
       class="form-chip"
       :class="{ 'form-chip--active': flyPick }"
       :style="flyPick ? chipStyle('fly') : {}"
-      title="Fly — can be flown"
-      aria-label="Fly"
+      :title="$t('form.flyTip')"
+      :aria-label="$t('form.fly')"
       :aria-pressed="flyPick"
       @click="flyPick = !flyPick"
     >F</button>
@@ -15,8 +15,8 @@
       class="form-chip"
       :class="{ 'form-chip--active': ridePick }"
       :style="ridePick ? chipStyle('ride') : {}"
-      title="Ride — can be ridden"
-      aria-label="Ride"
+      :title="$t('form.rideTip')"
+      :aria-label="$t('form.ride')"
       :aria-pressed="ridePick"
       @click="ridePick = !ridePick"
     >R</button>
@@ -24,8 +24,8 @@
       class="form-chip"
       :class="{ 'form-chip--active': isNormal }"
       :style="isNormal ? chipStyle('normal') : {}"
-      title="Default — no add-ons"
-      aria-label="Default"
+      :title="$t('form.defaultTip')"
+      :aria-label="$t('form.default')"
       :aria-pressed="isNormal"
       @click="reset('normal')"
     >D</button>
@@ -33,8 +33,8 @@
       class="form-chip"
       :class="{ 'form-chip--active': nmPick === 'n' }"
       :style="nmPick === 'n' ? chipStyle('n') : {}"
-      title="Neon — glows in the dark"
-      aria-label="Neon"
+      :title="$t('form.neonTip')"
+      :aria-label="$t('form.neon')"
       :aria-pressed="nmPick === 'n'"
       @click="nmPick = nmPick === 'n' ? 'none' : 'n'"
     >N</button>
@@ -42,8 +42,8 @@
       class="form-chip"
       :class="{ 'form-chip--active': nmPick === 'm' }"
       :style="nmPick === 'm' ? chipStyle('m') : {}"
-      title="Mega — mega-neon (4 neons combined)"
-      aria-label="Mega"
+      :title="$t('form.megaTip')"
+      :aria-label="$t('form.mega')"
       :aria-pressed="nmPick === 'm'"
       @click="nmPick = nmPick === 'm' ? 'none' : 'm'"
     >M</button>

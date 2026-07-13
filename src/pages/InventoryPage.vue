@@ -5,14 +5,17 @@
     <section class="folio" v-if="inventory.pets.length">
       <div class="folio-top">
         <div class="folio-worth">
-          <div class="folio-lbl">Collection value</div>
+          <div class="folio-lbl">{{ $t('inventory.collectionValue') }}</div>
           <div class="folio-total">
             <SkeletonBar v-if="anyLoading" width="3.2em" />
             <template v-else>{{ formatValue(totalValue) }}</template>
           </div>
           <div class="folio-sub">
-            {{ inventory.pets.length }} {{ inventory.pets.length === 1 ? 'pet' : 'pets' }}
-            · {{ valueSource === 'amvgg' ? 'AMV' : 'Elve' }} values
+            {{ $t('inventory.folioSub', {
+              count: inventory.pets.length,
+              petWord: $t(inventory.pets.length === 1 ? 'inventory.pet' : 'inventory.pets'),
+              source: valueSource === 'amvgg' ? $t('source.amv') : $t('source.elve'),
+            }) }}
           </div>
         </div>
         <SourceToggle v-model="valueSource" />
@@ -21,16 +24,16 @@
       <div class="folio-actions">
         <button class="btn-primary" @click="openAdd">
           <q-icon :name="matAdd" size="16px" />
-          Add Pet
+          {{ $t('inventory.addPet') }}
         </button>
         <button class="btn-secondary" @click="openAddItem">
           <q-icon :name="matAdd" size="16px" />
-          Add Item
+          {{ $t('inventory.addItem') }}
         </button>
         <button
           class="sort-btn"
           :class="{ 'sort-btn--active': sortOrder !== 'default' }"
-          :title="sortOrder === 'default' ? 'Sort by value' : sortOrder === 'desc' ? 'Sorted: high to low' : 'Sorted: low to high'"
+          :title="sortOrder === 'default' ? $t('inventory.sortByValue') : sortOrder === 'desc' ? $t('inventory.sortedHighLow') : $t('inventory.sortedLowHigh')"
           @click="cycleSortOrder"
         >
           <q-icon
@@ -40,7 +43,7 @@
         </button>
       </div>
 
-      <div class="cat-filter" v-if="availableCategories.length > 1" role="group" aria-label="Filter by category">
+      <div class="cat-filter" v-if="availableCategories.length > 1" role="group" :aria-label="$t('a11y.filterCategory')">
         <button
           v-for="cat in availableCategories"
           :key="cat"
@@ -48,16 +51,16 @@
           :class="{ 'cat-chip--active': categoryFilter === cat }"
           :aria-pressed="categoryFilter === cat"
           @click="categoryFilter = cat"
-        >{{ cat === 'all' ? 'All' : CATEGORY_LABELS[cat as ItemCategory] }}</button>
+        >{{ cat === 'all' ? $t('inventory.all') : CATEGORY_LABELS[cat as ItemCategory] }}</button>
       </div>
     </section>
 
     <!-- Empty state -->
     <div class="empty-state" v-if="!inventory.pets.length">
       <div class="empty-paw"><q-icon :name="matPets" /></div>
-      <div class="empty-title">No pets in here yet</div>
-      <div class="empty-sub">Add what you've got — we'll pull values and help you trade up.</div>
-      <button class="btn-primary" @click="openAdd">Add Pet</button>
+      <div class="empty-title">{{ $t('inventory.emptyTitle') }}</div>
+      <div class="empty-sub">{{ $t('inventory.emptySub') }}</div>
+      <button class="btn-primary" @click="openAdd">{{ $t('inventory.addPet') }}</button>
     </div>
 
     <!-- Tile grid: dense, game-inventory style. Tap a tile for detail/actions. -->
@@ -69,7 +72,7 @@
         :key="pet.id"
         :class="{ 'tile--formed': isFormed(pet) }"
         :style="formVars(pet)"
-        :aria-label="`${pet.name} — details`"
+        :aria-label="$t('a11y.petDetails', { name: pet.name })"
         @click="openDetail(pet)"
       >
         <div class="tile-art">
@@ -132,18 +135,18 @@
 
         <div class="sheet-stats">
           <div class="sheet-stat">
-            <span class="stat-lbl">AMV</span>
+            <span class="stat-lbl">{{ $t('source.amv') }}</span>
             <span class="stat-val">
               <SkeletonBar v-if="loadingValue[detailPet.id]" width="2.2em" />
               <template v-else>{{ formatValue(petValue[detailPet.id]) }}</template>
             </span>
           </div>
           <div class="sheet-stat">
-            <span class="stat-lbl">Elve</span>
+            <span class="stat-lbl">{{ $t('source.elve') }}</span>
             <span class="stat-val">{{ formatValue(petElveValue[detailPet.id]) }}</span>
           </div>
           <div class="sheet-stat">
-            <span class="stat-lbl">Demand</span>
+            <span class="stat-lbl">{{ $t('pet.demand') }}</span>
             <span
               v-if="petDemand[detailPet.id]"
               class="stat-val tile-stars"
@@ -154,16 +157,16 @@
         </div>
 
         <div class="sheet-form" v-if="isPet(detailPet.category)">
-          <div class="form-section-label">Form</div>
+          <div class="form-section-label">{{ $t('inventory.form') }}</div>
           <FormChips :model-value="detailPet.form" @update:model-value="changeDetailForm" />
         </div>
 
         <div class="sheet-actions">
           <button class="btn-danger" @click="removeDetail">
             <q-icon :name="matDeleteOutline" size="16px" />
-            Remove
+            {{ $t('inventory.remove') }}
           </button>
-          <button class="btn-primary" v-close-popup>Done</button>
+          <button class="btn-primary" v-close-popup>{{ $t('common.done') }}</button>
         </div>
       </div>
     </q-dialog>
@@ -173,8 +176,8 @@
     <q-dialog v-model="showAdd" :maximized="$q.screen.lt.sm" @hide="resetSearch">
       <q-card class="add-card" :class="{ 'add-card--sheet': $q.screen.lt.sm }">
         <header class="add-head">
-          <div class="dialog-title">Add Pet</div>
-          <button class="dialog-close" aria-label="Close" @click="showAdd = false">
+          <div class="dialog-title">{{ $t('inventory.addPetTitle') }}</div>
+          <button class="dialog-close" :aria-label="$t('a11y.close')" @click="showAdd = false">
             <q-icon :name="matClose" size="18px" />
           </button>
         </header>
@@ -183,7 +186,7 @@
           <q-input
             ref="searchInputRef"
             v-model="searchQuery"
-            placeholder="Search pets…"
+            :placeholder="$t('inventory.searchPets')"
             outlined dense autofocus
             autocomplete="off"
             @update:model-value="onSearchInput"
@@ -199,7 +202,7 @@
 
           <div class="add-results">
             <div v-if="searching && !searchResults.length" class="results-state">
-              <q-spinner size="14px" color="primary" /><span>Searching…</span>
+              <q-spinner size="14px" color="primary" /><span>{{ $t('common.searching') }}</span>
             </div>
             <!-- No query yet: browse the whole catalogue, priciest first, so you
                  can find a pet without knowing its name. -->
@@ -209,9 +212,9 @@
                 :names="recentStore.list"
                 @select="selectPet"
               />
-              <div class="browse-head">All pets · highest value first</div>
+              <div class="browse-head">{{ $t('inventory.allPetsHigh') }}</div>
               <div v-if="catalog.petsLoading" class="results-state">
-                <q-spinner size="14px" color="primary" /><span>Loading…</span>
+                <q-spinner size="14px" color="primary" /><span>{{ $t('common.loading') }}</span>
               </div>
               <div
                 v-for="entry in catalog.pets"
@@ -226,7 +229,7 @@
               </div>
             </template>
             <div v-else-if="!searchResults.length" class="results-state">
-              No results for "{{ searchQuery }}"
+              {{ $t('inventory.noResultsFor', { query: searchQuery }) }}
             </div>
             <div
               v-for="(name, i) in searchResults"
@@ -251,7 +254,7 @@
           </div>
           <FormChips v-model="newPetForm" />
           <button class="btn-primary confirm-add" @click="confirmAdd">
-            Add to Inventory
+            {{ $t('inventory.addToInventory') }}
           </button>
         </footer>
       </q-card>
@@ -262,14 +265,14 @@
     <q-dialog v-model="showAddItem" :maximized="$q.screen.lt.sm" @hide="resetItemSearch">
       <q-card class="add-card" :class="{ 'add-card--sheet': $q.screen.lt.sm }">
         <header class="add-head">
-          <div class="dialog-title">Add Item</div>
-          <button class="dialog-close" aria-label="Close" @click="showAddItem = false">
+          <div class="dialog-title">{{ $t('inventory.addItemTitle') }}</div>
+          <button class="dialog-close" :aria-label="$t('a11y.close')" @click="showAddItem = false">
             <q-icon :name="matClose" size="18px" />
           </button>
         </header>
 
         <div class="add-flow">
-          <div class="cat-filter cat-filter--dialog" role="group" aria-label="Item category">
+          <div class="cat-filter cat-filter--dialog" role="group" :aria-label="$t('a11y.itemCategory')">
             <button
               v-for="opt in ITEM_CATEGORY_OPTIONS"
               :key="opt.value"
@@ -283,7 +286,7 @@
           <q-input
             ref="itemSearchInputRef"
             v-model="itemSearchQuery"
-            :placeholder="newItemCategory ? `Search ${CATEGORY_LABELS[newItemCategory]}…` : 'Search items…'"
+            :placeholder="newItemCategory ? $t('inventory.searchCategory', { category: CATEGORY_LABELS[newItemCategory] }) : $t('inventory.searchItems')"
             outlined dense
             autocomplete="off"
             :disable="!newItemCategory"
@@ -300,16 +303,16 @@
 
           <div class="add-results">
             <div v-if="!newItemCategory" class="results-state">
-              Pick a category to start
+              {{ $t('inventory.pickCategory') }}
             </div>
             <div v-else-if="itemSearching && !itemSearchResults.length" class="results-state">
-              <q-spinner size="14px" color="primary" /><span>Searching…</span>
+              <q-spinner size="14px" color="primary" /><span>{{ $t('common.searching') }}</span>
             </div>
             <!-- No query yet: browse the category, priciest first. -->
             <template v-else-if="!itemSearchQuery.trim()">
-              <div class="browse-head">{{ CATEGORY_LABELS[newItemCategory] }} · highest value first</div>
+              <div class="browse-head">{{ $t('inventory.categoryHigh', { category: CATEGORY_LABELS[newItemCategory] }) }}</div>
               <div v-if="catalog.itemsLoading[newItemCategory]" class="results-state">
-                <q-spinner size="14px" color="primary" /><span>Loading…</span>
+                <q-spinner size="14px" color="primary" /><span>{{ $t('common.loading') }}</span>
               </div>
               <div
                 v-for="entry in catalog.items[newItemCategory] ?? []"
@@ -324,7 +327,7 @@
               </div>
             </template>
             <div v-else-if="!itemSearchResults.length" class="results-state">
-              No results for "{{ itemSearchQuery }}"
+              {{ $t('inventory.noResultsFor', { query: itemSearchQuery }) }}
             </div>
             <div
               v-for="(name, i) in itemSearchResults"
@@ -348,7 +351,7 @@
             <QtyStepper v-model="newItemQty" />
           </div>
           <button class="btn-primary confirm-add" @click="confirmAddItem">
-            Add to Inventory
+            {{ $t('inventory.addToInventory') }}
           </button>
         </footer>
       </q-card>

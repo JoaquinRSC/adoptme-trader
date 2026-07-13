@@ -116,7 +116,7 @@ useMeta(() => ({
   <q-page class="legal-page">
     <article class="legal">
       <h1 class="legal-title">{{ doc.title }}</h1>
-      <p class="legal-updated">Last updated {{ UPDATED }}</p>
+      <p class="legal-updated">{{ $t('legal.updated', { date: UPDATED }) }}</p>
       <p class="legal-intro">{{ doc.intro }}</p>
 
       <section v-for="s in doc.sections" :key="s.h" class="legal-section">
@@ -125,9 +125,9 @@ useMeta(() => ({
       </section>
 
       <nav class="legal-nav" aria-label="Legal pages">
-        <router-link :to="{ name: 'disclaimer' }">Disclaimer</router-link>
-        <router-link :to="{ name: 'privacy' }">Privacy</router-link>
-        <router-link :to="{ name: 'terms' }">Terms</router-link>
+        <router-link :to="{ name: 'disclaimer' }">{{ $t('legal.disclaimer') }}</router-link>
+        <router-link :to="{ name: 'privacy' }">{{ $t('legal.privacy') }}</router-link>
+        <router-link :to="{ name: 'terms' }">{{ $t('legal.terms') }}</router-link>
       </nav>
     </article>
   </q-page>

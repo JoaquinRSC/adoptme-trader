@@ -1,4 +1,5 @@
 import { computed, type Ref } from 'vue'
+import { useI18n } from 'vue-i18n'
 
 export interface Verdict {
   kind: 'idle' | 'fair' | 'win' | 'lose'
@@ -12,6 +13,8 @@ export interface Verdict {
  * right, so a positive diff (you receive more) tips the beam right = a WIN.
  */
 export function useVerdict (yourTotal: Ref<number>, themTotal: Ref<number>) {
+  const { t } = useI18n()
+
   const diffPct = computed(() => {
     if (!themTotal.value && !yourTotal.value) return null
     const base = Math.max(yourTotal.value, themTotal.value)
@@ -28,14 +31,14 @@ export function useVerdict (yourTotal: Ref<number>, themTotal: Ref<number>) {
   // FAIR inside ±5%. The words are the trader's, not the system's.
   const verdict = computed<Verdict>(() => {
     if (diffPct.value === null) {
-      return { kind: 'idle', word: 'Weigh a trade', note: 'Add pets to both sides' }
+      return { kind: 'idle', word: t('verdict.idleWord'), note: t('verdict.idleNote') }
     }
     if (Math.abs(diffPct.value) < 5) {
-      return { kind: 'fair', word: 'FAIR', note: 'Even enough to shake on' }
+      return { kind: 'fair', word: t('verdict.fairWord'), note: t('verdict.fairNote') }
     }
     return diffPct.value > 0
-      ? { kind: 'win',  word: 'WIN',  note: 'You come out ahead' }
-      : { kind: 'lose', word: 'LOSE', note: "You'd be overpaying" }
+      ? { kind: 'win',  word: t('verdict.winWord'),  note: t('verdict.winNote') }
+      : { kind: 'lose', word: t('verdict.loseWord'), note: t('verdict.loseNote') }
   })
 
   return { diffPct, beamAngle, verdict }

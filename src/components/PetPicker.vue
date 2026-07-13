@@ -10,26 +10,26 @@
       <q-card-section class="q-pb-sm">
         <div class="picker-head">
           <div class="dialog-title">{{ title }}</div>
-          <button class="dialog-close" aria-label="Close" @click="emit('update:modelValue', false)">
+          <button class="dialog-close" :aria-label="$t('a11y.close')" @click="emit('update:modelValue', false)">
             <q-icon :name="matClose" size="18px" />
           </button>
         </div>
         <!-- Deliberately a group of pressable buttons rather than role="tablist":
              a real tablist owes the user arrow-key navigation and a roving
              tabindex, and half of that pattern is worse than none. -->
-        <div class="picker-tabs" v-if="mine" role="group" aria-label="Pet source">
+        <div class="picker-tabs" v-if="mine" role="group" :aria-label="$t('a11y.petSource')">
           <button
             class="picker-tab"
             :class="{ 'picker-tab--active': tab === 'mine' }"
             :aria-pressed="tab === 'mine'"
             @click="tab = 'mine'"
-          >{{ mineLabel }}</button>
+          >{{ mineLabel || $t('picker.myPets') }}</button>
           <button
             class="picker-tab"
             :class="{ 'picker-tab--active': tab === 'other' }"
             :aria-pressed="tab === 'other'"
             @click="tab = 'other'"
-          >Other</button>
+          >{{ $t('picker.other') }}</button>
         </div>
       </q-card-section>
       <q-separator style="border-color: var(--border)" />
@@ -41,7 +41,7 @@
             class="cat-picker-btn"
             :class="{ 'cat-picker-btn--active': mineFilter === 'all' }"
             @click="mineFilter = 'all'"
-          >All</button>
+          >{{ $t('inventory.all') }}</button>
           <button
             v-for="opt in mineCategoryOptions"
             :key="opt.value"
@@ -51,8 +51,8 @@
           >{{ opt.label }}</button>
         </div>
 
-        <div class="empty-panel" v-if="!mine.length">{{ mineEmptyText }}</div>
-        <div class="empty-panel" v-else-if="!sortedMine.length">No items in this category.</div>
+        <div class="empty-panel" v-if="!mine.length">{{ mineEmptyText || $t('picker.emptyMine') }}</div>
+        <div class="empty-panel" v-else-if="!sortedMine.length">{{ $t('picker.noItems') }}</div>
         <div class="picker-grid" v-else>
           <button
             type="button"
@@ -80,13 +80,13 @@
 
       <!-- ── Other tab: search the full catalogue ─────────────────────────────── -->
       <q-card-section v-else class="picker-body other-section">
-        <div class="form-section-label">Category</div>
+        <div class="form-section-label">{{ $t('picker.category') }}</div>
         <div class="cat-picker-row">
           <button
             class="cat-picker-btn"
             :class="{ 'cat-picker-btn--active': category === 'pet' }"
             @click="selectCategory('pet')"
-          >Pets</button>
+          >{{ $t('picker.pets') }}</button>
           <button
             v-for="opt in ITEM_CATEGORY_OPTIONS"
             :key="opt.value"
@@ -97,7 +97,7 @@
         </div>
 
         <template v-if="category === 'pet'">
-          <div class="form-section-label" style="margin-top: 10px">Form</div>
+          <div class="form-section-label" style="margin-top: 10px">{{ $t('inventory.form') }}</div>
           <FormChips v-model="form" />
         </template>
 
@@ -107,7 +107,7 @@
           dense outlined clearable
           autocomplete="off"
           :debounce="250"
-          :placeholder="category === 'pet' ? 'Search pet…' : `Search ${CATEGORY_LABELS[category]}…`"
+          :placeholder="category === 'pet' ? $t('picker.searchPet') : $t('inventory.searchCategory', { category: CATEGORY_LABELS[category] })"
           style="margin-top: 10px"
           @keydown.down.prevent="moveActive(1)"
           @keydown.up.prevent="moveActive(-1)"
@@ -125,10 +125,10 @@
               @select="addByName"
             />
             <div class="browse-head">
-              {{ category === 'pet' ? 'All pets' : CATEGORY_LABELS[category] }} · highest value first
+              {{ category === 'pet' ? $t('inventory.allPetsHigh') : $t('inventory.categoryHigh', { category: CATEGORY_LABELS[category] }) }}
             </div>
             <div class="results-state" v-if="browseLoading">
-              <q-spinner size="14px" color="primary" /><span>Loading…</span>
+              <q-spinner size="14px" color="primary" /><span>{{ $t('common.loading') }}</span>
             </div>
             <div
               v-for="entry in browseList"
@@ -142,9 +142,9 @@
             </div>
           </template>
           <div class="results-state" v-else-if="searchLoading">
-            <q-spinner size="14px" color="primary" /><span>Searching…</span>
+            <q-spinner size="14px" color="primary" /><span>{{ $t('common.searching') }}</span>
           </div>
-          <div class="results-state" v-else-if="!results.length">No results for "{{ search }}"</div>
+          <div class="results-state" v-else-if="!results.length">{{ $t('inventory.noResultsFor', { query: search }) }}</div>
           <div
             v-else
             class="result-item"
@@ -170,7 +170,7 @@
           class="picker-done"
           :class="sheet ? 'picker-done--primary' : 'picker-done--ghost'"
           @click="emit('update:modelValue', false)"
-        >Done</button>
+        >{{ $t('common.done') }}</button>
       </q-card-actions>
     </q-card>
   </q-dialog>
@@ -206,8 +206,8 @@ const props = withDefaults(defineProps<{
   mineEmptyText?: string
 }>(), {
   mine:          undefined,
-  mineLabel:     'My Pets',
-  mineEmptyText: 'No pets in inventory — add some in My Pets first.',
+  mineLabel:     undefined,
+  mineEmptyText: undefined,
 })
 
 const emit = defineEmits<{

@@ -106,9 +106,9 @@ useMeta(() => {
   <q-page class="pv-page">
     <!-- Unknown slug reached over client navigation: say so, offer a way out. -->
     <div v-if="notFound" class="pv-missing">
-      <h1 class="pv-missing-title">That pet isn't on the board</h1>
-      <p class="pv-missing-sub">Check the spelling, or browse from the trade tools.</p>
-      <router-link :to="{ name: 'check-values' }" class="pv-cta">Weigh a trade</router-link>
+      <h1 class="pv-missing-title">{{ $t('pet.missingTitle') }}</h1>
+      <p class="pv-missing-sub">{{ $t('pet.missingSub') }}</p>
+      <router-link :to="{ name: 'check-values' }" class="pv-cta">{{ $t('pet.missingCta') }}</router-link>
     </div>
 
     <template v-else-if="pet">
@@ -124,10 +124,10 @@ useMeta(() => {
         </div>
         <div class="pv-hero-body">
           <h1 class="pv-name">{{ pet.name }}</h1>
-          <p class="pv-tagline">Adopt Me value &amp; demand</p>
+          <p class="pv-tagline">{{ $t('pet.tagline') }}</p>
           <div class="pv-headline" v-if="headline !== null">
             <span class="pv-headline-val">{{ formatValue(headline) }}</span>
-            <span class="pv-headline-tag">FR value</span>
+            <span class="pv-headline-tag">{{ $t('pet.frValue') }}</span>
           </div>
           <span v-if="pet.rarity" class="pv-rarity">{{ pet.rarity }}</span>
         </div>
@@ -138,10 +138,10 @@ useMeta(() => {
           <table class="pv-table">
             <thead>
               <tr>
-                <th scope="col">Form</th>
-                <th scope="col">AMV</th>
-                <th scope="col">Elve</th>
-                <th scope="col">Demand</th>
+                <th scope="col">{{ $t('pet.form') }}</th>
+                <th scope="col">{{ $t('pet.amv') }}</th>
+                <th scope="col">{{ $t('pet.elve') }}</th>
+                <th scope="col">{{ $t('pet.demand') }}</th>
               </tr>
             </thead>
             <tbody>
@@ -159,16 +159,12 @@ useMeta(() => {
             </tbody>
           </table>
         </div>
-        <p class="pv-note">
-          Values are community estimates from <strong>AMV</strong> (amvgg.com) and
-          <strong>Elve</strong> (elvebredd.com). When the two disagree a lot, the
-          pet's value is unsettled — trade carefully.
-        </p>
+        <p class="pv-note">{{ $t('pet.note') }}</p>
       </section>
 
       <div class="pv-actions">
         <router-link :to="{ name: 'check-values' }" class="pv-cta">
-          Is your trade fair?
+          {{ $t('pet.cta') }}
           <q-icon :name="matArrowForward" size="17px" />
         </router-link>
       </div>

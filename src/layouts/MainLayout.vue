@@ -6,7 +6,7 @@
          source of the SSR/hydration jank the drawer shell had on phones. -->
     <header class="topbar">
       <div class="topbar-inner">
-        <router-link to="/inventory" class="brand" aria-label="AM Trader home">
+        <router-link to="/inventory" class="brand" :aria-label="$t('a11y.home')">
           <!-- The Fair Scale: a level balance beam — the app answers "is this fair?". -->
           <svg class="brand-mark" viewBox="0 0 64 64" aria-hidden="true">
             <g fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
@@ -34,15 +34,18 @@
           >
             <button class="top-nav-item" :class="{ 'top-nav-item--active': isActive }" @click="navigate">
               <q-icon :name="item.icon" size="17px" />
-              <span>{{ item.label }}</span>
+              <span>{{ $t(item.labelKey) }}</span>
             </button>
           </router-link>
         </nav>
 
+        <button class="help-btn" :aria-label="$t('a11y.language')" :title="$t('a11y.language')" @click="toggleLocale">
+          <span class="lang-code">{{ localeLabel }}</span>
+        </button>
         <button class="help-btn" :aria-label="themeLabel" :title="themeLabel" @click="theme.cycle()">
           <q-icon :name="themeIcon" size="19px" />
         </button>
-        <button class="help-btn" aria-label="How it works" @click="showGuide = true">
+        <button class="help-btn" :aria-label="$t('a11y.howItWorks')" @click="showGuide = true">
           <q-icon :name="matHelpOutline" size="19px" />
         </button>
       </div>
@@ -74,7 +77,7 @@
           @click="navigate"
         >
           <q-icon :name="item.icon" size="23px" class="tab-icon" />
-          <span class="tab-label">{{ item.label }}</span>
+          <span class="tab-label">{{ $t(item.labelKey) }}</span>
         </button>
       </router-link>
     </nav>
@@ -83,60 +86,42 @@
     <q-dialog v-model="showGuide">
       <div class="guide">
         <div class="guide-head">
-          <h2 class="guide-title">How AM Trader works</h2>
-          <button class="guide-close" aria-label="Close" @click="showGuide = false">✕</button>
+          <h2 class="guide-title">{{ $t('guide.title') }}</h2>
+          <button class="guide-close" :aria-label="$t('a11y.close')" @click="showGuide = false">✕</button>
         </div>
 
         <section class="guide-section">
-          <h3 class="guide-h">Pet forms</h3>
-          <p class="guide-p">
-            A pet's value depends on its form. When adding a pet you toggle five
-            buttons — <strong>F R D N M</strong> — and they combine (e.g. Neon + Fly = NF).
-          </p>
+          <h3 class="guide-h">{{ $t('guide.formsH') }}</h3>
+          <p class="guide-p">{{ $t('guide.formsP') }}</p>
           <ul class="form-legend">
             <li v-for="f in formLegend" :key="f.k">
               <span class="form-chip" :style="formFill(f.form)">{{ f.k }}</span>
-              <span class="form-name">{{ f.label }}</span>
-              <span class="form-desc">{{ f.desc }}</span>
+              <span class="form-name">{{ $t(f.labelKey) }}</span>
+              <span class="form-desc">{{ $t(f.descKey) }}</span>
             </li>
           </ul>
         </section>
 
         <section class="guide-section">
-          <h3 class="guide-h">Value sources — AMV &amp; Elve</h3>
-          <p class="guide-p">
-            There is no official price list, so the community keeps its own.
-            <strong>AMV</strong> (amvgg.com) and <strong>Elve</strong> (elvebredd.com)
-            are the two most-used. The app shows both so you can cross-check — if they
-            disagree a lot, the pet's value is unsettled, so trade carefully.
-          </p>
+          <h3 class="guide-h">{{ $t('guide.sourcesH') }}</h3>
+          <p class="guide-p">{{ $t('guide.sourcesP') }}</p>
         </section>
 
         <section class="guide-section">
-          <h3 class="guide-h">Demand ★</h3>
-          <p class="guide-p">
-            Stars show how many people want a pet right now. A high-value pet
-            with low demand can be hard to trade away; a lower-value pet with high
-            demand moves fast. Value tells you what it's worth; demand tells you how
-            easily you'll trade it.
-          </p>
+          <h3 class="guide-h">{{ $t('guide.demandH') }}</h3>
+          <p class="guide-p">{{ $t('guide.demandP') }}</p>
         </section>
 
         <section class="guide-section">
-          <h3 class="guide-h">The scale</h3>
-          <p class="guide-p">
-            In the Trade tab, the scale weighs what you'd give against what you'd
-            get and tips toward the heavier side. Within ±5% it calls the trade
-            <strong>FAIR</strong>; beyond that it's a <strong>WIN</strong> or a
-            <strong>LOSE</strong> for you, using whichever value source you have selected.
-          </p>
+          <h3 class="guide-h">{{ $t('guide.scaleH') }}</h3>
+          <p class="guide-p">{{ $t('guide.scaleP') }}</p>
         </section>
 
         <div class="guide-foot">
           <nav class="guide-legal" aria-label="Legal">
-            <router-link :to="{ name: 'disclaimer' }" @click="showGuide = false">Disclaimer</router-link>
-            <router-link :to="{ name: 'privacy' }" @click="showGuide = false">Privacy</router-link>
-            <router-link :to="{ name: 'terms' }" @click="showGuide = false">Terms</router-link>
+            <router-link :to="{ name: 'disclaimer' }" @click="showGuide = false">{{ $t('legal.disclaimer') }}</router-link>
+            <router-link :to="{ name: 'privacy' }" @click="showGuide = false">{{ $t('legal.privacy') }}</router-link>
+            <router-link :to="{ name: 'terms' }" @click="showGuide = false">{{ $t('legal.terms') }}</router-link>
           </nav>
           <span class="guide-version">v{{ version }}</span>
         </div>
@@ -148,6 +133,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useMeta } from 'quasar'
+import { useI18n } from 'vue-i18n'
 import { matPets, matBalance, matHelpOutline, matBrightnessAuto, matLightMode, matDarkMode } from '@quasar/extras/material-icons'
 import { version } from '../../package.json'
 import { useInventoryStore } from 'src/stores/inventory'
@@ -156,6 +142,16 @@ import { formFill } from 'src/types'
 import { SITE_ORIGIN } from 'src/config'
 
 const inventory = useInventoryStore()
+
+// ── Language ───────────────────────────────────────────────────────────────────
+const { t, locale } = useI18n()
+const localeLabel = computed(() => (locale.value === 'es' ? 'ES' : 'EN'))
+function toggleLocale () {
+  locale.value = locale.value === 'es' ? 'en' : 'es'
+  try { localStorage.setItem('locale', locale.value) } catch { /* ignore */ }
+}
+// Reflect the active language in <html lang>.
+useMeta(() => ({ htmlAttr: { lang: locale.value } }))
 
 // App-wide default meta. Individual pages (per-pet, WFL) override by key; the
 // static tags used to live in index.html but duplicated whatever a page set.
@@ -188,13 +184,22 @@ const themeIcon = computed(() =>
   : matBrightnessAuto,
 )
 const themeLabel = computed(() =>
-  theme.mode.value === 'auto' ? 'Theme: auto (follows your system)' : `Theme: ${theme.mode.value}`,
+  theme.mode.value === 'light' ? t('theme.light')
+  : theme.mode.value === 'dark' ? t('theme.dark')
+  : t('theme.auto'),
 )
 
 let pingInterval: ReturnType<typeof setInterval> | null = null
 onMounted(() => {
   inventory.hydrate()
   theme.init()
+  // Locale starts 'en' so SSR and the first client render match; then switch to
+  // the saved or browser preference — a reactive change, not a hydration mismatch.
+  try {
+    const saved = localStorage.getItem('locale')
+    if (saved === 'en' || saved === 'es') locale.value = saved
+    else if (navigator.language?.toLowerCase().startsWith('es')) locale.value = 'es'
+  } catch { /* ignore */ }
   pingInterval = setInterval(() => { void fetch('/api/ping') }, 60_000)
 })
 onUnmounted(() => {
@@ -202,18 +207,18 @@ onUnmounted(() => {
 })
 
 const navItems = [
-  { name: 'inventory',    icon: matPets,    label: 'My Pets' },
-  { name: 'check-values', icon: matBalance, label: 'Trade'   },
+  { name: 'inventory',    icon: matPets,    labelKey: 'nav.myPets' },
+  { name: 'check-values', icon: matBalance, labelKey: 'nav.trade'  },
 ] as const
 
 // "How it works" guide — a one-stop explainer for the app's jargon.
 const showGuide = ref(false)
 const formLegend = [
-  { k: 'F', form: 'fly',    label: 'Fly',     desc: 'can be flown' },
-  { k: 'R', form: 'ride',   label: 'Ride',    desc: 'can be ridden' },
-  { k: 'D', form: 'normal', label: 'Default', desc: 'no add-ons' },
-  { k: 'N', form: 'n',      label: 'Neon',    desc: 'glows in the dark' },
-  { k: 'M', form: 'm',      label: 'Mega',    desc: 'mega-neon — 4 neons combined' },
+  { k: 'F', form: 'fly',    labelKey: 'form.fly',     descKey: 'guide.descFly' },
+  { k: 'R', form: 'ride',   labelKey: 'form.ride',    descKey: 'guide.descRide' },
+  { k: 'D', form: 'normal', labelKey: 'form.default', descKey: 'guide.descDefault' },
+  { k: 'N', form: 'n',      labelKey: 'form.neon',    descKey: 'guide.descNeon' },
+  { k: 'M', form: 'm',      labelKey: 'form.mega',    descKey: 'guide.descMega' },
 ] as const
 </script>
 
@@ -320,6 +325,12 @@ const formLegend = [
 }
 @media (hover: hover) {
   .help-btn:hover { background: var(--surface-2); color: var(--text-1); }
+}
+
+.lang-code {
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.5px;
 }
 
 /* ── Bottom tab bar ── */

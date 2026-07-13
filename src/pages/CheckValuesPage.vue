@@ -3,8 +3,8 @@
 
     <div class="cv-head">
       <div>
-        <div class="page-title">Trade</div>
-        <div class="page-sub">Weigh it before you send it</div>
+        <div class="page-title">{{ $t('trade.title') }}</div>
+        <div class="page-sub">{{ $t('trade.sub') }}</div>
       </div>
 
       <div class="head-right">
@@ -12,7 +12,7 @@
           v-if="yourSide.length || themSide.length"
           class="clear-draft-btn"
           @click="clearCheck"
-        >Clear</button>
+        >{{ $t('common.clear') }}</button>
 
         <button
           v-if="yourSide.length || themSide.length"
@@ -20,7 +20,7 @@
           @click="shareTrade"
         >
           <q-icon :name="matShare" size="15px" />
-          {{ shareCopied ? 'Copied!' : 'Share' }}
+          {{ shareCopied ? $t('trade.copied') : $t('trade.share') }}
         </button>
 
         <SourceToggle v-model="valueSource" />
@@ -30,8 +30,8 @@
     <!-- Values failed to load: say so on the page, not only in a toast that fades. -->
     <div class="load-error" v-if="loadError" role="alert">
       <q-icon :name="matErrorOutline" size="18px" />
-      <span>Couldn't load the latest values. They may be out of date.</span>
-      <button class="btn-retry" @click="refreshValues">Retry</button>
+      <span>{{ $t('common.loadError') }}</span>
+      <button class="btn-retry" @click="refreshValues">{{ $t('common.retry') }}</button>
     </div>
 
     <!-- The two sides render from one template — they may never drift apart. -->
@@ -49,8 +49,8 @@
             class="pet-slot pet-slot--filled"
             v-for="entry in side.entries"
             :key="entry.id"
-            :aria-label="`Remove ${entry.name}`"
-            title="Tap to remove"
+            :aria-label="$t('a11y.removeName', { name: entry.name })"
+            :title="$t('a11y.removeName', { name: entry.name })"
             @click="removePet(side.key, entry.id)"
           >
             <PetImage :name="entry.name" class="slot-img" />
@@ -81,7 +81,7 @@
     <!-- YOUR side picker (tabs: My Pets / Other) -->
     <PetPicker
       v-model="showYourPicker"
-      title="Add pet — you give"
+      :title="$t('trade.addYou')"
       :mine="inventory.pets"
       @add="addToYour"
     />
@@ -89,7 +89,7 @@
     <!-- THEM side picker (search only — we don't own their pets) -->
     <PetPicker
       v-model="showThemPicker"
-      title="Add pet — they give"
+      :title="$t('trade.addThem')"
       @add="addToThem"
     />
 
@@ -101,6 +101,7 @@ import { ref, computed, watch, onMounted } from 'vue'
 import { storeToRefs } from 'pinia'
 import { matErrorOutline, matShare } from '@quasar/extras/material-icons'
 import { uid } from 'quasar'
+import { useI18n } from 'vue-i18n'
 import { FORM_LABELS, FORM_TEXT_HEX, CATEGORY_LABELS, isPet, type PetForm, type ItemCategory, type PickerSelection } from 'src/types'
 import { useValuesStore, type DemandLevel } from 'src/stores/values'
 import { useInventoryStore } from 'src/stores/inventory'
@@ -119,6 +120,7 @@ const valuesStore = useValuesStore()
 const inventory   = useInventoryStore()
 const draftsStore = useDraftsStore()
 const recentStore = useRecentStore()
+const { t }       = useI18n()
 
 // ── State ────────────────────────────────────────────────────────────────────
 
@@ -142,16 +144,16 @@ const themTotal = computed(() =>
 const sides = computed(() => [
   {
     key: 'your' as const,
-    label: 'You give',
-    addLabel: 'Add a pet to your side',
+    label: t('trade.youGive'),
+    addLabel: t('a11y.addYourSide'),
     entries: yourSide.value,
     total: yourTotal.value,
     openPicker: () => { showYourPicker.value = true },
   },
   {
     key: 'them' as const,
-    label: 'They give',
-    addLabel: 'Add a pet to their side',
+    label: t('trade.theyGive'),
+    addLabel: t('a11y.addTheirSide'),
     entries: themSide.value,
     total: themTotal.value,
     openPicker: () => { showThemPicker.value = true },

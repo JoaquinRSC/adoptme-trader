@@ -3,19 +3,19 @@
 
     <div class="wfl-head">
       <div>
-        <div class="page-title">Win / Fair / Lose</div>
-        <div class="page-sub">Weigh any trade — no account needed</div>
+        <div class="page-title">{{ $t('wfl.title') }}</div>
+        <div class="page-sub">{{ $t('wfl.sub') }}</div>
       </div>
       <div class="head-right">
-        <button v-if="hasTrade" class="clear-draft-btn" @click="clearAll">Clear</button>
+        <button v-if="hasTrade" class="clear-draft-btn" @click="clearAll">{{ $t('common.clear') }}</button>
         <SourceToggle v-model="source" />
       </div>
     </div>
 
     <div class="load-error" v-if="loadError" role="alert">
       <q-icon :name="matErrorOutline" size="18px" />
-      <span>Couldn't load the latest values. They may be out of date.</span>
-      <button class="btn-retry" @click="refreshAll">Retry</button>
+      <span>{{ $t('common.loadError') }}</span>
+      <button class="btn-retry" @click="refreshAll">{{ $t('common.retry') }}</button>
     </div>
 
     <div class="wfl-sides">
@@ -30,8 +30,8 @@
             class="pet-slot pet-slot--filled"
             v-for="entry in side.entries"
             :key="entry.id"
-            :aria-label="`Remove ${entry.name}`"
-            title="Tap to remove"
+            :aria-label="$t('a11y.removeName', { name: entry.name })"
+            :title="$t('a11y.removeName', { name: entry.name })"
             @click="removeEntry(side.key, entry.id)"
           >
             <PetImage :name="entry.name" class="slot-img" />
@@ -60,19 +60,19 @@
     <div class="wfl-share" v-if="hasTrade">
       <button class="wfl-share-btn" @click="shareTrade">
         <q-icon :name="matShare" size="18px" />
-        {{ copied ? 'Link copied!' : 'Share this trade' }}
+        {{ copied ? $t('wfl.copied') : $t('wfl.share') }}
       </button>
-      <p class="wfl-share-hint">Paste it in Discord — anyone can see the verdict, no login.</p>
+      <p class="wfl-share-hint">{{ $t('wfl.hint') }}</p>
     </div>
 
     <PetPicker
       v-model="showYourPicker"
-      title="Add pet — you give"
+      :title="$t('wfl.addYou')"
       @add="sel => addEntry('your', sel)"
     />
     <PetPicker
       v-model="showThemPicker"
-      title="Add pet — they give"
+      :title="$t('wfl.addThem')"
       @add="sel => addEntry('them', sel)"
     />
 
@@ -83,6 +83,7 @@
 import { ref, computed, watch, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { uid, useMeta } from 'quasar'
+import { useI18n } from 'vue-i18n'
 import { matErrorOutline, matShare } from '@quasar/extras/material-icons'
 import { FORM_LABELS, FORM_TEXT_HEX, CATEGORY_LABELS, isPet, type PetForm, type ItemCategory, type PickerSelection, type ValueSource } from 'src/types'
 import { useValuesStore, type DemandLevel } from 'src/stores/values'
@@ -110,6 +111,7 @@ interface WflEntry {
 const valuesStore = useValuesStore()
 const route  = useRoute()
 const router = useRouter()
+const { t }  = useI18n()
 
 const yourSide = ref<WflEntry[]>([])
 const themSide = ref<WflEntry[]>([])
@@ -146,8 +148,8 @@ const themTotal = computed(() => themSide.value.reduce((s, e) => s + (e.value ??
 const hasTrade  = computed(() => yourSide.value.length > 0 || themSide.value.length > 0)
 
 const sides = computed(() => [
-  { key: 'your' as const, label: 'You give',  addLabel: 'Add a pet to your side',  entries: yourSide.value, total: yourTotal.value, openPicker: () => { showYourPicker.value = true } },
-  { key: 'them' as const, label: 'They give', addLabel: 'Add a pet to their side', entries: themSide.value, total: themTotal.value, openPicker: () => { showThemPicker.value = true } },
+  { key: 'your' as const, label: t('wfl.youGive'),  addLabel: t('a11y.addYourSide'),  entries: yourSide.value, total: yourTotal.value, openPicker: () => { showYourPicker.value = true } },
+  { key: 'them' as const, label: t('wfl.theyGive'), addLabel: t('a11y.addTheirSide'), entries: themSide.value, total: themTotal.value, openPicker: () => { showThemPicker.value = true } },
 ])
 
 function listFor (side: 'your' | 'them') {

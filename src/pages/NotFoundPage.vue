@@ -10,8 +10,10 @@ export default {
 
 <script setup lang="ts">
 import { useMeta } from 'quasar'
+import { useI18n } from 'vue-i18n'
 
-useMeta({ title: 'Page not found — AM Trader' })
+const { t } = useI18n()
+useMeta(() => ({ title: `${t('notFound.title')} · AM Trader` }))
 </script>
 
 <template>
@@ -34,12 +36,12 @@ useMeta({ title: 'Page not found — AM Trader' })
       </svg>
 
       <div class="nf-code">404</div>
-      <h1 class="nf-title">Nothing to weigh here</h1>
-      <p class="nf-sub">This page doesn't exist — or the pet moved on. Let's get you back on the scale.</p>
+      <h1 class="nf-title">{{ $t('notFound.title') }}</h1>
+      <p class="nf-sub">{{ $t('notFound.sub') }}</p>
 
       <div class="nf-actions">
-        <router-link :to="{ name: 'inventory' }" class="nf-btn nf-btn--primary">My Pets</router-link>
-        <router-link :to="{ name: 'check-values' }" class="nf-btn">Weigh a trade</router-link>
+        <router-link :to="{ name: 'inventory' }" class="nf-btn nf-btn--primary">{{ $t('notFound.myPets') }}</router-link>
+        <router-link :to="{ name: 'check-values' }" class="nf-btn">{{ $t('notFound.weighTrade') }}</router-link>
       </div>
     </div>
   </q-page>

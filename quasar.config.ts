@@ -4,7 +4,7 @@ export default configure(function (/* ctx */) {
   return {
     // Pinia is wired via the store wrapper (src/stores/index.ts), not a boot —
     // the wrapper is what enables SSR state hydration for preFetch'd stores.
-    boot: [],
+    boot: ['i18n'],
 
     css: ['app.scss'],
 
