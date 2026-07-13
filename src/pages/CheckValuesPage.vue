@@ -14,6 +14,15 @@
           @click="clearCheck"
         >Clear</button>
 
+        <button
+          v-if="yourSide.length || themSide.length"
+          class="share-link-btn"
+          @click="shareTrade"
+        >
+          <q-icon :name="matShare" size="15px" />
+          {{ shareCopied ? 'Copied!' : 'Share' }}
+        </button>
+
         <SourceToggle v-model="valueSource" />
       </div>
     </div>
@@ -90,8 +99,8 @@
 <script setup lang="ts">
 import { ref, computed, watch, onMounted } from 'vue'
 import { storeToRefs } from 'pinia'
-import { matErrorOutline } from '@quasar/extras/material-icons'
-import { uid } from 'quasar'
+import { matErrorOutline, matShare } from '@quasar/extras/material-icons'
+import { uid, useQuasar } from 'quasar'
 import { FORM_LABELS, FORM_TEXT_HEX, CATEGORY_LABELS, isPet, type PetForm, type ItemCategory, type PickerSelection } from 'src/types'
 import { useValuesStore, type DemandLevel } from 'src/stores/values'
 import { useInventoryStore } from 'src/stores/inventory'
@@ -104,6 +113,8 @@ import VerdictCard from 'src/components/VerdictCard.vue'
 import { notifyLoadError } from 'src/utils/notify'
 import { formatValue, demandStars, demandClass } from 'src/utils/format'
 import { useRecentStore } from 'src/stores/recent'
+import { encodeTrade } from 'src/utils/share'
+import { SITE_ORIGIN } from 'src/config'
 
 const valuesStore = useValuesStore()
 const inventory   = useInventoryStore()
@@ -249,6 +260,27 @@ function clearCheck() {
   loadError.value = false
 }
 
+// ── Share ─────────────────────────────────────────────────────────────────────
+
+const $q = useQuasar()
+const shareCopied = ref(false)
+
+async function shareTrade () {
+  const code = encodeTrade({
+    your: yourSide.value.map(e => ({ name: e.name, form: e.form, category: e.category })),
+    them: themSide.value.map(e => ({ name: e.name, form: e.form, category: e.category })),
+    source: valueSource.value,
+  })
+  const url = `${SITE_ORIGIN}/wfl?d=${code}`
+  try {
+    await navigator.clipboard.writeText(url)
+    shareCopied.value = true
+    setTimeout(() => { shareCopied.value = false }, 2200)
+  } catch {
+    $q.notify({ message: url, timeout: 0, actions: [{ label: 'Close', color: 'white' }] })
+  }
+}
+
 // ── Pickers ───────────────────────────────────────────────────────────────────
 
 const showYourPicker = ref(false)
@@ -310,6 +342,24 @@ function addToThem (sel: PickerSelection) {
 }
 @media (hover: hover) {
   .clear-draft-btn:hover { background: var(--surface-3); color: var(--text-1); }
+}
+
+.share-link-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  border: 1px solid rgba(231, 195, 104, 0.4);
+  border-radius: 8px;
+  background: var(--primary-dim);
+  color: var(--gold);
+  font-size: 12px;
+  font-weight: 800;
+  cursor: pointer;
+  transition: border-color 0.15s;
+}
+@media (hover: hover) {
+  .share-link-btn:hover { border-color: var(--gold); }
 }
 
 /* ── Sides ── */

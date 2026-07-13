@@ -5,7 +5,7 @@ import { usePetPageStore } from 'src/stores/petPage'
 interface PreFetchCtx {
   store: Pinia
   currentRoute: { params: Record<string, string> }
-  ssrContext: { req: { headers: Record<string, string | string[] | undefined> }; res: { statusCode: number } } | null
+  ssrContext: { req: { socket?: { localPort?: number } }; res: { statusCode: number } } | null
 }
 
 // Runs on the server for the first hit (so the HTML carries values + meta) and on
@@ -15,10 +15,11 @@ export default {
     const petStore = usePetPageStore(store)
     const slug = currentRoute.params['slug'] ?? ''
 
-    const req = ssrContext?.req
-    const origin = req
-      ? `${(req.headers['x-forwarded-proto'] as string) ?? 'http'}://${req.headers.host as string}`
-      : ''
+    // On the server, fetch our own API over loopback. The port comes from the
+    // socket the request arrived on (the server's real listening port) — never
+    // from Host/X-Forwarded-* headers, which an attacker controls (SSRF).
+    const port = ssrContext?.req.socket?.localPort ?? (process.env.PORT ? Number(process.env.PORT) : 3000)
+    const origin = ssrContext ? `http://127.0.0.1:${port}` : ''
 
     try {
       const res = await fetch(`${origin}/api/pet/page?slug=${encodeURIComponent(slug)}`)

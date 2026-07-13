@@ -120,15 +120,26 @@ const copied    = ref(false)
 const showYourPicker = ref(false)
 const showThemPicker = ref(false)
 
-useMeta({
-  title: 'Is this trade fair? — AM Trader',
-  meta: {
-    description:   { name: 'description', content: 'Weigh any Adopt Me trade — Win, Fair or Lose — against two community value lists. No account needed.' },
-    ogTitle:       { property: 'og:title', content: 'Is this trade fair? — AM Trader' },
-    ogDescription: { property: 'og:description', content: 'Weigh any Adopt Me trade — Win, Fair or Lose. No account needed.' },
-    twTitle:       { name: 'twitter:title', content: 'Is this trade fair? — AM Trader' },
-    twDescription: { name: 'twitter:description', content: 'Weigh any Adopt Me trade — Win, Fair or Lose. No account needed.' },
-  },
+const shareCode = computed(() => (typeof route.query.d === 'string' ? route.query.d : null))
+
+useMeta(() => {
+  const title = 'Is this trade fair? — AM Trader'
+  const desc = 'Weigh any Adopt Me trade — Win, Fair or Lose — against two community value lists. No account needed.'
+  const meta: Record<string, { name?: string; property?: string; content: string }> = {
+    description:   { name: 'description', content: desc },
+    ogTitle:       { property: 'og:title', content: title },
+    ogDescription: { property: 'og:description', content: desc },
+    twTitle:       { name: 'twitter:title', content: title },
+    twDescription: { name: 'twitter:description', content: desc },
+  }
+  // A shared link gets its own trade card as the preview image.
+  if (shareCode.value) {
+    const img = `${SITE_ORIGIN}/api/og/trade?d=${shareCode.value}`
+    meta.ogUrl   = { property: 'og:url', content: `${SITE_ORIGIN}/wfl?d=${shareCode.value}` }
+    meta.ogImage = { property: 'og:image', content: img }
+    meta.twImage = { name: 'twitter:image', content: img }
+  }
+  return { title, meta }
 })
 
 const yourTotal = computed(() => yourSide.value.reduce((s, e) => s + (e.value ?? 0), 0))

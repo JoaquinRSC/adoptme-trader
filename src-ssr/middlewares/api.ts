@@ -2,6 +2,7 @@ import { defineSsrMiddleware } from '#q-app/wrappers'
 import { json as parseJson, type Response } from 'express'
 import { existsSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
+import { Resvg } from '@resvg/resvg-js'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -379,6 +380,120 @@ async function getPetPageData (slug: string) {
   }
 }
 
+// ── Share-link OG image (dynamic trade card) ──────────────────────────────────
+
+interface OgEntry { name: string; form: string; category: string }
+interface OgTrade { your: OgEntry[]; them: OgEntry[]; source: 'amvgg' | 'elvebredd' }
+
+// Server-side twin of the decoder in `src/utils/share.ts`. Kept small and inlined
+// because the src-ssr bundle can't rely on the `src/*` path alias. Same wire form.
+function decodeShareCode (code: string): OgTrade | null {
+  try {
+    const json = Buffer.from(code.replace(/-/g, '+').replace(/_/g, '/'), 'base64').toString('utf-8')
+    const p = JSON.parse(json) as { y?: unknown; t?: unknown; s?: unknown }
+    if (!Array.isArray(p.y) || !Array.isArray(p.t)) return null
+    const dec = (raw: unknown): OgEntry | null =>
+      Array.isArray(raw) && typeof raw[0] === 'string'
+        ? { name: raw[0].slice(0, 60), form: typeof raw[1] === 'string' ? raw[1] : 'fr', category: typeof raw[2] === 'string' ? raw[2] : 'pet' }
+        : null
+    const clean = (arr: unknown[]) => arr.slice(0, 20).map(dec).filter((e): e is OgEntry => e !== null)
+    return { your: clean(p.y), them: clean(p.t), source: p.s === 'e' ? 'elvebredd' : 'amvgg' }
+  } catch {
+    return null
+  }
+}
+
+function ogEntryValue (e: OgEntry, source: 'amvgg' | 'elvebredd'): number | null {
+  if (e.category === 'pet') {
+    if (source === 'elvebredd') return getElveRecord(e.name)?.[e.form] ?? null
+    return detailsCache.get(e.name)?.values[e.form] ?? null
+  }
+  const item = itemsCache.get(`${e.category}:${e.name}`)
+  if (!item) return null
+  return source === 'elvebredd' ? (item.elveValue ?? item.value) : item.value
+}
+
+function ogFormatNum (v: number): string {
+  return Number.isInteger(v)
+    ? v.toLocaleString('en-US')
+    : Number(v.toFixed(2)).toLocaleString('en-US')
+}
+
+const ogEscape = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+
+let ogFont: Buffer | null = null
+function getOgFont (): Buffer | null {
+  if (ogFont) return ogFont
+  try { ogFont = readFileSync(join(process.cwd(), 'src/data/fonts/Nunito.ttf')) } catch { ogFont = null }
+  return ogFont
+}
+
+function ogSideSummary (entries: OgEntry[]): string {
+  if (!entries.length) return '—'
+  const names = entries.slice(0, 2).map(e => e.name)
+  const extra = entries.length - names.length
+  return ogEscape(names.join(', ') + (extra > 0 ? `  +${extra} more` : ''))
+}
+
+/** The 1200×630 share card: brand mark, verdict word, delta, and both totals. */
+function buildOgSvg (trade: OgTrade): string {
+  const your = trade.your.reduce((s, e) => s + (ogEntryValue(e, trade.source) ?? 0), 0)
+  const them = trade.them.reduce((s, e) => s + (ogEntryValue(e, trade.source) ?? 0), 0)
+
+  const base = Math.max(your, them)
+  const diff = base ? ((them - your) / base) * 100 : null
+
+  let word = 'WEIGH IT', note = 'Add pets to both sides', color = '#e7c368'
+  if (diff !== null) {
+    if (Math.abs(diff) < 5) { word = 'FAIR'; note = 'Even enough to shake on'; color = '#e7c368' }
+    else if (diff > 0)      { word = 'WIN';  note = 'You come out ahead';      color = '#4cd9a2' }
+    else                    { word = 'LOSE'; note = "You'd be overpaying";     color = '#f2917e' }
+  }
+  const delta = diff !== null ? `${diff >= 0 ? '+' : ''}${diff.toFixed(1)}%` : ''
+  const src = trade.source === 'elvebredd' ? 'Elve' : 'AMV'
+
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630">
+  <defs>
+    <radialGradient id="glow" cx="82%" cy="8%" r="60%">
+      <stop offset="0%" stop-color="#e7c368" stop-opacity="0.16"/>
+      <stop offset="100%" stop-color="#e7c368" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+  <rect width="1200" height="630" fill="#0b0b0c"/>
+  <rect width="1200" height="630" fill="url(#glow)"/>
+  <rect width="1200" height="4" fill="#e7c368" opacity="0.5"/>
+
+  <g transform="translate(64,60) scale(0.9)">
+    <g fill="none" stroke="#e7c368" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+      <line x1="32" y1="13" x2="32" y2="47"/>
+      <line x1="15" y1="18" x2="49" y2="18"/>
+      <line x1="23" y1="50" x2="41" y2="50"/>
+      <line x1="15" y1="18" x2="15" y2="24"/>
+      <line x1="49" y1="18" x2="49" y2="24"/>
+      <path d="M7 24 Q15 35 23 24"/>
+      <path d="M41 24 Q49 35 57 24"/>
+    </g>
+    <circle cx="32" cy="10.5" r="2.8" fill="#e7c368"/>
+  </g>
+  <text x="132" y="103" font-family="Nunito" font-weight="800" font-size="34" fill="#f4f1ea" letter-spacing="0.5">AM TRADER</text>
+  <text x="1136" y="103" text-anchor="end" font-family="Nunito" font-weight="800" font-size="22" fill="#8a8a8f" letter-spacing="1">IS THIS TRADE FAIR?</text>
+
+  <text x="64" y="300" font-family="Nunito" font-weight="800" font-size="150" fill="${color}">${word}</text>
+  <text x="68" y="352" font-family="Nunito" font-weight="800" font-size="34" fill="#b9b9c0">${ogEscape(note)}</text>
+  ${delta ? `<text x="1136" y="288" text-anchor="end" font-family="Nunito" font-weight="800" font-size="86" fill="${color}">${delta}</text>` : ''}
+
+  <text x="64" y="452" font-family="Nunito" font-weight="800" font-size="24" fill="#8a8a8f" letter-spacing="1.5">YOU GIVE</text>
+  <text x="64" y="516" font-family="Nunito" font-weight="800" font-size="60" fill="#e7c368">${ogFormatNum(your)}</text>
+  <text x="64" y="560" font-family="Nunito" font-weight="800" font-size="26" fill="#9a9aa0">${ogSideSummary(trade.your)}</text>
+
+  <text x="620" y="452" font-family="Nunito" font-weight="800" font-size="24" fill="#8a8a8f" letter-spacing="1.5">THEY GIVE</text>
+  <text x="620" y="516" font-family="Nunito" font-weight="800" font-size="60" fill="#e7c368">${ogFormatNum(them)}</text>
+  <text x="620" y="560" font-family="Nunito" font-weight="800" font-size="26" fill="#9a9aa0">${ogSideSummary(trade.them)}</text>
+
+  <text x="1136" y="600" text-anchor="end" font-family="Nunito" font-weight="800" font-size="22" fill="#6a6a70">amtrader.fly.dev · ${src} values</text>
+</svg>`
+}
+
 // ── Pet image ─────────────────────────────────────────────────────────────────
 
 function extractImageUrlFromHtml (html: string): string | null {
@@ -615,6 +730,26 @@ export default defineSsrMiddleware(({ app }) => {
   app.get('/robots.txt', (_req, res) => {
     res.setHeader('Content-Type', 'text/plain')
     res.send(`User-agent: *\nAllow: /\n\nSitemap: ${SITE_ORIGIN}/sitemap.xml\n`)
+  })
+
+  // Dynamic OG image for a shared trade link (Discord/Twitter preview). Falls
+  // back to the static brand image on any failure, so a preview never breaks.
+  app.get('/api/og/trade', async (req, res) => {
+    try {
+      const trade = decodeShareCode(String(req.query['d'] ?? ''))
+      const font  = getOgFont()
+      if (!trade || !font) throw new Error('unrenderable')
+      await Promise.all([warmDetailsCache(), warmElveCache(), warmItemsCache()])
+      const png = new Resvg(buildOgSvg(trade), {
+        font: { fontBuffers: [font], defaultFontFamily: 'Nunito', loadSystemFonts: false },
+        fitTo: { mode: 'width', value: 1200 },
+      }).render().asPng()
+      res.setHeader('Content-Type', 'image/png')
+      res.setHeader('Cache-Control', 'public, max-age=86400')
+      res.end(png)
+    } catch {
+      res.redirect(302, '/og-image.png')
+    }
   })
 
   app.get('/api/pet/image', async (req, res) => {
