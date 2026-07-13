@@ -2,7 +2,6 @@ import { defineSsrMiddleware } from '#q-app/wrappers'
 import { json as parseJson, type Response } from 'express'
 import { existsSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
-import { Resvg } from '@resvg/resvg-js'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -743,6 +742,9 @@ export default defineSsrMiddleware(({ app }) => {
       const font  = getOgFont()
       if (!trade || !font) throw new Error('unrenderable')
       await Promise.all([warmDetailsCache(), warmElveCache(), warmItemsCache()])
+      // Imported lazily: if the native binary can't load (e.g. a platform build
+      // gap), the catch below serves the brand image instead of crashing boot.
+      const { Resvg } = await import('@resvg/resvg-js')
       const png = new Resvg(buildOgSvg(trade), {
         font: { fontBuffers: [font], defaultFontFamily: 'Nunito', loadSystemFonts: false },
         fitTo: { mode: 'width', value: 1200 },
