@@ -33,6 +33,7 @@ export default configure(function (/* ctx */) {
     ssr: {
       pwa: true,
       middlewares: [
+        'security',
         'ratelimit',
         'api',
         'render',

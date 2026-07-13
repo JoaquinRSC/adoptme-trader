@@ -716,6 +716,9 @@ export default defineSsrMiddleware(({ app }) => {
       `${SITE_ORIGIN}/inventory`,
       `${SITE_ORIGIN}/check-values`,
       `${SITE_ORIGIN}/wfl`,
+      `${SITE_ORIGIN}/disclaimer`,
+      `${SITE_ORIGIN}/privacy`,
+      `${SITE_ORIGIN}/terms`,
       ...names.map(n => `${SITE_ORIGIN}/pet/${slugify(n)}`),
     ]
     res.setHeader('Content-Type', 'application/xml')

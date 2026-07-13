@@ -132,7 +132,14 @@
           </p>
         </section>
 
-        <div class="guide-version">v{{ version }}</div>
+        <div class="guide-foot">
+          <nav class="guide-legal" aria-label="Legal">
+            <router-link :to="{ name: 'disclaimer' }" @click="showGuide = false">Disclaimer</router-link>
+            <router-link :to="{ name: 'privacy' }" @click="showGuide = false">Privacy</router-link>
+            <router-link :to="{ name: 'terms' }" @click="showGuide = false">Terms</router-link>
+          </nav>
+          <span class="guide-version">v{{ version }}</span>
+        </div>
       </div>
     </q-dialog>
   </q-layout>
@@ -429,12 +436,33 @@ const formLegend = [
   font-weight: 700;
 }
 
+.guide-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-top: 22px;
+  padding-top: 14px;
+  border-top: 1px solid var(--border);
+}
+.guide-legal {
+  display: flex;
+  gap: 14px;
+}
+.guide-legal a {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text-3);
+  text-decoration: none;
+}
+@media (hover: hover) {
+  .guide-legal a:hover { color: var(--gold); }
+}
 .guide-version {
-  margin-top: 20px;
   font-size: 11px;
   font-weight: 600;
   color: var(--text-3);
-  text-align: right;
 }
 
 .form-legend {

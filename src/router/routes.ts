@@ -12,6 +12,10 @@ const routes: RouteRecordRaw[] = [
       { name: 'wfl',           path: 'wfl',           component: () => import('pages/WflPage.vue')         },
       // Public per-pet value page (SEO): /pet/frost-dragon
       { name: 'pet',           path: 'pet/:slug',     component: () => import('pages/PetValuePage.vue')    },
+      // Legal pack (one component, content per route).
+      { name: 'disclaimer',    path: 'disclaimer',    component: () => import('pages/LegalPage.vue')       },
+      { name: 'privacy',       path: 'privacy',       component: () => import('pages/LegalPage.vue')       },
+      { name: 'terms',         path: 'terms',         component: () => import('pages/LegalPage.vue')       },
       // Trade Builder was removed in the 2026-07 redesign; keep old links working.
       { path: 'trade-builder', redirect: '/check-values' },
       // A real 404, inside the app shell — an unknown route used to silently
