@@ -718,10 +718,25 @@ usuarios es infra sin nadie. Orden sugerido:
 3. **Fase 4b** (Roblox).
 4. **Sección de trading** sobre ese cimiento, con el alcance (a/b) ya definido.
 
-**Decisiones abiertas (pendientes de Joaquín, definen el modelo de datos):**
-- [ ] ¿La sección de trading es **(a)** registro/vitrina o **(b)** marketplace P2P?
-- [ ] ¿Login ahora, o **share links primero** (traen gente) y después login?
-- [ ] ¿Google+Discord primero y Roblox como paso 2, o Roblox innegociable en el MVP?
+**Decisiones (tomadas 2026-07-13 — Joaquín delegó al criterio de dev senior).**
+Las tres cayeron del lado de bajo riesgo y alineado con el plan ("tráfico antes
+que retención"):
+- [x] **Trading = (a) registro/vitrina** (`saved_trades`), no marketplace. Un P2P
+      revive el debate estratégico de la Fase 2 (no espejar el feed de las fuentes)
+      y abre una superficie de moderación/anti-scam enorme con audiencia <13. Se
+      reconsidera sólo con demanda real y después de resolver esas dos cosas.
+- [x] **Share links primero; el login espera a que haya tráfico.** La Fase 3
+      (share + SEO) ya está deployada y es el motor de gente. Un login sin usuarios
+      es infra sin nadie → **la Fase 4 NO arranca todavía**: primero se valida que
+      el motor traiga gente, después se construye la retención.
+- [x] **Google + Discord primero (4a); Roblox como 4b.** Roblox no es proveedor
+      nativo (Creator Dashboard + sesión a mano) y da sólo identidad, no inventario
+      — no justifica ser el bloqueante del MVP.
+
+Consecuencia: la Fase 4 queda **diseñada y desbloqueada** pero **en pausa
+deliberada** hasta que los números de la Fase 3 muestren tracción. El próximo
+trabajo de código, cuando se retome, es hacer crecer/medir la Fase 3 (i18n,
+dominio, analytics, botón de feedback) antes que el login.
 
 Próximo paso cuando se retome: con esas 3 respuestas, cerrar el esquema de la
 sección de trading (abajo se ramifica según a/b) y registrar las OAuth apps.
