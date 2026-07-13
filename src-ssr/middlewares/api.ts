@@ -17,6 +17,9 @@ export interface PetDetails {
 
 const USER_AGENT = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36'
 
+/** Canonical public origin — used for sitemap + absolute share/OG URLs. */
+const SITE_ORIGIN = 'https://amtrader.fly.dev'
+
 const AMVGG_VALUE_FIELDS: Array<[string, string]> = [
   ['npRegularValue', 'normal'],
   ['fValue',         'fly'],
@@ -343,6 +346,39 @@ async function getPetNamesList (): Promise<string[]> {
   return petNamesCache
 }
 
+// ── Slugs (per-pet public pages) ──────────────────────────────────────────────
+
+/** "Frost Dragon" → "frost-dragon". Lossy on purpose; the reverse map disambiguates. */
+export function slugify (name: string): string {
+  return name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '')
+}
+
+let slugMap: Map<string, string> | null = null
+
+async function resolveSlug (slug: string): Promise<string | null> {
+  if (!slugMap) {
+    slugMap = new Map()
+    for (const name of await getPetNamesList()) slugMap.set(slugify(name), name)
+  }
+  return slugMap.get(slug.toLowerCase().trim()) ?? null
+}
+
+/** Everything a per-pet page renders, in one round-trip: values + elve + demand. */
+async function getPetPageData (slug: string) {
+  const name = await resolveSlug(slug)
+  if (!name) return null
+  const details = await fetchPetDetails(name)
+  await warmElveCache()
+  return {
+    name,
+    slug: slugify(name),
+    values:  details.values,
+    demands: details.demands,
+    rarity:  details.rarity,
+    elve:    getElveRecord(name) ?? {},
+  }
+}
+
 // ── Pet image ─────────────────────────────────────────────────────────────────
 
 function extractImageUrlFromHtml (html: string): string | null {
@@ -549,6 +585,36 @@ export default defineSsrMiddleware(({ app }) => {
 
   app.get('/api/pet/details', async (req, res) => {
     res.json(await fetchPetDetails(String(req.query['name'] ?? '')))
+  })
+
+  // Per-pet public page data (slug → name → values + elve + demand), one shot.
+  app.get('/api/pet/page', async (req, res) => {
+    const data = await getPetPageData(String(req.query['slug'] ?? ''))
+    if (!data) { res.status(404).json({ error: 'not found' }); return }
+    res.json(data)
+  })
+
+  // SEO: a sitemap of every pet page + the app's public routes.
+  app.get('/sitemap.xml', async (_req, res) => {
+    const names = await getPetNamesList()
+    const urls = [
+      `${SITE_ORIGIN}/inventory`,
+      `${SITE_ORIGIN}/check-values`,
+      `${SITE_ORIGIN}/wfl`,
+      ...names.map(n => `${SITE_ORIGIN}/pet/${slugify(n)}`),
+    ]
+    res.setHeader('Content-Type', 'application/xml')
+    res.send(
+      '<?xml version="1.0" encoding="UTF-8"?>\n' +
+      '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n' +
+      urls.map(u => `  <url><loc>${u}</loc></url>`).join('\n') +
+      '\n</urlset>\n',
+    )
+  })
+
+  app.get('/robots.txt', (_req, res) => {
+    res.setHeader('Content-Type', 'text/plain')
+    res.send(`User-agent: *\nAllow: /\n\nSitemap: ${SITE_ORIGIN}/sitemap.xml\n`)
   })
 
   app.get('/api/pet/image', async (req, res) => {

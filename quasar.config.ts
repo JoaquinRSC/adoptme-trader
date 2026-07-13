@@ -2,11 +2,17 @@ import { configure } from 'quasar/wrappers'
 
 export default configure(function (/* ctx */) {
   return {
-    boot: ['pinia'],
+    // Pinia is wired via the store wrapper (src/stores/index.ts), not a boot —
+    // the wrapper is what enables SSR state hydration for preFetch'd stores.
+    boot: [],
 
     css: ['app.scss'],
 
     extras: ['roboto-font'],
+
+    // Per-pet SEO pages fetch their data on the server before render, so crawlers
+    // (and social unfurlers that don't run JS) see values and meta in the HTML.
+    preFetch: true,
 
     build: {
       target: { browser: ['es2019', 'edge88', 'firefox78', 'chrome87', 'safari13.1'] },
@@ -19,7 +25,7 @@ export default configure(function (/* ctx */) {
     framework: {
       config: { dark: true },
       iconSet: 'svg-material-icons',
-      plugins: ['Notify', 'Loading'],
+      plugins: ['Notify', 'Loading', 'Meta'],
     },
 
     animations: [],

@@ -140,13 +140,38 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { useMeta } from 'quasar'
 import { matPets, matBalance, matHelpOutline, matBrightnessAuto, matLightMode, matDarkMode } from '@quasar/extras/material-icons'
 import { version } from '../../package.json'
 import { useInventoryStore } from 'src/stores/inventory'
 import { useTheme } from 'src/composables/useTheme'
 import { formFill } from 'src/types'
+import { SITE_ORIGIN } from 'src/config'
 
 const inventory = useInventoryStore()
+
+// App-wide default meta. Individual pages (per-pet, WFL) override by key; the
+// static tags used to live in index.html but duplicated whatever a page set.
+const DEFAULT_TITLE = 'AM Trader — Value pets & check trade fairness'
+const DEFAULT_DESC = 'Two community value lists, side by side, with demand-adjusted scoring for Roblox Adopt Me.'
+const OG_IMAGE = `${SITE_ORIGIN}/og-image.png`
+useMeta({
+  title: DEFAULT_TITLE,
+  meta: {
+    description:   { name: 'description', content: DEFAULT_DESC },
+    ogType:        { property: 'og:type', content: 'website' },
+    ogUrl:         { property: 'og:url', content: `${SITE_ORIGIN}/` },
+    ogTitle:       { property: 'og:title', content: DEFAULT_TITLE },
+    ogDescription: { property: 'og:description', content: DEFAULT_DESC },
+    ogImage:       { property: 'og:image', content: OG_IMAGE },
+    ogImageWidth:  { property: 'og:image:width', content: '1200' },
+    ogImageHeight: { property: 'og:image:height', content: '630' },
+    twCard:        { name: 'twitter:card', content: 'summary_large_image' },
+    twTitle:       { name: 'twitter:title', content: DEFAULT_TITLE },
+    twDescription: { name: 'twitter:description', content: DEFAULT_DESC },
+    twImage:       { name: 'twitter:image', content: OG_IMAGE },
+  },
+})
 
 // Theme mode toggle: auto (follows the system) → light → dark.
 const theme = useTheme()
