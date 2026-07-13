@@ -6,9 +6,18 @@ cerrar cada fase entera antes de empezar la siguiente — una app chica, fresca 
 pulida le gana a una app grande a medio hacer. El backlog existe para anotar
 sin comprometerse.
 
-## Estado (última actualización: 2026-07-12)
+## Estado (última actualización: 2026-07-13)
 
-**Fase 1 ✅ · Fase 1.5 ✅ · Fase 1.8 ✅ · Fase 2 ✅ · Fase 2.5 ✅ · Fase 2.7 (rediseño mobile-first) ✅.**
+**Fase 1 ✅ · Fase 1.5 ✅ · Fase 1.8 ✅ · Fase 2 ✅ · Fase 2.5 ✅ · Fase 2.7 ✅ · Fase 3 (motor de crecimiento — core) ✅.**
+
+**Fase 3 — core del motor de crecimiento (2026-07-13).** Tráfico antes que
+retención: share links de trade (`/wfl?d=`) + imagen OG dinámica por trade,
+página pública WFL, páginas SSR por-pet (`/pet/:slug`) + sitemap/robots para SEO,
+y de paso el fix del 404 (era la deuda técnica que bloqueaba las URLs por-pet).
+Extras de calidad: security headers + CSP, legal pack (disclaimer/privacy/terms).
+Todo verificado en el browser (build de producción, SW desregistrado). Queda
+i18n (tanda propia), dominio/analytics (cuentas de Joaquín) y el botón de
+feedback (falta destino). Detalle en la Fase 3 abajo.
 
 **Fase 2.7 — rediseño mobile-first (2026-07-12, v0.6.0).** La PWA en el teléfono
 estaba incómoda (cards gigantes de una columna, drawer de escritorio, veredicto
@@ -123,13 +132,12 @@ quedó disponible como personaje secundario para las share cards de la Fase 3.
   y `TradeBuilderPage.vue` → `Type 'number | null' is not assignable to 'number'`.
   Sobreviven porque **ni el build de Quasar ni el CI corren typecheck** — sólo
   lint + build. Arreglarlos y sumar `vue-tsc --noEmit` al CI van juntos.
-- **Una ruta desconocida renderiza una página en blanco, no un 404.** Verificado
-  el 2026-07-10 en local y en producción: `curl /trade` devuelve un shell de 2804
-  bytes sin sidebar ni contenido (contra 10258 de `/inventory`), y el browser queda
-  en negro. Las rutas reales son `/inventory`, `/check-values` y `/trade-builder`.
-  No es el bug de hidratación del SSR (ese está arreglado) — es que no hay página
-  de error. Importa para la Fase 3: las páginas SSR por pet van a generar URLs que
-  alguien va a tipear mal.
+- ✅ ~~Una ruta desconocida renderiza una página en blanco, no un 404.~~
+  **Arreglado el 2026-07-13** (con la Fase 3). El catch-all rendereaba
+  `InventoryPage` (pantalla en blanco en URLs mal tipeadas); ahora es
+  `NotFoundPage.vue` dentro del shell y devuelve HTTP 404 real (vía `preFetch`
+  que setea `ssrContext.res.statusCode`). Verificado: `/pet/<slug-inexistente>`
+  y `/ruta-cualquiera` devuelven 404.
 - El markup del `.source-toggle` ya está unificado, pero `.panel-header`,
   `.panel-count`, `.clear-draft-btn` y `.page-head/.page-title/.page-sub` siguen
   copy-pasteados entre Check Values y Trade Builder. No urge; si la Fase 2.5 los
@@ -616,22 +624,42 @@ badges. Se eligió mantener el sistema por combo. Si alguna vez molesta, el camb
 es acotado: los badges ya son composicionales y `FORM_*` está centralizado.
 
 ### Fase 3 — Motor de crecimiento (antes que el login: primero tráfico, después retención)
-- [ ] **Links de trade compartibles**: armar un trade → link público + imagen OG linda
-      para preview en Discord. "¿Es fair este trade?" = loop viral gratis.
-- [ ] **Quick WFL pública**: página mínima "¿Win, Fair o Lose?" sin inventario ni
-      contexto — el punto de entrada natural de los share links.
-- [ ] **Páginas SSR públicas por pet** (`/pet/frost-dragon`): valor AMV + ELV + demand
-      (+ tendencia cuando exista). SEO para "X pet value adopt me" → tráfico orgánico.
-      Ya tenemos SSR, es casi gratis. + sitemap.xml y meta descriptions.
+
+**El núcleo del motor está hecho y verificado (2026-07-13).** Share links + OG,
+WFL pública, páginas por-pet + sitemap, y el fix del 404 (era deuda técnica que
+lo bloqueaba). Queda i18n (esfuerzo grande y aparte), el dominio/analytics
+(cuentas del usuario) y el botón de feedback (falta destino real).
+
+- [x] **Links de trade compartibles** (2026-07-13): `/wfl?d=<code>` codifica el
+      trade (base64url de las dos listas + fuente) y lo re-precia al cargar; la
+      página de Trade tiene un botón "Share" que arma el link. Imagen OG dinámica
+      por trade en `GET /api/og/trade?d=` (PNG 1200×630 vía `@resvg/resvg-js` +
+      Nunito embebida; fallback a la imagen de marca si algo falla). Verificado
+      end-to-end (WIN +81% con card de Discord renderizada).
+- [x] **Quick WFL pública** (2026-07-13): `/wfl`, sin inventario ni cuenta —
+      dos lados + veredicto (comparte `VerdictCard`/`useVerdict` con Trade). Es el
+      landing de los share links.
+- [x] **Páginas SSR públicas por pet** (2026-07-13): `/pet/:slug` con tabla
+      AMV+Elve+demand, meta server-side (título/description/OG por pet vía
+      `preFetch` + plugin Meta) para crawlers que no corren JS. + `sitemap.xml`
+      y `robots.txt`. Requirió cablear Pinia por el store wrapper (`src/stores/
+      index.ts`) para que el estado del `preFetch` hidrate en cliente. (Tendencia
+      por pet: cuando exista, Fase 5.)
 - [ ] i18n español + inglés (comunidad hispanohablante gigante y desatendida).
+      **Esfuerzo grande y transversal** (vue-i18n + extraer todos los strings de
+      cada componente + traducciones es-AR/en + selector). Merece su propia
+      tanda, no un add-on apurado. Es el mayor pendiente de la Fase 3.
 - [ ] Dominio propio + Cloudflare gratis adelante (cache de estáticos, protección,
       analytics). Analytics livianos y cookieless (Plausible/Umami — sin banner
-      de cookies).
-- [ ] **Legal pack** (obligatorio antes de ads, importante antes de publicitar):
-      página de privacidad + términos + disclaimer "no afiliado a Roblox/Uplift
-      Games". Con audiencia <13, cuidado extra (COPPA).
-- [ ] Botón de feedback (link a Discord propio o form tipo Tally): el roadmap
-      post-lanzamiento lo escriben los usuarios.
+      de cookies). **Necesita cuentas/decisión de Joaquín.**
+- [x] **Legal pack** (2026-07-13): `/disclaimer` + `/privacy` + `/terms` (un
+      `LegalPage.vue`, contenido por ruta), con el disclaimer "no afiliado a
+      Roblox/Uplift" prominente, nota COPPA en privacidad, y contacto en
+      `CONTACT_EMAIL` (config) — **cambiar por un address dedicado antes de
+      lanzar**. Linkeado desde "How it works" y en el sitemap. El contenido es un
+      borrador razonable; conviene una lectura legal antes de ads.
+- [ ] Botón de feedback (link a Discord propio o form tipo Tally): **falta el
+      destino real** (Joaquín) — no se metió un link muerto.
 
 ### Fase 4 — Login + sync (cimiento para la sección de trading)
 
@@ -695,9 +723,95 @@ usuarios es infra sin nadie. Orden sugerido:
 - [ ] ¿Login ahora, o **share links primero** (traen gente) y después login?
 - [ ] ¿Google+Discord primero y Roblox como paso 2, o Roblox innegociable en el MVP?
 
-Próximo paso cuando se retome: con esas 3 respuestas, escribir el diseño técnico
-fino (esquema de tablas, flujo de sesión SSR, merge de invitado, integración
-Roblox) acá mismo antes de tocar código.
+Próximo paso cuando se retome: con esas 3 respuestas, cerrar el esquema de la
+sección de trading (abajo se ramifica según a/b) y registrar las OAuth apps.
+El resto del diseño técnico ya está escrito 👇.
+
+#### Diseño técnico (borrador, 2026-07-13)
+
+**Estado: diseño listo, ejecución bloqueada en las 3 decisiones de arriba.** El
+**núcleo (auth + sync de inventario) NO depende de esas decisiones** y se puede
+construir apenas se cree el proyecto Supabase; sólo el esquema de la *sección de
+trading* se ramifica según (a) vitrina vs (b) marketplace.
+
+**Stack:** Supabase Auth (Google + Discord nativos; Roblox a mano en 4b) +
+Postgres con RLS. Free tier. Client `@supabase/supabase-js` + `@supabase/ssr`.
+
+**Sesión con SSR (lo más delicado).**
+- Sesión por **cookies** (no sólo localStorage) con `@supabase/ssr`. En el server
+  de Fly, **un client Supabase por request** (creado con las cookies del request),
+  nunca un singleton de módulo — mismo error que el router SSR de la Fase 2
+  ([[project_ssr_router_fix]]): un singleton filtra estado entre requests.
+- El user se resuelve server-side (boot/`preFetch` leyendo la cookie del
+  `ssrContext.req`) y su estado hidrata en el cliente por el **mismo mecanismo
+  que ya usan las páginas por-pet** (`window.__INITIAL_STATE__` + el store
+  wrapper `src/stores/index.ts` que se cableó en la Fase 3).
+- Boot nuevo `src/boot/supabase.ts`: crea el client (browser vs server con las
+  cookies del request) y lo inyecta. Callback OAuth: ruta `/auth/callback`.
+
+**Modo invitado + merge (regla dura: la app sigue 100% usable sin cuenta).**
+- Sin login: inventario en localStorage (como hoy).
+- Primer login: **merge** del inventario local a la cuenta. Algoritmo: traer el
+  remoto → upsert de cada pet local ausente, dedupe por `(name, form, category)`,
+  sumar `qty` en colisión → vaciar el localStorage → a partir de ahí leer/escribir
+  contra Supabase. **Idempotente** (correrlo dos veces no duplica).
+- Sin edición concurrente real (un usuario, sus pets): last-write por dispositivo
+  alcanza; no hace falta CRDT ni merge de conflictos.
+
+**Esquema (núcleo, independiente de la decisión a/b):**
+
+```sql
+-- Supabase Auth ya provee auth.users. Perfil público opcional:
+create table profiles (
+  id uuid primary key references auth.users on delete cascade,
+  username       text,          -- de Roblox/Discord/Google
+  roblox_user_id bigint unique, -- sólo si loguea con Roblox (4b)
+  avatar_url     text,
+  created_at     timestamptz default now()
+);
+
+create table inventory_pets (
+  id         uuid primary key default gen_random_uuid(),
+  user_id    uuid not null references auth.users on delete cascade,
+  name       text not null,
+  form       text not null,            -- PetForm
+  category   text not null default 'pet',
+  qty        int  not null default 1,
+  created_at timestamptz default now()
+);
+create index on inventory_pets (user_id);
+
+-- RLS: cada usuario sólo ve/edita lo suyo (mismo patrón que Cuidauto).
+alter table profiles       enable row level security;
+alter table inventory_pets enable row level security;
+create policy own_profile   on profiles       for all using (auth.uid() = id)      with check (auth.uid() = id);
+create policy own_inventory on inventory_pets for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
+```
+
+**Fase 4a — Google + Discord.** Proveedores nativos de Supabase (el grueso del
+trabajo es sesión SSR + merge + sync, no el botón). Registrar OAuth apps en Google
+Cloud Console + Discord Dev Portal; redirect a `https://amtrader.fly.dev/auth/callback`.
+
+**Fase 4b — Roblox.** No es proveedor nativo. Flujo OAuth2 "Sign in with Roblox"
+en el server de Fly (app en el Creator Dashboard + redirect HTTPS): intercambiar
+el `code` por el `id_token`, y crear/linkear la sesión de Supabase a mano
+(`supabase.auth.admin`, matcheando por `roblox_user_id`). Da **identidad
+verificada** (username, user ID, avatar) — **NO** acceso al inventario de pets
+(datos privados de Uplift; los scopes son sólo `openid`/`profile`).
+
+**Sección de trading — esquema según la decisión (a/b):**
+- **(a) Registro/vitrina** (bajo riesgo, encaja): `saved_trades (id, user_id,
+  your jsonb, them jsonb, source, verdict, created_at)` + RLS por user. Los share
+  links de la Fase 3 ya son el render; esto sólo los persiste por cuenta.
+- **(b) Marketplace P2P** (otra bestia): `listings (id, user_id, pets jsonb, want
+  text, status, created_at)` + búsqueda + moderación + anti-scam + reportes.
+  Revive el debate estratégico que la Fase 2 cerró a conciencia (no espejar el
+  marketplace de las fuentes). **No empezar sin decidirlo.**
+
+**COPPA/GDPR-K (no bloquea, se piensa desde el día uno):** audiencia <13. Mínimo:
+no pedir PII innecesaria, moderar texto libre (usernames, el `want` de un listing)
+y tener un canal de reporte. Un marketplace (b) sube mucho la superficie de
+moderación vs. una vitrina (a).
 
 **Carga de inventario sin fricción** (el dolor real: cargar pets de a uno):
 - [ ] **Carga masiva** (barato, resuelve el 80%): picker de Add Pet con
@@ -733,7 +847,11 @@ Roblox) acá mismo antes de tocar código.
 - [ ] Error tracking con Sentry (free tier): enterarse de los errores de usuarios
       reales sin esperar que alguien los reporte.
 - [ ] Uptime monitor gratis (UptimeRobot) apuntando a `/api/ping`.
-- [ ] Security headers básicos (CSP razonable, X-Frame-Options, etc.).
+- [x] Security headers básicos (2026-07-13): middleware `src-ssr/middlewares/
+      security.ts` con CSP (afinada a lo que carga la app: Google Fonts, sprites
+      hotlinkeados de amvgg, data: URIs, el script inline de estado de Quasar),
+      X-Frame-Options, X-Content-Type-Options, Referrer-Policy, Permissions-Policy
+      y HSTS. Verificado en el browser: sprites/fonts/scripts cargan, 0 violaciones.
 - [ ] Changelog "What's new" visible en la app: barato, construye confianza.
 
 ## Backlog lejano (anotado para no perderlo, NO es prioridad)

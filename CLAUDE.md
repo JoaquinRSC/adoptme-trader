@@ -56,8 +56,11 @@ The `Dockerfile` copies these into the Fly.io image. The server loads them at st
 | `GET /api/pets/all` | GET | all pets with their FR value |
 | `GET /api/pets/list` | GET | full pet name list |
 | `GET /api/pets/search?q=` | GET | filtered pet name list |
+| `GET /api/pet/page?slug=` | GET | one shot for a per-pet page: name + values + elve + demand + rarity (slug→name) |
+| `GET /api/og/trade?d=` | GET | dynamic 1200×630 PNG for a shared trade (Discord preview); falls back to `/og-image.png` |
+| `GET /sitemap.xml`, `/robots.txt` | GET | SEO: every pet page + public routes |
 
-All `/api/*` endpoints are public — the app has no authentication. They all serve from in-memory caches (no outbound requests at request time). A per-IP rate limiter (`src-ssr/middlewares/ratelimit.ts`) throttles abuse.
+All `/api/*` endpoints are public — the app has no authentication. They all serve from in-memory caches (no outbound requests at request time). A per-IP rate limiter (`src-ssr/middlewares/ratelimit.ts`) throttles abuse. Response headers (CSP + HSTS + nosniff + frame/referrer/permissions) come from `src-ssr/middlewares/security.ts`.
 
 ### Key files
 
@@ -73,8 +76,16 @@ All `/api/*` endpoints are public — the app has no authentication. They all se
 - `src/composables/useFormPicker.ts` — 5-button F/R/D/N/M toggle that derives `PetForm` from booleans; wrapped by `FormChips.vue`
 - `src/composables/useTheme.ts` — theme MODE (auto/light/dark), not palettes: auto follows the system, overrides stamp `data-theme` on `<html>`. See "Theming"
 - `src/pages/InventoryPage.vue` — portfolio hero (collection total, source toggle, CTAs) + dense tile grid; tapping a tile opens a bottom detail sheet (both values, demand, form editing via `FormChips`, remove with undo). All actions live in the sheet — no hover reveals
-- `src/pages/CheckValuesPage.vue` — the **Trade** page (route stays `/check-values`): "You give / They give" panels + the Fair Scale verdict card (sticky, beam tips toward the heavier side, WIN/FAIR/LOSE within ±5%)
-- `src/layouts/MainLayout.vue` — app shell: sticky blurred top bar (brand, desktop nav pills, help) + bottom tab bar on <768px (My Pets, Trade). No drawer
+- `src/pages/CheckValuesPage.vue` — the **Trade** page (route stays `/check-values`): "You give / They give" panels + `VerdictCard` + a **Share** button (encodes the sides into a `/wfl?d=` link)
+- `src/components/VerdictCard.vue` + `src/composables/useVerdict.ts` — **the** Fair Scale verdict (beam tilt + WIN/FAIR/LOSE within ±5%), shared by the Trade page and WFL so they can't drift. Reach for these, don't re-inline the scale SVG
+- `src/pages/WflPage.vue` — public Win/Fair/Lose (`/wfl`), no inventory/account; also the landing for shared links (`?d=` rebuilds + re-prices the trade)
+- `src/pages/PetValuePage.vue` — public per-pet SEO page (`/pet/:slug`). Data + meta are server-rendered via a `preFetch` that fills `src/stores/petPage.ts`; meta from `useMeta`. **Requires the Pinia store wrapper (below) so the store hydrates**
+- `src/pages/NotFoundPage.vue` — real 404 inside the shell (returns HTTP 404 via `preFetch` setting `ssrContext.res.statusCode`). The catch-all route renders this
+- `src/pages/LegalPage.vue` — one component for `/disclaimer` + `/privacy` + `/terms` (content per route). Non-affiliation + community-estimate disclaimers
+- `src/utils/share.ts` — trade share codec (base64url of the two sides + source); server has a small twin decoder in `api.ts` (the src-ssr bundle can't use the `src/*` alias)
+- `src/config.ts` — `SITE_ORIGIN`, `CONTACT_EMAIL`
+- `src/stores/index.ts` — **Quasar store wrapper** (Pinia). This — not a boot file — is what makes SSR serialize Pinia state into `window.__INITIAL_STATE__` and rehydrate it on the client. `preFetch`-populated stores (per-pet page) break with a hydration mismatch without it. Don't revert to `boot: ['pinia']`
+- `src/layouts/MainLayout.vue` — app shell: fixed top bar (brand, desktop nav pills, help) + bottom tab bar on <768px (My Pets, Trade) + app-wide default `useMeta` (pages override by key) + legal links in the How-it-works dialog
 - `src/stores/drafts.ts` — persisted Trade-page sides + source (Pinia + localStorage, `hydrate()` on mount)
 - `src-ssr/middlewares/api.ts` — All API handlers, AMVGG/Elvebredd cache warming
 - `scripts/fetch-values.mjs` — Pre-fetch script: fetches AMVGG (Node fetch) + Elvebredd (curl) and saves to `src/data/*.json`
@@ -168,4 +179,5 @@ Manual (local) update, if ever needed:
 - **Phase 2 (done, 2026-07-10):** public-ready cleanup — advanced mode removed, `PetPicker`/`FormChips`/`SourceToggle` unified, skeletons, undo, responsive pass, hover/touch fixes, 44px touch targets, the three page states, basic a11y, WCAG AA contrast. See `docs/PLAN.md`
 - **Phase 2.5 (done, 2026-07-12):** visual identity — per-form colour on cards, Fredoka display face, AA, Premium re-skin (dark + gold), "The Fair Scale" logo, "AM Trader" name, trader-voice microcopy, Material icons
 - **Phase 2.7 (done, 2026-07-12):** mobile-first redesign — bottom tab bar shell (drawer removed), portfolio-style My Pets with tile grid + detail sheet, Trade page with the Fair Scale verdict card. **Trade Builder removed** (`/trade-builder` redirects to `/check-values`); its value never justified its surface and the Trade page owns the fairness verdict now
-- **Next: Phase 3 (growth):** share links + OG images, public quick WFL, per-pet SSR pages. Fix the blank-page 404 first — see `docs/PLAN.md`
+- **Phase 3 (growth) — core done (2026-07-13):** share links (`/wfl?d=`) + dynamic per-trade OG image, public WFL page, per-pet SSR pages + sitemap/robots, real 404. Plus security headers/CSP and the legal pack. Still open: i18n (its own effort), domain/analytics (needs accounts), feedback button (needs a destination). See `docs/PLAN.md`
+- **Next: Phase 4 (login + sync):** Supabase Auth + RLS. Technical design is drafted in `docs/PLAN.md`; execution is gated on 3 product decisions (trading = showcase vs marketplace; login now vs later; Google/Discord vs Roblox in the MVP)
