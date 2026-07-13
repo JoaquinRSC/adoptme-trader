@@ -51,7 +51,7 @@
           :class="{ 'cat-chip--active': categoryFilter === cat }"
           :aria-pressed="categoryFilter === cat"
           @click="categoryFilter = cat"
-        >{{ cat === 'all' ? $t('inventory.all') : CATEGORY_LABELS[cat as ItemCategory] }}</button>
+        >{{ cat === 'all' ? $t('inventory.all') : $t('category.' + cat) }}</button>
       </div>
     </section>
 
@@ -90,7 +90,7 @@
               :style="badge.style"
             >{{ badge.letter }}</span>
           </div>
-          <span v-else class="tile-cat-badge">{{ CATEGORY_LABELS[pet.category!] }}</span>
+          <span v-else class="tile-cat-badge">{{ $t('category.' + pet.category) }}</span>
         </div>
         <div class="tile-name" :title="pet.name">{{ pet.name }}</div>
         <div class="tile-meta">
@@ -128,7 +128,7 @@
             <!-- A filled chip (form fill + its ink), not tinted text: the fill
                  pair holds contrast on both themes, tinted text only on dark. -->
             <div class="sheet-kind" :style="isFormed(detailPet) ? formFill(detailPet.form) : {}">
-              {{ isPet(detailPet.category) ? FORM_LABELS[detailPet.form] : CATEGORY_LABELS[detailPet.category!] }}
+              {{ isPet(detailPet.category) ? FORM_LABELS[detailPet.form] : $t('category.' + detailPet.category) }}
             </div>
           </div>
         </div>
@@ -280,13 +280,13 @@
               :class="{ 'cat-chip--active': newItemCategory === opt.value }"
               :aria-pressed="newItemCategory === opt.value"
               @click="pickItemCategory(opt.value)"
-            >{{ opt.label }}</button>
+            >{{ $t('category.' + opt.value) }}</button>
           </div>
 
           <q-input
             ref="itemSearchInputRef"
             v-model="itemSearchQuery"
-            :placeholder="newItemCategory ? $t('inventory.searchCategory', { category: CATEGORY_LABELS[newItemCategory] }) : $t('inventory.searchItems')"
+            :placeholder="newItemCategory ? $t('inventory.searchCategory', { category: $t('category.' + newItemCategory) }) : $t('inventory.searchItems')"
             outlined dense
             autocomplete="off"
             :disable="!newItemCategory"
@@ -310,7 +310,7 @@
             </div>
             <!-- No query yet: browse the category, priciest first. -->
             <template v-else-if="!itemSearchQuery.trim()">
-              <div class="browse-head">{{ $t('inventory.categoryHigh', { category: CATEGORY_LABELS[newItemCategory] }) }}</div>
+              <div class="browse-head">{{ $t('inventory.categoryHigh', { category: $t('category.' + newItemCategory) }) }}</div>
               <div v-if="catalog.itemsLoading[newItemCategory]" class="results-state">
                 <q-spinner size="14px" color="primary" /><span>{{ $t('common.loading') }}</span>
               </div>
@@ -379,7 +379,7 @@ import RecentChips from 'src/components/RecentChips.vue'
 import SourceToggle from 'src/components/SourceToggle.vue'
 import {
   FORM_LABELS, FORM_GRADIENT, FORM_RGB, formFill, isPet,
-  CATEGORY_LABELS, ITEM_CATEGORY_OPTIONS,
+  ITEM_CATEGORY_OPTIONS,
   type PetForm, type InventoryPet, type ItemCategory, type ValueSource,
 } from 'src/types'
 

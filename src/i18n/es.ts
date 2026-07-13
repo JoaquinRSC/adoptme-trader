@@ -3,6 +3,18 @@ export default {
     myPets: 'Mis Pets',
     trade: 'Trade',
   },
+  category: {
+    pet: 'Pets',
+    petWear: 'Ropa',
+    egg: 'Huevos',
+    stroller: 'Cochecitos',
+    food: 'Comida',
+    vehicle: 'Vehículos',
+    toy: 'Juguetes',
+    gift: 'Regalos',
+    sticker: 'Stickers',
+    house: 'Casas',
+  },
   a11y: {
     home: 'Inicio de AM Trader',
     howItWorks: 'Cómo funciona',

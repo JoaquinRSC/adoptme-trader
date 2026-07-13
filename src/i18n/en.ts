@@ -3,6 +3,18 @@ export default {
     myPets: 'My Pets',
     trade: 'Trade',
   },
+  category: {
+    pet: 'Pets',
+    petWear: 'Pet Wear',
+    egg: 'Eggs',
+    stroller: 'Strollers',
+    food: 'Food',
+    vehicle: 'Vehicles',
+    toy: 'Toys',
+    gift: 'Gifts',
+    sticker: 'Stickers',
+    house: 'Houses',
+  },
   a11y: {
     home: 'AM Trader home',
     howItWorks: 'How it works',

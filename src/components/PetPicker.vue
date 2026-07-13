@@ -48,7 +48,7 @@
             class="cat-picker-btn"
             :class="{ 'cat-picker-btn--active': mineFilter === opt.value }"
             @click="mineFilter = opt.value"
-          >{{ opt.label }}</button>
+          >{{ $t('category.' + opt.value) }}</button>
         </div>
 
         <div class="empty-panel" v-if="!mine.length">{{ mineEmptyText || $t('picker.emptyMine') }}</div>
@@ -70,7 +70,7 @@
                 class="picker-card-form"
                 :style="isPet(pet.category) && pet.form !== 'normal' ? formFill(pet.form) : {}"
               >
-                {{ isPet(pet.category) ? FORM_LABELS[pet.form] : CATEGORY_LABELS[pet.category!] }}
+                {{ isPet(pet.category) ? FORM_LABELS[pet.form] : $t('category.' + pet.category) }}
               </span>
               <span class="picker-card-val" v-if="value != null">{{ formatValue(value) }}</span>
             </div>
@@ -93,7 +93,7 @@
             class="cat-picker-btn"
             :class="{ 'cat-picker-btn--active': category === opt.value }"
             @click="selectCategory(opt.value)"
-          >{{ opt.label }}</button>
+          >{{ $t('category.' + opt.value) }}</button>
         </div>
 
         <template v-if="category === 'pet'">
@@ -107,7 +107,7 @@
           dense outlined clearable
           autocomplete="off"
           :debounce="250"
-          :placeholder="category === 'pet' ? $t('picker.searchPet') : $t('inventory.searchCategory', { category: CATEGORY_LABELS[category] })"
+          :placeholder="category === 'pet' ? $t('picker.searchPet') : $t('inventory.searchCategory', { category: $t('category.' + category) })"
           style="margin-top: 10px"
           @keydown.down.prevent="moveActive(1)"
           @keydown.up.prevent="moveActive(-1)"
@@ -125,7 +125,7 @@
               @select="addByName"
             />
             <div class="browse-head">
-              {{ category === 'pet' ? $t('inventory.allPetsHigh') : $t('inventory.categoryHigh', { category: CATEGORY_LABELS[category] }) }}
+              {{ category === 'pet' ? $t('inventory.allPetsHigh') : $t('inventory.categoryHigh', { category: $t('category.' + category) }) }}
             </div>
             <div class="results-state" v-if="browseLoading">
               <q-spinner size="14px" color="primary" /><span>{{ $t('common.loading') }}</span>
@@ -189,7 +189,7 @@ import { useRecentStore } from 'src/stores/recent'
 import { useCatalogStore } from 'src/stores/catalog'
 import { notifyAdded } from 'src/utils/notify'
 import {
-  FORM_LABELS, CATEGORY_LABELS, ITEM_CATEGORY_OPTIONS, isPet, formFill,
+  FORM_LABELS, ITEM_CATEGORY_OPTIONS, isPet, formFill,
   type PetForm, type InventoryPet, type ItemCategory, type PickerSelection,
 } from 'src/types'
 

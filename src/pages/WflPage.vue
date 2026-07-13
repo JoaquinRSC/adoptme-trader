@@ -37,7 +37,7 @@
             <PetImage :name="entry.name" class="slot-img" />
             <span class="slot-meta">
               <span class="slot-form" :style="{ color: isPet(entry.category) ? FORM_TEXT_HEX[entry.form] : 'var(--text-2)' }">
-                {{ isPet(entry.category) ? FORM_LABELS[entry.form] : CATEGORY_LABELS[entry.category] }}
+                {{ isPet(entry.category) ? FORM_LABELS[entry.form] : $t('category.' + entry.category) }}
               </span>
               <span v-if="entry.demand" class="slot-demand" :class="`demand--${demandClass(entry.demand)}`" :title="entry.demand ?? undefined">{{ demandStars(entry.demand) }}</span>
               <span class="slot-val">
@@ -85,7 +85,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { uid, useMeta } from 'quasar'
 import { useI18n } from 'vue-i18n'
 import { matErrorOutline, matShare } from '@quasar/extras/material-icons'
-import { FORM_LABELS, FORM_TEXT_HEX, CATEGORY_LABELS, isPet, type PetForm, type ItemCategory, type PickerSelection, type ValueSource } from 'src/types'
+import { FORM_LABELS, FORM_TEXT_HEX, isPet, type PetForm, type ItemCategory, type PickerSelection, type ValueSource } from 'src/types'
 import { useValuesStore, type DemandLevel } from 'src/stores/values'
 import PetPicker from 'src/components/PetPicker.vue'
 import SourceToggle from 'src/components/SourceToggle.vue'
