@@ -67,5 +67,11 @@ export const useDraftsStore = defineStore('drafts', () => {
 
   function clearCheck () { checkYou.value = []; checkThem.value = [] }
 
-  return { checkYou, checkThem, checkSource, hydrate, clearCheck }
+  function swapSides () {
+    const tmp = checkYou.value
+    checkYou.value = checkThem.value
+    checkThem.value = tmp
+  }
+
+  return { checkYou, checkThem, checkSource, hydrate, clearCheck, swapSides }
 })

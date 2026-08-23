@@ -16,6 +16,12 @@
 
         <button
           v-if="yourSide.length || themSide.length"
+          class="clear-draft-btn"
+          @click="clearCheck"
+        >{{ $t('common.clear') }}</button>
+
+        <button
+          v-if="yourSide.length || themSide.length"
           class="share-link-btn"
           @click="shareTrade"
         >
@@ -76,6 +82,16 @@
          toward the heavier side — the brand mark doing the app's actual job. -->
     <div class="verdict-dock">
       <VerdictCard :your-total="yourTotal" :them-total="themTotal" />
+      
+      <div class="swap-dock-container" v-if="yourSide.length || themSide.length">
+        <button
+          class="swap-sides-btn"
+          @click="swapSides"
+        >
+          <q-icon :name="matSwapHoriz" size="18px" />
+          {{ $t('trade.swapSides') }}
+        </button>
+      </div>
     </div>
 
     <!-- YOUR side picker (tabs: My Pets / Other) -->
@@ -99,7 +115,7 @@
 <script setup lang="ts">
 import { ref, computed, watch, onMounted } from 'vue'
 import { storeToRefs } from 'pinia'
-import { matErrorOutline, matShare } from '@quasar/extras/material-icons'
+import { matErrorOutline, matShare, matSwapHoriz } from '@quasar/extras/material-icons'
 import { uid } from 'quasar'
 import { useI18n } from 'vue-i18n'
 import { FORM_LABELS, FORM_TEXT_HEX, isPet, type PetForm, type ItemCategory, type PickerSelection } from 'src/types'
@@ -261,6 +277,10 @@ function clearCheck() {
   loadError.value = false
 }
 
+function swapSides() {
+  draftsStore.swapSides()
+}
+
 // ── Share ─────────────────────────────────────────────────────────────────────
 
 const { copied: shareCopied, share: shareTrade } = useTradeShare(() => ({
@@ -328,6 +348,34 @@ function addToThem (sel: PickerSelection) {
   cursor: pointer;
   transition: background 0.15s, color 0.15s;
 }
+.swap-dock-container {
+  display: flex;
+  justify-content: center;
+  margin-top: 12px;
+}
+
+.swap-sides-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 20px;
+  border: 1px solid var(--border-hi);
+  border-radius: 12px;
+  background: var(--elev-fill);
+  color: var(--text-1);
+  font-size: 14px;
+  font-weight: 800;
+  box-shadow: var(--elev-shadow);
+  cursor: pointer;
+  transition: transform 0.1s, background 0.15s;
+}
+@media (hover: hover) {
+  .swap-sides-btn:hover { background: var(--surface-3); }
+}
+.swap-sides-btn:active {
+  transform: scale(0.97);
+}
+
 @media (hover: hover) {
   .clear-draft-btn:hover { background: var(--surface-3); color: var(--text-1); }
 }
