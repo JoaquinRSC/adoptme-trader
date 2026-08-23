@@ -115,6 +115,7 @@ export default {
     theyGive: 'They give',
     addYou: 'Add pet — you give',
     addThem: 'Add pet — they give',
+    swapSides: 'Swap sides',
   },
   wfl: {
     title: 'Win / Fair / Lose',
