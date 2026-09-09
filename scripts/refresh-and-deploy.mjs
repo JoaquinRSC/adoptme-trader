@@ -26,6 +26,7 @@ const CACHE_FILES = [
   'src/data/amv-cache.json',
   'src/data/elve-cache.json',
   'src/data/elve-ids.json',
+  'src/data/elve-meta.json',
   'src/data/items-cache.json',
 ]
 const deploy = !process.argv.includes('--no-deploy')

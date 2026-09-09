@@ -41,7 +41,7 @@ jobs:
           git config user.email "github-actions[bot]@users.noreply.github.com"
           # A cache change is the only thing that warrants a redeploy; a
           # snapshot-only change is committed for history but does not deploy.
-          git add src/data/amv-cache.json src/data/elve-cache.json src/data/elve-ids.json src/data/items-cache.json
+          git add src/data/amv-cache.json src/data/elve-cache.json src/data/elve-ids.json src/data/elve-meta.json src/data/items-cache.json
           if git diff --staged --quiet; then
             echo "No value changes — will not deploy."
             echo "changed=false" >> "$GITHUB_OUTPUT"

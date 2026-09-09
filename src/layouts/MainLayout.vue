@@ -138,6 +138,7 @@ import { matPets, matBalance, matHelpOutline, matBrightnessAuto, matLightMode, m
 import { version } from '../../package.json'
 import { useInventoryStore } from 'src/stores/inventory'
 import { useTheme } from 'src/composables/useTheme'
+import { useAdvancedMode } from 'src/composables/useAdvancedMode'
 import { formFill } from 'src/types'
 import { SITE_ORIGIN } from 'src/config'
 
@@ -193,6 +194,9 @@ let pingInterval: ReturnType<typeof setInterval> | null = null
 onMounted(() => {
   inventory.hydrate()
   theme.init()
+  // Capture ?advanced=<token> from any route so the owner-only trade tools
+  // become reachable (they render only on the Trade page).
+  useAdvancedMode().init()
   // Locale starts 'en' so SSR and the first client render match; then switch to
   // the saved or browser preference — a reactive change, not a hydration mismatch.
   try {

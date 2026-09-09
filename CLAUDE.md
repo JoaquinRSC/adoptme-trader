@@ -171,7 +171,7 @@ Automated: `.github/workflows/refresh-values.yml` runs every 4h — fetches valu
 Manual (local) update, if ever needed:
 1. `npm run fetch-values` (requires curl)
 2. `npm run snapshot-values` (optional — normally the workflow owns snapshots)
-3. Commit `src/data/amv-cache.json`, `src/data/elve-cache.json`, `src/data/items-cache.json`, `src/data/history/`
+3. Commit `src/data/amv-cache.json`, `src/data/elve-cache.json`, `src/data/elve-ids.json`, `src/data/elve-meta.json`, `src/data/items-cache.json`, `src/data/history/`
 4. `flyctl deploy`
 
 ## Phase roadmap

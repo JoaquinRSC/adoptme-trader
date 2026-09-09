@@ -268,8 +268,14 @@ async function fetchElve () {
     elveItems[catKey][name] = parseFloat(im[1])
   }
   const itemCount = Object.values(elveItems).reduce((s, c) => s + Object.keys(c).length, 0)
-  console.log(`${Object.keys(result).length} pets, ${itemCount} items, ${Object.keys(idMap).length} IDs`)
-  return { pets: result, items: elveItems, idMap }
+
+  // Value-list version — consumed by the owner-only Elve listing generator.
+  // Elvebredd renamed the field `version` → `initialVersion` (calculator props).
+  const verMatch = html.match(/\\"initialVersion\\":(\d+)/) ?? html.match(/\\"version\\":(\d+)/)
+  const version  = verMatch ? parseInt(verMatch[1]) : null
+
+  console.log(`${Object.keys(result).length} pets, ${itemCount} items, ${Object.keys(idMap).length} IDs, v${version ?? '?'}`)
+  return { pets: result, items: elveItems, idMap, version }
 }
 
 // ── Non-pet categories ────────────────────────────────────────────────────────
@@ -346,12 +352,16 @@ async function main () {
 
   let elveItems = {}
   try {
-    const { pets: elve, items, idMap } = await fetchElve()
+    const { pets: elve, items, idMap, version } = await fetchElve()
     elveItems = items
     writeFileSync(join(DATA_DIR, 'elve-cache.json'), JSON.stringify(elve))
     writeFileSync(join(DATA_DIR, 'elve-ids.json'), JSON.stringify(idMap))
     console.log('  ✓ src/data/elve-cache.json saved')
     console.log('  ✓ src/data/elve-ids.json saved')
+    if (version) {
+      writeFileSync(join(DATA_DIR, 'elve-meta.json'), JSON.stringify({ version }))
+      console.log('  ✓ src/data/elve-meta.json saved')
+    }
     ok = true
   } catch (e) {
     console.error('  ✗ Elvebredd failed:', e.message)

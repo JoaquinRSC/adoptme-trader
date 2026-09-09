@@ -1,7 +1,9 @@
 import { defineSsrMiddleware } from '#q-app/wrappers'
-import { json as parseJson, type Response } from 'express'
+import { json as parseJson, type Request, type Response, type NextFunction } from 'express'
 import { existsSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
+import { execFile } from 'node:child_process'
+import { timingSafeEqual } from 'node:crypto'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -52,6 +54,29 @@ const AMVGG_DEMAND_FIELDS: Array<[string, string]> = [
 
 const ELVE_FORMS = ['normal', 'fly', 'ride', 'fr', 'n', 'nf', 'nr', 'nfr', 'm', 'mf', 'mr', 'mfr'] as const
 
+// Owner-only trade tools (advanced mode): form → the `type` string AMVGG's
+// createPost expects, and form → the boolean attribute set Elvebredd listings use.
+const FORM_TO_AMVGG_TYPE: Record<string, string> = {
+  normal: '', fly: 'f', ride: 'r', fr: 'fr',
+  n: 'n', nf: 'nf', nr: 'nr', nfr: 'nfr',
+  m: 'm', mf: 'mf', mr: 'mr', mfr: 'mfr',
+}
+
+const FORM_TO_ELVE_ATTRS: Record<string, { fly: boolean; ride: boolean; default: boolean; neon: boolean; mega: boolean }> = {
+  normal: { fly: false, ride: false, default: true,  neon: false, mega: false },
+  fly:    { fly: true,  ride: false, default: false, neon: false, mega: false },
+  ride:   { fly: false, ride: true,  default: false, neon: false, mega: false },
+  fr:     { fly: true,  ride: true,  default: false, neon: false, mega: false },
+  n:      { fly: false, ride: false, default: false, neon: true,  mega: false },
+  nf:     { fly: true,  ride: false, default: false, neon: true,  mega: false },
+  nr:     { fly: false, ride: true,  default: false, neon: true,  mega: false },
+  nfr:    { fly: true,  ride: true,  default: false, neon: true,  mega: false },
+  m:      { fly: false, ride: false, default: false, neon: false, mega: true  },
+  mf:     { fly: true,  ride: false, default: false, neon: false, mega: true  },
+  mr:     { fly: false, ride: true,  default: false, neon: false, mega: true  },
+  mfr:    { fly: true,  ride: true,  default: false, neon: false, mega: true  },
+}
+
 // ── Static file cache loader ──────────────────────────────────────────────────
 
 function loadStaticCache<T> (filename: string): T | null {
@@ -76,6 +101,10 @@ function getElveRecord (name: string | undefined): Record<string, number> | unde
 }
 let   elveFetchDone    = false
 let   elveFetchInFlight: Promise<void> | null = null
+// Elvebredd's listing schema version, refreshed with the value caches (see
+// scripts/fetch-values.mjs → src/data/elve-meta.json). Only read by the
+// owner-only Elve listing generator.
+let   elveVersion      = 243
 
 const imageCache = new Map<string, string | null>()
 let   petNamesCache: string[] | null = null
@@ -92,6 +121,23 @@ function fetchWithTimeout (url: string, timeoutMs = 12000, extraHeaders: Record<
     headers: { 'User-Agent': USER_AGENT, ...extraHeaders },
     signal: controller.signal,
   }).finally(() => clearTimeout(id))
+}
+
+// POST via curl — AMVGG's Cloudflare 403s Node's fetch on its TLS fingerprint,
+// same reason fetch-values.mjs shells out to curl (present in the Docker image).
+function curlPost (url: string, jsonBody: string, headers: string[] = [], timeoutMs = 12000): Promise<{ ok: boolean; status: number; text: () => string }> {
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error('curl timeout')), timeoutMs)
+    const headerArgs = headers.flatMap(h => ['-H', h])
+    execFile('curl', ['-s', '-w', '\n%{http_code}', '-X', 'POST', '--data-binary', jsonBody, '--max-time', String(Math.floor(timeoutMs / 1000)), '-A', USER_AGENT, ...headerArgs, url], { maxBuffer: 10 * 1024 * 1024 }, (err, stdout) => {
+      clearTimeout(timer)
+      if (err) { reject(err); return }
+      const lastNl = stdout.lastIndexOf('\n')
+      const body   = lastNl >= 0 ? stdout.slice(0, lastNl) : stdout
+      const status = parseInt(lastNl >= 0 ? stdout.slice(lastNl + 1).trim() : '0') || 0
+      resolve({ ok: status >= 200 && status < 300, status, text: () => body })
+    })
+  })
 }
 
 // ── Items cache (non-pet categories) ─────────────────────────────────────────
@@ -576,6 +622,8 @@ async function warmElveCache (): Promise<void> {
       for (const [name, vals] of Object.entries(staticElve)) elveValuesCache.set(name, vals)
       const staticIds = loadStaticCache<Record<string, number>>('elve-ids.json')
       if (staticIds) for (const [name, id] of Object.entries(staticIds)) elveIdMap.set(name, id)
+      const staticMeta = loadStaticCache<{ version?: number }>('elve-meta.json')
+      if (staticMeta?.version) elveVersion = staticMeta.version
       console.log(`Loaded ${elveValuesCache.size} pets, ${elveIdMap.size} IDs from static Elve cache`)
       elveFetchDone = true
       return
@@ -645,6 +693,73 @@ async function warmElveCache (): Promise<void> {
 async function fetchElveValue (petName: string, form: string): Promise<number | null> {
   await warmElveCache()
   return getElveRecord(petName)?.[form] ?? null
+}
+
+// ── Owner-only trade tools (advanced mode) ────────────────────────────────────
+
+// Gate for the publish/generate endpoints: the client sends the advanced-mode
+// token as `x-advanced-token`; it must equal the ADVANCED_TOKEN env var. With no
+// token configured the gate stays open in dev only.
+const ADVANCED_TOKEN = process.env.ADVANCED_TOKEN
+function tokenMatches (provided: unknown): boolean {
+  if (typeof provided !== 'string' || !ADVANCED_TOKEN) return false
+  const a = Buffer.from(provided)
+  const b = Buffer.from(ADVANCED_TOKEN)
+  return a.length === b.length && timingSafeEqual(a, b)
+}
+function requireAdvanced (req: Request, res: Response, next: NextFunction) {
+  if (tokenMatches(req.headers['x-advanced-token'])) return next()
+  if (!ADVANCED_TOKEN && process.env.NODE_ENV !== 'production') return next()
+  res.status(403).json({ error: 'Advanced mode required' })
+}
+
+// One grid item in AMVGG's createPost payload. Category 13 = "custom" pet, which
+// carries its own per-form values so AMVGG doesn't recompute from a base.
+function buildAmvggPetItem (name: string, form: string): Record<string, unknown> {
+  const details = detailsCache.get(name)
+  const item: Record<string, unknown> = {
+    id:       Math.random() * 1e13,
+    name,
+    category: 13,
+    type:     FORM_TO_AMVGG_TYPE[form] ?? '',
+    fg:       false,
+  }
+  if (details) {
+    for (const [field, formKey] of AMVGG_VALUE_FIELDS) {
+      const val = details.values[formKey]
+      item[field] = val != null ? String(val) : null
+    }
+    for (const [field, formKey] of AMVGG_DEMAND_FIELDS) {
+      item[field] = details.demands[formKey] ?? null
+    }
+  }
+  return item
+}
+
+function buildAmvggNonPetItem (name: string, itemCategory: string): Record<string, unknown> {
+  const entry = itemsCache.get(`${itemCategory}:${name}`)
+  return {
+    id:     Math.random() * 1e13,
+    name,
+    value:  entry ? String(entry.value) : '0',
+    demand: entry?.demand ?? 'Medium',
+  }
+}
+
+function buildElvePet (item: { name: string; form: string }, side: 'your' | 'their') {
+  const id    = elveIdMap.get(item.name) ?? 0
+  const attrs = { ...(FORM_TO_ELVE_ATTRS[item.form] ?? FORM_TO_ELVE_ATTRS['normal']!) }
+  const value = getElveRecord(item.name)?.[item.form] ?? 0
+  return {
+    id,
+    name:           item.name,
+    image:          `/images/pets/${item.name}.png`,
+    value,
+    secondaryValue: value > 0 ? value / 240 : 0,
+    game:           'Adopt Me',
+    attributes:     attrs,
+    side,
+  }
 }
 
 // ── Middleware ────────────────────────────────────────────────────────────────
@@ -821,5 +936,70 @@ export default defineSsrMiddleware(({ app }) => {
       result.push({ name: key.slice(key.indexOf(':') + 1), ...data })
     }
     res.json(result)
+  })
+
+  // ── Owner-only: publish a trade to AMVGG (advanced mode) ────────────────────
+  // The AMVGG session cookie is supplied by the client per request and only
+  // forwarded to AMVGG — never stored or logged server-side.
+  app.post('/api/trade/post-amvgg', requireAdvanced, async (req, res) => {
+    interface TradeItem { name: string; form: string; itemCategory?: string }
+    const { cookie, offered, wanted } = req.body as {
+      cookie:  string
+      offered: TradeItem[]
+      wanted:  TradeItem[]
+    }
+
+    if (!cookie || !offered?.length || !wanted?.length)
+      return res.status(400).json({ ok: false, error: 'Missing required fields' })
+
+    await Promise.all([warmDetailsCache(), warmItemsCache()])
+
+    const buildItem = (item: TradeItem) =>
+      (!item.itemCategory || item.itemCategory === 'pet')
+        ? buildAmvggPetItem(item.name, item.form)
+        : buildAmvggNonPetItem(item.name, item.itemCategory)
+
+    const payload = {
+      leftGridItems:  offered.map(buildItem),
+      rightGridItems: wanted.map(buildItem),
+    }
+
+    try {
+      const amvResp = await curlPost(
+        'https://amvgg.com/api/createPost',
+        JSON.stringify(payload),
+        [
+          'Content-Type: application/json',
+          `Cookie: ${cookie}`,
+          'Referer: https://amvgg.com/trades/create',
+          'Origin: https://amvgg.com',
+        ],
+      )
+
+      const text = amvResp.text()
+      if (!amvResp.ok) return res.status(amvResp.status).json({ ok: false, error: text })
+
+      let data: unknown
+      try { data = JSON.parse(text) } catch { data = text }
+      return res.json({ ok: true, data })
+    } catch (e) {
+      return res.status(500).json({ ok: false, error: String(e) })
+    }
+  })
+
+  // ── Owner-only: build Elvebredd listing payloads (advanced mode) ────────────
+  // Returns the JSON the elvebredd.com/create-listing console script POSTs.
+  app.post('/api/trade/elve-build-payloads', requireAdvanced, async (req, res) => {
+    interface ElveTradeSpec { offered: { name: string; form: string }[]; wanted: { name: string; form: string }[] }
+    const { trades } = req.body as { trades: ElveTradeSpec[] }
+    if (!trades?.length) return res.status(400).json({ ok: false, error: 'Missing trades' })
+    await warmElveCache()
+    const payloads = trades.map(t => ({
+      game:      'Adopt Me',
+      version:   elveVersion,
+      ownerGive: t.offered.map(p => buildElvePet(p, 'your')),
+      ownerGet:  t.wanted.map(p => buildElvePet(p, 'their')),
+    }))
+    return res.json({ ok: true, payloads })
   })
 })

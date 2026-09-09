@@ -78,6 +78,14 @@
       <VerdictCard :your-total="yourTotal" :them-total="themTotal" />
     </div>
 
+    <!-- Owner-only trade tools (advanced mode) — publish to AMVGG + Elve script -->
+    <AdvancedTradeTools
+      v-if="advancedEnabled && (yourSide.length || themSide.length)"
+      class="adv-dock"
+      :offered="yourSide"
+      :wanted="themSide"
+    />
+
     <!-- YOUR side picker (tabs: My Pets / Other) -->
     <PetPicker
       v-model="showYourPicker"
@@ -111,6 +119,8 @@ import SourceToggle from 'src/components/SourceToggle.vue'
 import PetImage from 'src/components/PetImage.vue'
 import SkeletonBar from 'src/components/SkeletonBar.vue'
 import VerdictCard from 'src/components/VerdictCard.vue'
+import AdvancedTradeTools from 'src/components/AdvancedTradeTools.vue'
+import { useAdvancedMode } from 'src/composables/useAdvancedMode'
 import { notifyLoadError } from 'src/utils/notify'
 import { formatValue, demandStars, demandClass } from 'src/utils/format'
 import { useRecentStore } from 'src/stores/recent'
@@ -120,6 +130,9 @@ const valuesStore = useValuesStore()
 const inventory   = useInventoryStore()
 const draftsStore = useDraftsStore()
 const recentStore = useRecentStore()
+// Destructure so the template auto-unwraps the ref — `advanced.enabled` as a
+// nested property stays a ref object (always truthy).
+const { enabled: advancedEnabled } = useAdvancedMode()
 const { t }       = useI18n()
 
 // ── State ────────────────────────────────────────────────────────────────────
@@ -399,6 +412,8 @@ function addToThem (sel: PickerSelection) {
 @media (min-width: 768px) {
   .verdict-dock { bottom: 16px; }
 }
+
+.adv-dock { margin-top: 14px; }
 
 /* ── Motion ── */
 @media (prefers-reduced-motion: no-preference) {
