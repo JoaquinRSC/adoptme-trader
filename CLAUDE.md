@@ -10,6 +10,7 @@ npm run build          # Build SSR for production (outputs to dist/ssr/)
 npm run lint           # ESLint 9 flat config (eslint.config.mjs) — src/, src-ssr/, scripts/
 npm run fetch-values   # Pre-fetch AMVGG + Elvebredd values to src/data/*.json (run locally, then commit)
 npm run snapshot-values # Write today's compact value snapshot to src/data/history/ (idempotent per UTC day)
+npm run refresh-deploy # Full refresh + commit + push + deploy — run on a residential-IP box, NOT CI (see Value cache update workflow)
 flyctl deploy          # Deploy to Fly.io (app: amtrader, region: gru)
 ```
 
@@ -164,6 +165,8 @@ flyctl deploy
 ### Value cache update workflow
 
 Automated: `.github/workflows/refresh-values.yml` runs every 4h — fetches values, writes the daily snapshot (`snapshot-values.mjs`), commits whatever changed, and redeploys to Fly.io **only when the live caches changed** (a snapshot-only change is committed but does not deploy). Manual trigger available from the Actions tab.
+
+**Elvebredd is blocked from GitHub Actions IPs** (Cloudflare serves a challenge to datacenter IPs → `fetch-values.mjs` logs `✗ Elvebredd failed: No pet names found`). So the 4h workflow only keeps **AMVGG** fresh; `elve-cache.json` / `elve-ids.json` are left untouched and `fetch-values.mjs` carries the previous `items-cache.json` `elveValue`s forward instead of dropping them. To refresh Elvebredd, run `npm run refresh-deploy` (`scripts/refresh-and-deploy.mjs`) from a **residential-IP box** — it pulls, runs the full fetch + snapshot, commits, pushes, and deploys only when the live caches changed. Meant for an unattended schedule on a home PC (Windows Task Scheduler or pm2 cron); needs an authenticated `flyctl` (or `FLY_API_TOKEN`).
 
 Manual (local) update, if ever needed:
 1. `npm run fetch-values` (requires curl)

@@ -17,6 +17,7 @@
     "start": "node dist/ssr/index.js",
     "fetch-values": "node scripts/fetch-values.mjs",
     "snapshot-values": "node scripts/snapshot-values.mjs",
+    "refresh-deploy": "node scripts/refresh-and-deploy.mjs",
     "lint": "eslint \"src/**/*.{js,ts,vue}\" \"src-ssr/**/*.{js,ts}\" \"scripts/**/*.mjs\" eslint.config.mjs"
   },
   "dependencies": {
