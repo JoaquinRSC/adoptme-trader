@@ -117,6 +117,12 @@ export default {
     addThem: 'Add pet — they give',
     advanced: {
       title: 'Owner tools',
+      suggestTitle: 'Generate a similar-value trade',
+      search: 'Find matches',
+      searching: 'Searching…',
+      suggestFor: 'Closest to {value} — tap one to set “They give”',
+      noMatches: 'No comparable pets found.',
+      suggestNeedOffer: 'Add pets to “You give” first.',
       amvgg: 'AMVGG',
       connected: 'Connected',
       notConnected: 'Not connected',

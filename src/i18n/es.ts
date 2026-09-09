@@ -117,6 +117,12 @@ export default {
     addThem: 'Agregar pet — te dan',
     advanced: {
       title: 'Herramientas privadas',
+      suggestTitle: 'Generar un trade de valor similar',
+      search: 'Buscar',
+      searching: 'Buscando…',
+      suggestFor: 'Lo más cercano a {value} — tocá uno para poner «Te dan»',
+      noMatches: 'No se encontraron pets comparables.',
+      suggestNeedOffer: 'Agregá pets a «Vos das» primero.',
       amvgg: 'AMVGG',
       connected: 'Conectado',
       notConnected: 'Sin conectar',

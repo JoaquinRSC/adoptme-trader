@@ -78,13 +78,24 @@
       <VerdictCard :your-total="yourTotal" :them-total="themTotal" />
     </div>
 
-    <!-- Owner-only trade tools (advanced mode) — publish to AMVGG + Elve script -->
-    <AdvancedTradeTools
-      v-if="advancedEnabled && (yourSide.length || themSide.length)"
-      class="adv-dock"
-      :offered="yourSide"
-      :wanted="themSide"
-    />
+    <!-- Owner-only trade tools (advanced mode) -->
+    <template v-if="advancedEnabled">
+      <!-- Suggest pets of similar value for the other side of the trade -->
+      <TradeSuggester
+        v-if="yourSide.length"
+        class="adv-dock"
+        :offered="yourSide"
+        :source="valueSource"
+        @pick="applySuggestion"
+      />
+      <!-- Publish to AMVGG + Elve listing script -->
+      <AdvancedTradeTools
+        v-if="yourSide.length || themSide.length"
+        class="adv-dock"
+        :offered="yourSide"
+        :wanted="themSide"
+      />
+    </template>
 
     <!-- YOUR side picker (tabs: My Pets / Other) -->
     <PetPicker
@@ -120,6 +131,7 @@ import PetImage from 'src/components/PetImage.vue'
 import SkeletonBar from 'src/components/SkeletonBar.vue'
 import VerdictCard from 'src/components/VerdictCard.vue'
 import AdvancedTradeTools from 'src/components/AdvancedTradeTools.vue'
+import TradeSuggester from 'src/components/TradeSuggester.vue'
 import { useAdvancedMode } from 'src/composables/useAdvancedMode'
 import { notifyLoadError } from 'src/utils/notify'
 import { formatValue, demandStars, demandClass } from 'src/utils/format'
@@ -293,6 +305,12 @@ function addToYour (sel: PickerSelection) {
 
 function addToThem (sel: PickerSelection) {
   void addPetToSide('them', sel.name, sel.form, sel.category)
+}
+
+// Owner tool: a suggestion is a proposed counterpart — it replaces "they give".
+function applySuggestion (sel: { name: string; form: PetForm }) {
+  themSide.value = []
+  void addPetToSide('them', sel.name, sel.form)
 }
 </script>
 
