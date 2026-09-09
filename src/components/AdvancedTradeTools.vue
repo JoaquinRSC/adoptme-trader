@@ -41,17 +41,11 @@
     </template>
 
     <template v-else>
-      <button
-        class="adv-btn"
-        :disabled="posting || !offered.length || !wanted.length"
-        @click="publishTrade"
-      >
+      <button class="adv-btn" :disabled="posting || !ready" @click="publishTrade">
         <q-spinner v-if="posting" size="14px" />
         <span>{{ posting ? $t('trade.advanced.publishing') : $t('trade.advanced.publish') }}</span>
       </button>
-      <p v-if="!offered.length || !wanted.length" class="adv-hint">
-        {{ $t('trade.advanced.needBothSides') }}
-      </p>
+      <p v-if="!ready" class="adv-hint">{{ $t('trade.advanced.needBothSides') }}</p>
     </template>
 
     <p v-if="postOk" class="adv-result is-ok">
@@ -67,11 +61,7 @@
       <span class="adv-plat-name">{{ $t('trade.advanced.elve') }}</span>
     </div>
     <p class="adv-hint">{{ $t('trade.advanced.elveHint') }}</p>
-    <button
-      class="adv-btn"
-      :disabled="elveLoading || !offered.length || !wanted.length"
-      @click="copyElveScript"
-    >
+    <button class="adv-btn" :disabled="elveLoading || !ready" @click="copyElveScript">
       <q-spinner v-if="elveLoading" size="14px" />
       <span>{{ elveCopied ? '✓ ' + $t('trade.advanced.elveCopied')
         : elveLoading ? $t('trade.advanced.elveGenerating')
@@ -81,7 +71,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useAdvancedMode } from 'src/composables/useAdvancedMode'
 import type { SideEntry } from 'src/stores/drafts'
@@ -90,6 +80,9 @@ const props = defineProps<{ offered: SideEntry[]; wanted: SideEntry[] }>()
 
 const { t } = useI18n()
 const { authHeaders } = useAdvancedMode()
+
+// Both publish paths need pets on both sides.
+const ready = computed(() => props.offered.length > 0 && props.wanted.length > 0)
 
 // ── AMVGG session cookie (stored locally, only ever forwarded to AMVGG) ───────
 const COOKIE_KEY = 'amvgg_cookie'
@@ -119,7 +112,7 @@ const postOk    = ref(false)
 const postError = ref('')
 
 async function publishTrade () {
-  if (!amvggCookie.value || !props.offered.length || !props.wanted.length) return
+  if (!amvggCookie.value || !ready.value) return
   posting.value = true
   postOk.value = false
   postError.value = ''
@@ -161,7 +154,7 @@ function buildElveScript (payloads: unknown[]): string {
 }
 
 async function copyElveScript () {
-  if (!props.offered.length || !props.wanted.length) return
+  if (!ready.value) return
   elveLoading.value = true
   try {
     const res = await fetch('/api/trade/elve-build-payloads', {
