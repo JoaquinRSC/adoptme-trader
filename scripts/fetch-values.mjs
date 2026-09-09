@@ -9,7 +9,7 @@
  * Then commit the updated JSON files and deploy.
  */
 
-import { writeFileSync, mkdirSync } from 'node:fs'
+import { writeFileSync, readFileSync, mkdirSync } from 'node:fs'
 import { join, dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { execSync } from 'node:child_process'
@@ -359,6 +359,25 @@ async function main () {
 
   try {
     const items = await fetchAmvggItems()
+
+    // Elvebredd is often blocked from datacenter IPs (e.g. GitHub Actions). When
+    // the live fetch failed, keep the elveValue already stored in items-cache.json
+    // instead of dropping it — a stale Elve value beats no Elve value.
+    if (!Object.keys(elveItems).length) {
+      try {
+        const prev = JSON.parse(readFileSync(join(DATA_DIR, 'items-cache.json'), 'utf8'))
+        for (const [cat, catItems] of Object.entries(prev)) {
+          for (const [name, data] of Object.entries(catItems)) {
+            if (data?.elveValue == null) continue
+            if (!elveItems[cat]) elveItems[cat] = {}
+            elveItems[cat][name] = data.elveValue
+          }
+        }
+        const carried = Object.values(elveItems).reduce((s, c) => s + Object.keys(c).length, 0)
+        if (carried) console.log(`  ↳ carried ${carried} elveValue(s) from the previous items-cache`)
+      } catch { /* no previous cache — nothing to carry */ }
+    }
+
     // Merge Elvebredd item values
     for (const [cat, catItems] of Object.entries(elveItems)) {
       if (!items[cat]) continue
