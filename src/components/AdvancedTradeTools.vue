@@ -74,6 +74,8 @@
 import { ref, computed, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useAdvancedMode } from 'src/composables/useAdvancedMode'
+import { useAmvggCookie } from 'src/composables/useAmvggCookie'
+import { buildElveScript } from 'src/utils/elveScript'
 import type { SideEntry } from 'src/stores/drafts'
 
 const props = defineProps<{ offered: SideEntry[]; wanted: SideEntry[] }>()
@@ -84,26 +86,22 @@ const { authHeaders } = useAdvancedMode()
 // Both publish paths need pets on both sides.
 const ready = computed(() => props.offered.length > 0 && props.wanted.length > 0)
 
-// ── AMVGG session cookie (stored locally, only ever forwarded to AMVGG) ───────
-const COOKIE_KEY = 'amvgg_cookie'
-const amvggCookie        = ref('')
+// ── AMVGG session cookie (shared with AutoTradePublisher) ────────────────────
+const { cookie: amvggCookie, load: loadCookie, save: saveCookie, clear: clearCookie } = useAmvggCookie()
 const cookieSessionData  = ref('')
 const cookieSessionToken = ref('')
 
-onMounted(() => { amvggCookie.value = localStorage.getItem(COOKIE_KEY) ?? '' })
+onMounted(loadCookie)
 
 function saveAmvggCookie () {
-  const combined = `__Secure-better-auth.session_data=${cookieSessionData.value.trim()}; __Secure-better-auth.session_token=${cookieSessionToken.value.trim()}`
-  amvggCookie.value = combined
-  localStorage.setItem(COOKIE_KEY, combined)
+  saveCookie(cookieSessionData.value, cookieSessionToken.value)
   cookieSessionData.value  = ''
   cookieSessionToken.value = ''
   postError.value = ''
 }
 
 function disconnectAmvgg () {
-  amvggCookie.value = ''
-  localStorage.removeItem(COOKIE_KEY)
+  clearCookie()
 }
 
 // ── Publish to AMVGG ─────────────────────────────────────────────────────────
@@ -145,13 +143,6 @@ async function publishTrade () {
 // ── Elvebredd listing script ─────────────────────────────────────────────────
 const elveLoading = ref(false)
 const elveCopied  = ref(false)
-
-// The console script pasted at elvebredd.com/create-listing: it reads the live
-// Turnstile token + csrf cookie from that page and POSTs each listing.
-function buildElveScript (payloads: unknown[]): string {
-  const p = JSON.stringify(payloads)
-  return `(async()=>{if(!window.turnstile){alert('Run this on elvebredd.com/create-listing');return;}const csrf=document.cookie.split(';').map(c=>c.trim()).find(c=>c.startsWith('csrfToken='))?.replace('csrfToken=','')||'';const token=window.turnstile.getResponse();if(!token){alert('No token — reload the page');return;}const payloads=${p};let ok=0,fail=0;for(const p of payloads){p.turnstileToken=token;try{const r=await fetch('/api/create-listing',{method:'POST',credentials:'include',headers:{'Content-Type':'application/json','x-csrf-token':csrf},body:JSON.stringify(p)});const d=await r.json();if(d.id||d.success){ok++;console.log('OK',p.ownerGet[0]?.name);}else{fail++;console.error('FAIL',d);}}catch(e){fail++;console.error(e);}}alert('Done: '+ok+' ok, '+fail+' failed');})();`
-}
 
 async function copyElveScript () {
   if (!ready.value) return

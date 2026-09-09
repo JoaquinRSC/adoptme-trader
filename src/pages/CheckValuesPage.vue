@@ -88,13 +88,10 @@
         :source="valueSource"
         @pick="applySuggestion"
       />
-      <!-- Publish to AMVGG + Elve listing script -->
-      <AdvancedTradeTools
-        v-if="yourSide.length || themSide.length"
-        class="adv-dock"
-        :offered="yourSide"
-        :wanted="themSide"
-      />
+      <!-- Publish to AMVGG + Elve listing script (also holds the AMVGG connect form) -->
+      <AdvancedTradeTools class="adv-dock" :offered="yourSide" :wanted="themSide" />
+      <!-- Auto: generate + publish similar-value trades in a loop -->
+      <AutoTradePublisher class="adv-dock" />
     </template>
 
     <!-- YOUR side picker (tabs: My Pets / Other) -->
@@ -132,6 +129,7 @@ import SkeletonBar from 'src/components/SkeletonBar.vue'
 import VerdictCard from 'src/components/VerdictCard.vue'
 import AdvancedTradeTools from 'src/components/AdvancedTradeTools.vue'
 import TradeSuggester from 'src/components/TradeSuggester.vue'
+import AutoTradePublisher from 'src/components/AutoTradePublisher.vue'
 import { useAdvancedMode } from 'src/composables/useAdvancedMode'
 import { notifyLoadError } from 'src/utils/notify'
 import { formatValue, demandStars, demandClass } from 'src/utils/format'
