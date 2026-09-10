@@ -152,7 +152,7 @@ export default {
         stop: 'Detener',
         copyElve: 'Copiar script Elve ({n})',
         needCookie: 'Conectá AMVGG arriba para publicar (la simulación anda sin eso).',
-        needInventory: 'Agregá al menos 2 pets con valor AMV + Elve a Mis Pets.',
+        needInventory: 'Agregá al menos 2 ítems con valor AMV + Elve a Mis Pets.',
         noTrades: 'No hay trades dentro de la tolerancia en ambas fuentes — ampliala o cambiá la forma.',
         capReached: 'Tope de sesión ({n}) alcanzado — parado.',
         statusLine: 'Ciclo {c} · publicados {p} · próximo en {t}',

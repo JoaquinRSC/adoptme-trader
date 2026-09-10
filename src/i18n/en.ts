@@ -152,7 +152,7 @@ export default {
         stop: 'Stop',
         copyElve: 'Copy Elve script ({n})',
         needCookie: 'Connect AMVGG above to publish (dry run works without it).',
-        needInventory: 'Add at least 2 pets with AMV + Elve values to My Pets.',
+        needInventory: 'Add at least 2 items with AMV + Elve values to My Pets.',
         noTrades: 'No trades within tolerance on both sources — widen it or pick another form.',
         capReached: 'Session cap ({n}) reached — stopped.',
         statusLine: 'Cycle {c} · published {p} · next in {t}',

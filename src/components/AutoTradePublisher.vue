@@ -117,7 +117,7 @@ const publishedCount = ref(0)
 const nextInSec     = ref(0)
 
 const canStart = computed(() =>
-  inventory.pets.filter(p => isPet(p.category)).length >= 2 && (dryRun.value || !!amvggCookie.value),
+  inventory.pets.length >= 2 && (dryRun.value || !!amvggCookie.value),
 )
 
 const countdownLabel = computed(() => {
@@ -136,21 +136,47 @@ function statusIcon (s: AutoTrade['status']) {
 
 const sleep = (ms: number) => new Promise(r => setTimeout(r, ms))
 
+interface PricedInvItem { name: string; form: PetForm; category?: ItemCategory; amv: number; elve: number }
+
+// Price every inventory row — pets via the batch endpoints, non-pet items via
+// /api/item/details (which carries both the AMV and the Elve value). The offered
+// side of an auto-trade can be anything the user owns; only the wanted side is
+// pets-only (it's drawn from values.allPets).
+async function priceInventory (): Promise<PricedInvItem[]> {
+  const pets    = inventory.pets.filter(p => isPet(p.category))
+  const nonPets = inventory.pets.filter(p => !isPet(p.category))
+
+  const petReqs = pets.map(p => ({ name: p.name, form: p.form }))
+  const [petAmv, petElve] = await Promise.all([values.getBatch(petReqs), values.getElveBatch(petReqs)])
+  const petAmvMap  = new Map(petAmv.map(r => [`${r.name}|${r.form}`, r.value]))
+  const petElveMap = new Map(petElve.map(r => [`${r.name}|${r.form}`, r.value]))
+
+  const nonPetPriced = await Promise.all(nonPets.map(async (p): Promise<PricedInvItem> => {
+    try {
+      const res = await fetch(`/api/item/details?name=${encodeURIComponent(p.name)}&category=${p.category}`)
+      const d   = await res.json() as { value: number | null; elveValue: number | null }
+      return { name: p.name, form: p.form, category: p.category, amv: d.value ?? 0, elve: d.elveValue ?? 0 }
+    } catch {
+      return { name: p.name, form: p.form, category: p.category, amv: 0, elve: 0 }
+    }
+  }))
+
+  return [
+    ...pets.map((p): PricedInvItem => ({
+      name: p.name, form: p.form, category: p.category,
+      amv:  petAmvMap.get(`${p.name}|${p.form}`)  ?? 0,
+      elve: petElveMap.get(`${p.name}|${p.form}`) ?? 0,
+    })),
+    ...nonPetPriced,
+  ]
+}
+
 // ── Generate a batch of both-source-fair trades from the inventory ───────────
 async function generateBatch () {
   await values.loadAllPets()
 
-  const invPets = inventory.pets.filter(p => isPet(p.category))
-  const invReqs = invPets.map(p => ({ name: p.name, form: p.form }))
-  const [invAmv, invElve] = await Promise.all([values.getBatch(invReqs), values.getElveBatch(invReqs)])
-  const invAmvMap  = new Map(invAmv.map(r => [`${r.name}|${r.form}`, r.value]))
-  const invElveMap = new Map(invElve.map(r => [`${r.name}|${r.form}`, r.value]))
-
-  const eligible = invPets.filter(p => {
-    const a = invAmvMap.get(`${p.name}|${p.form}`)
-    const e = invElveMap.get(`${p.name}|${p.form}`)
-    return a != null && a > 0 && e != null && e > 0
-  })
+  const priced   = await priceInventory()
+  const eligible = priced.filter(p => p.amv > 0 && p.elve > 0)
   if (eligible.length < 2) { genError.value = t('trade.advanced.auto.needInventory'); trades.value = []; return }
 
   const wantReqs = values.allPets.map(p => ({ name: p.name, form: desiredForm.value }))
@@ -167,8 +193,8 @@ async function generateBatch () {
     const shuffled = [...eligible].sort(() => Math.random() - 0.5)
     const count    = Math.min(2 + Math.floor(Math.random() * 4), shuffled.length)
     const offered  = shuffled.slice(0, count)
-    const offeredAmv  = offered.reduce((s, p) => s + (invAmvMap.get(`${p.name}|${p.form}`) ?? 0), 0)
-    const offeredElve = offered.reduce((s, p) => s + (invElveMap.get(`${p.name}|${p.form}`) ?? 0), 0)
+    const offeredAmv  = offered.reduce((s, p) => s + p.amv, 0)
+    const offeredElve = offered.reduce((s, p) => s + p.elve, 0)
     if (offeredAmv <= 0 || offeredElve <= 0) continue
 
     const offeredNames = new Set(offered.map(p => p.name))
