@@ -87,7 +87,7 @@ const { authHeaders } = useAdvancedMode()
 const { cookie: amvggCookie, load: loadCookie, clear: clearCookie } = useAmvggCookie()
 
 const BATCH_SIZE  = 5
-const CYCLE_MS    = 150_000
+const CYCLE_MS    = 60_000
 const POST_GAP_MS = 2_500
 const SESSION_CAP = 100
 const TOLERANCES  = [3, 5, 8] as const
