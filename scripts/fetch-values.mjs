@@ -160,6 +160,36 @@ async function fetchAmvgg () {
   return result
 }
 
+// ── Trending (biggest risers/fallers — lets Auto-Publish steer away from pets
+// whose value is actively crashing, "pets basura") ──────────────────────────────
+
+function parseTrendForm (raw) {
+  if (raw === 'null') return null
+  const c7  = /\\"change7\\":(-?[\d.]+)/.exec(raw)
+  const c30 = /\\"change30\\":(-?[\d.]+)/.exec(raw)
+  return { change7: c7 ? parseFloat(c7[1]) : null, change30: c30 ? parseFloat(c30[1]) : null }
+}
+
+async function fetchTrending () {
+  process.stdout.write('Fetching AMVGG trending... ')
+  const html = curlGet('https://amvgg.com/trending')
+  if (!html || html.length < 1000) throw new Error('Empty or too-short response from curl')
+
+  // Each item is a flat JSON object embedded (double-escaped) in the page's
+  // RSC payload — same "\"key\":value" shape fetchAmvgg() parses, so a full
+  // JSON.parse of the surrounding array is unreliable; per-item regex isn't.
+  const itemRe = /\\"name\\":\\"([^"\\]+)\\",\\"category\\":\\"([^"\\]+)\\",\\"updates\\":(\d+),\\"fr\\":(null|\{[^}]*\}),\\"nfr\\":(null|\{[^}]*\}),\\"mfr\\":(null|\{[^}]*\})\}/g
+  const result = {}
+  let m
+  while ((m = itemRe.exec(html)) !== null) {
+    const [, name, category, , frRaw, nfrRaw, mfrRaw] = m
+    if (category !== 'Pets') continue
+    result[name] = { fr: parseTrendForm(frRaw), nfr: parseTrendForm(nfrRaw), mfr: parseTrendForm(mfrRaw) }
+  }
+  console.log(`${Object.keys(result).length} pets`)
+  return result
+}
+
 // ── Elvebredd ─────────────────────────────────────────────────────────────────
 
 const ELVE_FORMS = ['normal','fly','ride','fr','n','nf','nr','nfr','m','mf','mr','mfr']
@@ -348,6 +378,14 @@ async function main () {
     ok = true
   } catch (e) {
     console.error('  ✗ AMVGG failed:', e.message)
+  }
+
+  try {
+    const trending = await fetchTrending()
+    writeFileSync(join(DATA_DIR, 'amv-trending-cache.json'), JSON.stringify(trending))
+    console.log('  ✓ src/data/amv-trending-cache.json saved')
+  } catch (e) {
+    console.error('  ✗ Trending failed:', e.message)
   }
 
   let elveItems = {}

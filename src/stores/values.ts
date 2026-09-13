@@ -102,6 +102,17 @@ export const useValuesStore = defineStore('values', () => {
     return cache.value[cacheKey(name, form)] ?? null
   }
 
+  const trendingCache = ref<Record<string, number | null>>({})
+
+  async function getTrendingBatch (requests: Array<{ name: string; form: PetForm }>) {
+    const missing = requests.filter(r => !(r.name in trendingCache.value))
+    if (missing.length > 0) {
+      const result = await apiPost<Record<string, number | null>>('/api/pet/trending-batch', missing)
+      for (const [k, v] of Object.entries(result)) trendingCache.value[k] = v
+    }
+    return requests.map(r => ({ ...r, change30: trendingCache.value[r.name] ?? null }))
+  }
+
   const itemsAmvCache = ref<Record<string, number | null>>({})
 
   async function getItemValue (name: string, category: string): Promise<number | null> {
@@ -116,5 +127,5 @@ export const useValuesStore = defineStore('values', () => {
     return itemsAmvCache.value[`${category}:${name}`] ?? null
   }
 
-  return { cache, allPets, loadingAllPets, getValue, getBatch, loadAllPets, getCached, getElveValue, getElveBatch, getItemValue, getItemCached, itemsAmvCache }
+  return { cache, allPets, loadingAllPets, getValue, getBatch, loadAllPets, getCached, getElveValue, getElveBatch, getItemValue, getItemCached, itemsAmvCache, getTrendingBatch }
 })

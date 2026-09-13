@@ -112,6 +112,29 @@ let   petNamesCache: string[] | null = null
 const itemsCache           = new Map<string, { value: number; demand: string | null; elveValue?: number | null }>()
 let   itemsCacheFilled = false
 
+// Biggest risers/fallers on AMVGG (src/data/amv-trending-cache.json) — lets
+// Auto-Publish steer its "wanted" pick away from pets whose value is actively
+// crashing instead of just picking any fair-value match.
+interface TrendBucket { change7: number | null; change30: number | null }
+type TrendRecord = { fr: TrendBucket | null; nfr: TrendBucket | null; mfr: TrendBucket | null }
+const trendingCache = new Map<string, TrendRecord>()
+let   trendingCacheFilled = false
+
+const FORM_TO_TREND_BUCKET: Record<string, keyof TrendRecord> = {
+  normal: 'fr', fly: 'fr', ride: 'fr', fr: 'fr',
+  n: 'nfr', nf: 'nfr', nr: 'nfr', nfr: 'nfr',
+  m: 'mfr', mf: 'mfr', mr: 'mfr', mfr: 'mfr',
+}
+
+function warmTrendingCache (): void {
+  if (trendingCacheFilled) return
+  trendingCacheFilled = true
+  const staticTrending = loadStaticCache<Record<string, TrendRecord>>('amv-trending-cache.json')
+  if (!staticTrending) return
+  for (const [name, data] of Object.entries(staticTrending)) trendingCache.set(name, data)
+  console.log(`Loaded ${trendingCache.size} pets from static trending cache`)
+}
+
 // ── Fetch helpers ─────────────────────────────────────────────────────────────
 
 function fetchWithTimeout (url: string, timeoutMs = 12000, extraHeaders: Record<string, string> = {}): Promise<Response> {
@@ -808,6 +831,17 @@ export default defineSsrMiddleware(({ app }) => {
     const result: Record<string, number | null> = {}
     for (const { name, form } of requests) {
       result[`${name}__${form}`] = detailsCache.get(name)?.values[form] ?? null
+    }
+    res.json(result)
+  })
+
+  app.post('/api/pet/trending-batch', async (req, res) => {
+    const requests = req.body as Array<{ name: string; form: string }>
+    warmTrendingCache()
+    const result: Record<string, number | null> = {}
+    for (const { name, form } of requests) {
+      const bucket = FORM_TO_TREND_BUCKET[form] ?? 'fr'
+      result[name] = trendingCache.get(name)?.[bucket]?.change30 ?? null
     }
     res.json(result)
   })

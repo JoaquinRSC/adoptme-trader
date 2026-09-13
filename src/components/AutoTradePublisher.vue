@@ -92,6 +92,7 @@ const CYCLE_MS    = 150_000
 const POST_GAP_MS = 2_000
 const SESSION_CAP = 100
 const TOLERANCES  = [3, 5, 8] as const
+const TREND_DROP_CUTOFF = -5 // % over 30d — below this, AMVGG shows the pet actively losing value
 
 interface OfferPet { name: string; form: PetForm; category?: ItemCategory }
 interface AutoTrade {
@@ -181,9 +182,12 @@ async function generateBatch () {
   if (eligible.length < 2) { genError.value = t('trade.advanced.auto.needInventory'); trades.value = []; return }
 
   const wantReqs = values.allPets.map(p => ({ name: p.name, form: desiredForm.value }))
-  const [wantAmv, wantElve] = await Promise.all([values.getBatch(wantReqs), values.getElveBatch(wantReqs)])
-  const wantAmvMap  = new Map(wantAmv.map(r => [r.name, r.value]))
-  const wantElveMap = new Map(wantElve.map(r => [r.name, r.value]))
+  const [wantAmv, wantElve, wantTrend] = await Promise.all([
+    values.getBatch(wantReqs), values.getElveBatch(wantReqs), values.getTrendingBatch(wantReqs),
+  ])
+  const wantAmvMap   = new Map(wantAmv.map(r => [r.name, r.value]))
+  const wantElveMap  = new Map(wantElve.map(r => [r.name, r.value]))
+  const wantTrendMap = new Map(wantTrend.map(r => [r.name, r.change30]))
 
   const tol = tolerancePct.value / 100
   const lo = 1 - tol, hi = 1 + tol
@@ -204,11 +208,18 @@ async function generateBatch () {
       const wa = wantAmvMap.get(p.name), we = wantElveMap.get(p.name)
       if (wa == null || wa <= 0 || we == null || we <= 0) return false
       const ra = wa / offeredAmv, re = we / offeredElve
-      return ra >= lo && ra <= hi && re >= lo && re <= hi
+      if (ra < lo || ra > hi || re < lo || re > hi) return false
+      const trend = wantTrendMap.get(p.name)
+      if (trend != null && trend <= TREND_DROP_CUTOFF) return false // don't offer for pets in freefall
+      return true
     })
     if (!cands.length) continue
 
-    const w  = cands[Math.floor(Math.random() * cands.length)]!
+    // Among the fair matches, favor pets that are trending up rather than
+    // picking pure random — no point chasing a pet nobody wants anymore.
+    const ranked = [...cands].sort((a, b) => (wantTrendMap.get(b.name) ?? 0) - (wantTrendMap.get(a.name) ?? 0))
+    const topN   = Math.max(1, Math.ceil(ranked.length / 2))
+    const w  = ranked[Math.floor(Math.random() * topN)]!
     const wa = wantAmvMap.get(w.name)!, we = wantElveMap.get(w.name)!
     used.add(w.name)
     out.push({
