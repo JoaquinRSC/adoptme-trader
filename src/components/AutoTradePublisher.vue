@@ -87,8 +87,8 @@ const { authHeaders } = useAdvancedMode()
 const { cookie: amvggCookie, load: loadCookie, clear: clearCookie } = useAmvggCookie()
 
 const BATCH_SIZE  = 5
-const CYCLE_MS    = 60_000
-const POST_GAP_MS = 2_500
+const CYCLE_MS    = 150_000
+const POST_GAP_MS = 2_000
 const SESSION_CAP = 100
 const TOLERANCES  = [3, 5, 8] as const
 
@@ -187,10 +187,14 @@ async function generateBatch () {
   const tol = tolerancePct.value / 100
   const lo = 1 - tol, hi = 1 + tol
   const used = new Set<string>()
+  const usedOffered = new Set<string>()
   const out: AutoTrade[] = []
 
+  // Each owned pet can only be offered in one trade per batch — AMVGG returns
+  // 409 if the same item is offered in two of your active trades at once.
   for (let attempt = 0; out.length < BATCH_SIZE && attempt < 400; attempt++) {
-    const shuffled = [...eligible].sort(() => Math.random() - 0.5)
+    const pool     = eligible.filter(p => !usedOffered.has(p.name))
+    const shuffled = [...pool].sort(() => Math.random() - 0.5)
     const count    = Math.min(2 + Math.floor(Math.random() * 4), shuffled.length)
     const offered  = shuffled.slice(0, count)
     const offeredAmv  = offered.reduce((s, p) => s + p.amv, 0)
@@ -210,6 +214,7 @@ async function generateBatch () {
     const w  = cands[Math.floor(Math.random() * cands.length)]!
     const wa = wantAmvMap.get(w.name)!, we = wantElveMap.get(w.name)!
     used.add(w.name)
+    for (const p of offered) usedOffered.add(p.name)
     out.push({
       offered:    offered.map(p => ({ name: p.name, form: p.form, category: p.category })),
       wanted:     { name: w.name, form: desiredForm.value },
