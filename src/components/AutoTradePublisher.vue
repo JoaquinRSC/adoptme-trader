@@ -62,7 +62,8 @@
           <span :class="deltaClass(tr.amvDelta)">A {{ fmtDelta(tr.amvDelta) }}</span>
           <span :class="deltaClass(tr.elveDelta)">E {{ fmtDelta(tr.elveDelta) }}</span>
         </span>
-        <span class="auto-st">{{ statusIcon(tr.status) }}</span>
+        <span class="auto-st" :title="tr.error">{{ statusIcon(tr.status) }}</span>
+        <span v-if="tr.status === 'error' && tr.error" class="auto-err-text">{{ tr.error }}</span>
       </li>
     </ul>
   </section>
@@ -187,14 +188,10 @@ async function generateBatch () {
   const tol = tolerancePct.value / 100
   const lo = 1 - tol, hi = 1 + tol
   const used = new Set<string>()
-  const usedOffered = new Set<string>()
   const out: AutoTrade[] = []
 
-  // Each owned pet can only be offered in one trade per batch — AMVGG returns
-  // 409 if the same item is offered in two of your active trades at once.
   for (let attempt = 0; out.length < BATCH_SIZE && attempt < 400; attempt++) {
-    const pool     = eligible.filter(p => !usedOffered.has(p.name))
-    const shuffled = [...pool].sort(() => Math.random() - 0.5)
+    const shuffled = [...eligible].sort(() => Math.random() - 0.5)
     const count    = Math.min(2 + Math.floor(Math.random() * 4), shuffled.length)
     const offered  = shuffled.slice(0, count)
     const offeredAmv  = offered.reduce((s, p) => s + p.amv, 0)
@@ -214,7 +211,6 @@ async function generateBatch () {
     const w  = cands[Math.floor(Math.random() * cands.length)]!
     const wa = wantAmvMap.get(w.name)!, we = wantElveMap.get(w.name)!
     used.add(w.name)
-    for (const p of offered) usedOffered.add(p.name)
     out.push({
       offered:    offered.map(p => ({ name: p.name, form: p.form, category: p.category })),
       wanted:     { name: w.name, form: desiredForm.value },
@@ -450,6 +446,7 @@ onUnmounted(stop)
 
 .auto-trade {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 6px;
   padding: 5px 8px;
@@ -488,4 +485,12 @@ onUnmounted(stop)
 .d-far   { color: var(--negative); }
 
 .auto-st { min-width: 14px; text-align: center; font-weight: 800; }
+
+.auto-err-text {
+  flex-basis: 100%;
+  color: var(--negative);
+  font-size: 11px;
+  white-space: normal;
+  word-break: break-word;
+}
 </style>
