@@ -6,7 +6,7 @@ name: Refresh values
 on:
   schedule:
     - cron: '0 */4 * * *'   # every 4h at :00 UTC (values change often)
-  workflow_dispatch: {}     # manual "Run workflow" button
+  workflow_dispatch: {}     # manual "Run workflow" button — always deploys (e.g. after a local Elve refresh)
 
 jobs:
   refresh:
@@ -62,13 +62,13 @@ jobs:
           fi
 
       - name: Set up flyctl
-        if: steps.commit.outputs.changed == 'true'
+        if: steps.commit.outputs.changed == 'true' || github.event_name == 'workflow_dispatch'
         # Pinned to a full commit SHA (= tag v1) to avoid supply-chain risk:
         # this job has the FLY_API_TOKEN, so a floating @master must not be trusted.
         uses: superfly/flyctl-actions/setup-flyctl@ed8efb33836e8b2096c7fd3ba1c8afe303ebbff1  # v1
 
       - name: Deploy to Fly.io
-        if: steps.commit.outputs.changed == 'true'
+        if: steps.commit.outputs.changed == 'true' || github.event_name == 'workflow_dispatch'
         run: flyctl deploy --remote-only
         env:
           FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
