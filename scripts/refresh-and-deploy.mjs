@@ -24,6 +24,7 @@ import { fileURLToPath } from 'node:url'
 const REPO = join(dirname(fileURLToPath(import.meta.url)), '..')
 const CACHE_FILES = [
   'src/data/amv-cache.json',
+  'src/data/amv-trending-cache.json',
   'src/data/elve-cache.json',
   'src/data/elve-ids.json',
   'src/data/elve-meta.json',
