@@ -30,6 +30,11 @@ jobs:
       - name: Fetch latest values
         run: node scripts/fetch-values.mjs
 
+      # AMVGG blocks hotlinking, so sprites are served from public/sprites/.
+      # Only pets/items without a local sprite are downloaded.
+      - name: Fetch new sprites
+        run: node scripts/fetch-sprites.mjs
+
       # One compact snapshot per UTC day; skips if today's already exists.
       - name: Write daily snapshot
         run: node scripts/snapshot-values.mjs
@@ -41,7 +46,7 @@ jobs:
           git config user.email "github-actions[bot]@users.noreply.github.com"
           # A cache change is the only thing that warrants a redeploy; a
           # snapshot-only change is committed for history but does not deploy.
-          git add src/data/amv-cache.json src/data/elve-cache.json src/data/elve-ids.json src/data/elve-meta.json src/data/items-cache.json
+          git add src/data/amv-cache.json src/data/elve-cache.json src/data/elve-ids.json src/data/elve-meta.json src/data/items-cache.json public/sprites/
           if git diff --staged --quiet; then
             echo "No value changes — will not deploy."
             echo "changed=false" >> "$GITHUB_OUTPUT"

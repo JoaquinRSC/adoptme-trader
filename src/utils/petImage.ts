@@ -5,8 +5,11 @@
 // empty Map. The same pet renders as an inventory card, a picker result and a
 // trade slot at once — they must share one lookup.
 
+// Served from our own public/sprites/ (filled by scripts/fetch-sprites.mjs):
+// AMVGG blocks hotlinking, so cross-site requests to amvgg.com/items/ fail.
+// Apostrophes are dropped to match AMVGG's file names ("Smores Raccoon.webp").
 export const spriteUrl = (name: string) =>
-  `https://amvgg.com/items/${encodeURIComponent(name)}.webp`
+  `/sprites/${encodeURIComponent(name.replace(/'/g, ''))}.webp`
 
 // Keyed by name and holding the promise, so concurrent lookups for the same pet
 // collapse into a single request and the answer (including "no sprite exists")

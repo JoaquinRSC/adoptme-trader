@@ -586,13 +586,16 @@ function extractImageUrlFromHtml (html: string): string | null {
 async function fetchPetImageAsBase64 (petName: string): Promise<string | null> {
   if (imageCache.has(petName)) return imageCache.get(petName) ?? null
 
-  // Try direct webp URL first (faster, no HTML scraping needed)
-  const directUrl = `https://amvgg.com/items/${encodeURIComponent(petName)}.webp`
+  // Try the direct webp first (no HTML scraping needed). AMVGG blocks hotlinking,
+  // so hand the browser the bytes as a data URL instead of the amvgg.com URL.
+  const directUrl = `https://amvgg.com/items/${encodeURIComponent(petName.replace(/'/g, ''))}.webp`
   try {
     const directRes = await fetchWithTimeout(directUrl)
-    if (directRes.ok && (directRes.headers.get('content-type') ?? '').startsWith('image/')) {
-      imageCache.set(petName, directUrl)
-      return directUrl
+    const type = directRes.headers.get('content-type') ?? ''
+    if (directRes.ok && type.startsWith('image/')) {
+      const dataUrl = `data:${type};base64,${Buffer.from(await directRes.arrayBuffer()).toString('base64')}`
+      imageCache.set(petName, dataUrl)
+      return dataUrl
     }
   } catch { /* fall through to HTML scraping */ }
 

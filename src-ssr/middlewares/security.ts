@@ -2,8 +2,9 @@ import { defineSsrMiddleware } from '#q-app/wrappers'
 
 // A conservative CSP tuned to what the app actually loads:
 // - fonts.googleapis.com (font CSS) + fonts.gstatic.com (font files)
-// - img-src https: + data: — pet sprites are hotlinked from amvgg.com and the
-//   PetImage fallback inlines base64 data URIs
+// - img-src 'self' + data: — pet sprites are served from /sprites/ (AMVGG blocks
+//   hotlinking) and the PetImage fallback inlines base64 data URIs; https: stays
+//   for any other remote image
 // - 'unsafe-inline' for style (Quasar scoped styles) and script (Quasar inlines
 //   the SSR state + service-worker registration); no nonce infra here.
 const CSP = [
